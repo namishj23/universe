@@ -99,7 +99,9 @@ All use the `SEED_DEMO_PASSWORD` from `apps/api/.env`.
 
 `student2` is the female demo rider with women-only groups on. The seed also adds two forming ride groups and one open request relative to the time you run it.
 
-The web app is a placeholder until the team's UI design arrives (phases U1–U2); every feature is reachable through the API (see `docs/api/openapi.json`).
+The web app has the platform screens (sign-in, forced and voluntary password change, dashboard "Your week", inbox, admin users and audit log) built from the team's Claude Design handoff; module screens arrive in U2, and every feature is reachable through the API (see `docs/api/openapi.json`). Set `VITE_DEMO_MODE=true` (e.g. in `apps/web/.env.local`) to list these accounts on the sign-in screen: a click fills the email only, never a password.
+
+To run a second copy of the repo beside the first, put `WEB_PORT` and `API_PORT` in `apps/web/.env.local` (the dev server's port and the API it proxies to).
 
 ### Tests and checks
 
@@ -109,7 +111,11 @@ npm run typecheck
 npm run lint
 npm run db:test:reset  # optional: drop and re-create universe_test's tables from migrations
 npm run api:docs       # regenerate docs/api/openapi.json after changing routes (a test checks it)
+npm run test:visual    # web screenshots vs committed baselines (route-mocked; no API needed)
+npm run design:compare # prototype vs build pixel comparison -> docs/sessions/U1-compare/
 ```
+
+First time only: `npx playwright install chromium`. Visual baselines are macOS Chromium; after a deliberate UI change run `npm run test:visual -- --update-snapshots` and review every changed image. The design rules are in `docs/design/DESIGN-SYSTEM.md`.
 
 The API contract is `docs/api/openapi.json` (OpenAPI 3.1). With `npm run dev` running, browse it at http://localhost:4000/api/docs (not served in production).
 
@@ -145,4 +151,7 @@ API tests refuse to run unless `DATABASE_URL` in `apps/api/.env.test` points at 
 | Wellbeing: browsing events, sanitising, rules, focus sessions, metrics | Implemented as a browser-side library (`packages/wellbeing-core`), tested with three synthetic sample days; the UI and IndexedDB storage come in U2. There is no browser extension: events come from the sample files (import demo) |
 | Wellbeing: daily totals, consent per category, pause, see my data, export, delete | Implemented (backend; screens in U2). The server stores only one total in minutes per category per day and the settings |
 | Wellbeing: weekly summary, retention | Implemented (hourly job; notification text only, no numbers) |
+| Web: platform screens (sign-in, password change, dashboard, inbox, admin) | Implemented against the real API, light and dark, 360px and up |
+| Web: dashboard week strip | Implemented (`GET /api/dashboard/week`); shows "Nothing yet" until modules add week providers (P6) |
+| Web: Hub, Rides, Wellbeing, Observatory, Exam screens | Placeholder "Coming in the next build" (U2 / Person 2) |
 | Observatory, Exam monitoring | Person 2 (not started) |

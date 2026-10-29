@@ -27,11 +27,15 @@ interface Options {
   method?: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
   body?: unknown;
   signal?: AbortSignal;
+  headers?: Record<string, string>;
 }
 
 /** fetch with the session cookie, the CSRF header on unsafe methods, and ApiErrorBody parsing. */
-export async function request(path: string, { method = 'GET', body, signal }: Options = {}) {
-  const headers: Record<string, string> = {};
+export async function request(
+  path: string,
+  { method = 'GET', body, signal, headers: extra }: Options = {},
+) {
+  const headers: Record<string, string> = { ...extra };
   if (body !== undefined) headers['Content-Type'] = 'application/json';
   if (method !== 'GET' && csrfToken) headers['X-CSRF-Token'] = csrfToken;
 

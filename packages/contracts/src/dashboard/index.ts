@@ -37,3 +37,5 @@ export const DashboardResponse = z
 export type DashboardResponse = z.infer<typeof DashboardResponse>;
 
 export { HubDashboardSummary, RidesDashboardSummary, WellbeingDashboardSummary };
+
+export * from './week.js';

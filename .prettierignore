@@ -7,3 +7,7 @@ package-lock.json
 *.md
 docs/api/openapi.json
 apps/api/src/modules/rides/data/graph.json
+docs/design/
+test-results/
+playwright-report/
+docs/sessions/U1-compare/

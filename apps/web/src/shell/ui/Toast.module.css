@@ -1,0 +1,23 @@
+.toast {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  z-index: 60;
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 10px 16px;
+  border-radius: 6px;
+  background: var(--inv-bg);
+  color: var(--inv-fg);
+  font-size: var(--fs-13-5);
+  font-weight: 500;
+  transform: translateX(-50%);
+}
+
+.label {
+  color: var(--inv-muted);
+  font-family: var(--font-mono);
+  font-size: var(--fs-11);
+  font-weight: 600;
+}

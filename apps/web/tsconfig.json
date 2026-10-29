@@ -7,7 +7,8 @@
     "jsx": "react-jsx",
     "noEmit": true,
     "sourceMap": false,
-    "types": ["vite/client", "@testing-library/jest-dom/vitest"]
+    "types": ["vite/client", "@testing-library/jest-dom/vitest"],
+    "allowImportingTsExtensions": true
   },
   "include": ["src", "test", "vite.config.ts"]
 }

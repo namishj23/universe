@@ -1,0 +1,921 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet data-dc-atomics>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Familjen+Grotesk:wght@400;500;600;700&family=Reddit+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root,[data-theme="light"]{--bg:#ebe9e3;--surface:#f6f5f1;--raised:#ffffff;--ink:#1b1d1f;--ink2:#45494e;--muted:#55595e;--faint:#7d8186;--line:#cfccc3;--line-strong:#1b1d1f;--hover:#dedbd3;--inv-bg:#1b1d1f;--inv-fg:#ebe9e3;--inv-raised:#2c2f33;--inv-muted:#a9adb2;--onfill:#ffffff;--skel:#dcd9d1;--hA:oklch(0.46 0.14 268);--hA-fill:oklch(0.52 0.14 268);--hB:oklch(0.44 0.09 200);--hB-fill:oklch(0.52 0.1 200);--hC:oklch(0.46 0.15 340);--hC-fill:oklch(0.52 0.15 340);--hD:oklch(0.44 0.13 300);--hD-fill:oklch(0.5 0.13 300);--hE:oklch(0.44 0.08 235);--hE-fill:oklch(0.5 0.09 235);--ok:#1d5a2a;--ok-bg:#dcefdf;--warn:#7a4f06;--warn-bg:#f6e6c4;--err:#9b2418;--err-bg:#f7dcd6;--link:#2f3f9a}
+[data-theme="dark"]{--bg:#141516;--surface:#1c1d1f;--raised:#232527;--ink:#ecebe6;--ink2:#c6c5bf;--muted:#a6a59f;--faint:#86857f;--line:#34363a;--line-strong:#7c7e82;--hover:#2a2c2f;--inv-bg:#ecebe6;--inv-fg:#141516;--inv-raised:#d7d5ce;--inv-muted:#55595e;--onfill:#141516;--skel:#2a2c2f;--hA:oklch(0.76 0.11 268);--hA-fill:oklch(0.72 0.12 268);--hB:oklch(0.78 0.09 200);--hB-fill:oklch(0.74 0.1 200);--hC:oklch(0.76 0.13 340);--hC-fill:oklch(0.72 0.14 340);--hD:oklch(0.76 0.11 300);--hD-fill:oklch(0.72 0.12 300);--hE:oklch(0.76 0.07 235);--hE-fill:oklch(0.72 0.08 235);--ok:#8fd6a0;--ok-bg:#1f3324;--warn:#f0b44c;--warn-bg:#3a2e17;--err:#f29a8c;--err-bg:#3d1f1a;--link:#a9b6ff}
+@keyframes uvPulse{0%,100%{opacity:1}50%{opacity:.45}}
+html,body{margin:0;background:#ebe9e3}
+*{box-sizing:border-box}
+a{color:var(--link)}a:hover{color:var(--ink)}
+input,select,textarea,button{font-family:'Familjen Grotesk',sans-serif}
+</style>
+</helmet>
+<div data-theme="{{ theme }}" style="min-height:{{ rootH }};background:var(--bg);color:var(--ink);font-family:'Familjen Grotesk',sans-serif;font-size:14px">
+
+<sc-if value="{{ showLogin }}" hint-placeholder-val="{{ false }}">
+<div data-screen-label="Login" style="min-height:{{ loginH }};display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr)">
+<div style="background:var(--inv-bg);color:var(--inv-fg);padding:40px 48px;display:flex;flex-direction:column;gap:28px">
+<div style="display:flex;justify-content:space-between;align-items:baseline"><span style="font-family:'Reddit Mono',monospace;font-size:11px;font-weight:600">SARDAR PATEL INSTITUTE OF TECHNOLOGY</span><span style="font-family:'Reddit Mono',monospace;font-size:11px;color:var(--inv-muted)">{{ nowLabel }}</span></div>
+<div style="margin-top:auto;display:flex;flex-direction:column;gap:10px"><span style="font-size:76px;font-weight:700;letter-spacing:-0.045em;line-height:0.95">UniVerse</span><span style="font-size:18px;color:var(--inv-muted);max-width:440px;line-height:1.4;text-wrap:pretty">One sign-in for the hub, rides, the observatory, wellbeing and exam review.</span></div>
+<div style="display:flex;flex-direction:column;border-top:1.5px solid var(--inv-fg)">
+<sc-for list="{{ loginModules }}" as="m" hint-placeholder-count="5">
+<div style="display:grid;grid-template-columns:34px minmax(0,1fr) auto;gap:10px;padding:11px 0;border-bottom:1px solid var(--inv-raised);align-items:baseline"><span style="font-family:'Reddit Mono',monospace;font-size:12px;font-weight:600">{{ m.code }}</span><span style="font-size:15px;font-weight:600">{{ m.label }}</span><span style="font-family:'Reddit Mono',monospace;font-size:11px;color:var(--inv-muted)">{{ m.who }}</span></div>
+</sc-for>
+</div>
+</div>
+<div style="display:flex;align-items:center;justify-content:center;padding:40px">
+<form onSubmit="{{ submitLogin }}" style="width:100%;max-width:380px;display:flex;flex-direction:column;gap:18px">
+<div style="display:flex;flex-direction:column;gap:6px"><h1 style="margin:0;font-size:30px;font-weight:700;letter-spacing:-0.03em">Sign in</h1><span style="color:var(--muted);font-size:14.5px">Use your campus email and password.</span></div>
+<sc-if value="{{ loginError }}"><div role="alert" style="display:flex;gap:10px;padding:10px 12px;border-radius:6px;background:var(--err-bg);color:var(--err);font-size:13.5px;font-weight:500">{{ loginError }}</div></sc-if>
+<label style="display:flex;flex-direction:column;gap:6px"><span style="font-family:'Reddit Mono',monospace;font-size:11px;font-weight:600">EMAIL</span><input type="email" value="{{ loginEmail }}" onChange="{{ setLoginEmail }}" placeholder="name@spit.ac.in" style="height:40px;padding:0 12px;border:1.5px solid var(--line-strong);border-radius:6px;background:var(--raised);color:var(--ink);font-size:15px;outline:none"></label>
+<label style="display:flex;flex-direction:column;gap:6px"><span style="font-family:'Reddit Mono',monospace;font-size:11px;font-weight:600">PASSWORD</span><input type="password" value="{{ loginPassword }}" onChange="{{ setLoginPassword }}" style="height:40px;padding:0 12px;border:1.5px solid var(--line-strong);border-radius:6px;background:var(--raised);color:var(--ink);font-size:15px;outline:none"></label>
+<button type="submit" disabled="{{ loginBusy }}" style="height:42px;border:0;border-radius:6px;background:var(--ink);color:var(--bg);font-size:15px;font-weight:600;cursor:pointer">{{ loginButton }}</button>
+<div style="display:flex;flex-direction:column;gap:6px;padding-top:12px;border-top:1px solid var(--line)">
+<span style="font-family:'Reddit Mono',monospace;font-size:11px;font-weight:600;color:var(--muted)">DEMO ACCOUNTS · CLICK TO FILL</span>
+<sc-for list="{{ demoAccounts }}" as="d" hint-placeholder-count="4">
+<button type="button" onClick="{{ d.fill }}" style="display:flex;justify-content:space-between;align-items:center;padding:7px 10px;border:1px solid var(--line);border-radius:5px;background:var(--surface);color:var(--ink);cursor:pointer;text-align:left" style-hover="border-color:var(--line-strong)"><span style="font-family:'Reddit Mono',monospace;font-size:12px">{{ d.email }}</span><span style="font-size:12.5px;color:var(--muted)">{{ d.role }}</span></button>
+</sc-for>
+<span style="font-size:12.5px;color:var(--faint)">Any password works except "wrong", which shows the error state.</span>
+</div>
+</form>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{ showApp }}" hint-placeholder-val="{{ true }}">
+<div style="display:grid;grid-template-columns:216px minmax(0,1fr);min-height:{{ rootH }}">
+<aside style="position:{{ sidePos }};top:0;height:{{ sideH }};display:flex;flex-direction:column;padding:16px 12px;gap:20px;border-right:1.5px solid var(--line-strong);background:var(--bg)">
+<div style="display:flex;flex-direction:column;gap:2px;padding:0 6px"><span style="font-size:19px;font-weight:700;letter-spacing:-0.02em">UniVerse</span><span style="font-family:'Reddit Mono',monospace;font-size:10.5px;color:var(--muted)">campus platform</span></div>
+<nav style="display:flex;flex-direction:column;gap:2px">
+<sc-for list="{{ topNav }}" as="n" hint-placeholder-count="2">
+<button onClick="{{ n.go }}" style="display:flex;align-items:center;justify-content:space-between;padding:7px 8px;border:0;border-radius:4px;background:{{ n.bg }};color:{{ n.fg }};font-size:14px;font-weight:600;cursor:pointer;text-align:left" style-hover="outline:1px solid var(--line)">{{ n.label }}<span style="font-family:'Reddit Mono',monospace;font-size:11px;font-weight:600">{{ n.badge }}</span></button>
+</sc-for>
+</nav>
+<nav style="display:flex;flex-direction:column;gap:2px">
+<sc-for list="{{ modNav }}" as="n" hint-placeholder-count="4">
+<button onClick="{{ n.go }}" style="display:grid;grid-template-columns:20px 1fr auto;align-items:center;padding:7px 8px;border:0;border-radius:4px;background:{{ n.bg }};color:{{ n.fg }};font-size:14px;font-weight:500;cursor:pointer;text-align:left" style-hover="outline:1px solid var(--line)"><span style="font-family:'Reddit Mono',monospace;font-size:11px;font-weight:600;color:{{ n.codeColor }}">{{ n.code }}</span>{{ n.label }}<span style="font-family:'Reddit Mono',monospace;font-size:10.5px;font-weight:600;color:{{ n.codeColor }}">{{ n.badge }}</span></button>
+</sc-for>
+</nav>
+<div style="margin-top:auto;display:flex;flex-direction:column;gap:8px;position:relative">
+<sc-if value="{{ roleMenuOpen }}">
+<div style="position:absolute;bottom:calc(100% + 6px);left:0;right:0;display:flex;flex-direction:column;padding:4px;border:1.5px solid var(--line-strong);border-radius:6px;background:var(--raised);z-index:20">
+<span style="font-family:'Reddit Mono',monospace;font-size:10.5px;font-weight:600;color:var(--muted);padding:6px 8px">VIEW AS (DEMO)</span>
+<sc-for list="{{ roleOptions }}" as="r" hint-placeholder-count="4">
+<button onClick="{{ r.pick }}" style="display:flex;flex-direction:column;align-items:flex-start;gap:1px;padding:6px 8px;border:0;border-radius:4px;background:{{ r.bg }};color:var(--ink);cursor:pointer;text-align:left" style-hover="background:var(--hover)"><span style="font-size:13.5px;font-weight:600">{{ r.name }}</span><span style="font-family:'Reddit Mono',monospace;font-size:10.5px;color:var(--muted)">{{ r.role }}</span></button>
+</sc-for>
+<div style="height:1px;background:var(--line);margin:4px 0"></div>
+<button onClick="{{ signOut }}" style="padding:7px 8px;border:0;border-radius:4px;background:none;color:var(--err);font-size:13.5px;font-weight:600;cursor:pointer;text-align:left" style-hover="background:var(--hover)">Sign out</button>
+</div>
+</sc-if>
+<button onClick="{{ toggleTheme }}" style="display:flex;justify-content:space-between;align-items:center;padding:7px 8px;border:1px solid var(--line);border-radius:5px;background:none;color:var(--ink);font-size:13px;cursor:pointer" style-hover="border-color:var(--line-strong)">Theme<span style="font-family:'Reddit Mono',monospace;font-size:11px;font-weight:600">{{ themeLabel }}</span></button>
+<button onClick="{{ toggleRoleMenu }}" style="display:flex;flex-direction:column;align-items:flex-start;gap:4px;padding:10px 8px;border:1.5px solid var(--line-strong);border-radius:6px;background:var(--surface);color:var(--ink);cursor:pointer;text-align:left">
+<span style="font-size:13.5px;font-weight:600">{{ me.name }}</span>
+<span style="font-family:'Reddit Mono',monospace;font-size:10.5px;color:var(--muted)">viewing as · {{ role }} ▾</span>
+</button>
+</div>
+</aside>
+
+<main style="min-width:0;padding:24px 32px 48px;display:flex;flex-direction:column;gap:20px">
+
+<sc-if value="{{ is.dashboard }}" hint-placeholder-val="{{ true }}">
+<div data-screen-label="Dashboard" style="display:flex;align-items:baseline;justify-content:space-between;gap:16px;flex-wrap:wrap">
+<div style="display:flex;flex-direction:column;gap:4px"><span style="font-family:'Reddit Mono',monospace;font-size:11px;font-weight:600;color:var(--muted)">{{ greeting }}</span><h1 style="margin:0;font-size:34px;font-weight:700;letter-spacing:-0.03em">Your week</h1></div>
+<span style="font-family:'Reddit Mono',monospace;font-size:12px;color:var(--muted)">29 OCT – 04 NOV</span>
+</div>
+</sc-if>
+<sc-if value="{{ show.dashboard }}" hint-placeholder-val="{{ true }}">
+<div style="display:grid;grid-template-columns:repeat(7,minmax(0,1fr));border:1.5px solid var(--line-strong);border-radius:8px;background:var(--surface);overflow:hidden">
+<sc-for list="{{ week }}" as="d" hint-placeholder-count="7">
+<div style="display:flex;flex-direction:column;gap:8px;padding:10px;min-height:176px;background:{{ d.bg }};color:{{ d.fg }};border-left:{{ d.border }}">
+<span style="font-family:'Reddit Mono',monospace;font-size:11px;font-weight:600">{{ d.label }}</span>
+<sc-for list="{{ d.items }}" as="it">
+<button onClick="{{ it.go }}" style="width:100%;display:flex;flex-direction:column;align-items:flex-start;gap:2px;padding:7px 8px;border-radius:4px;background:{{ it.bg }};border:1px {{ it.borderStyle }} {{ it.borderColor }};color:inherit;cursor:pointer;text-align:left" style-hover="border-color:var(--ink)"><span style="font-family:'Reddit Mono',monospace;font-size:10px;font-weight:600;color:{{ it.codeColor }}">{{ it.meta }}</span><span style="font-size:12.5px;line-height:1.3">{{ it.text }}</span><span style="font-family:'Reddit Mono',monospace;font-size:9.5px;color:{{ it.statusColor }}">{{ it.status }}</span></button>
+</sc-for>
+<sc-if value="{{ d.none }}"><span style="font-size:12px;color:var(--faint)">Nothing yet</span></sc-if>
+</div>
+</sc-for>
+</div>
+<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px">
+<sc-for list="{{ indexCards }}" as="c" hint-placeholder-count="4">
+<button onClick="{{ c.go }}" style="display:flex;flex-direction:column;border:1.5px solid var(--line-strong);border-radius:8px;background:var(--surface);overflow:hidden;color:var(--ink);cursor:pointer;text-align:left;padding:0" style-hover="background:var(--raised)">
+<div style="display:flex;justify-content:space-between;align-items:center;padding:9px 12px;border-bottom:1.5px solid var(--line-strong);width:100%"><span style="font-size:14px;font-weight:600">{{ c.label }}</span><span style="width:22px;height:22px;border-radius:4px;background:{{ c.fill }};color:var(--onfill);display:flex;align-items:center;justify-content:center;font-family:'Reddit Mono',monospace;font-size:11px;font-weight:600">{{ c.code }}</span></div>
+<div style="display:flex;flex-direction:column;gap:6px;padding:12px"><span style="font-family:'Reddit Mono',monospace;font-size:30px;font-weight:500;letter-spacing:-0.03em">{{ c.big }}</span><span style="font-size:13px;color:var(--ink2);line-height:1.4">{{ c.text }}</span><span style="font-family:'Reddit Mono',monospace;font-size:10.5px;color:{{ c.statusColor }}">{{ c.status }}</span></div>
+</button>
+</sc-for>
+</div>
+<div style="display:flex;flex-direction:column;border-top:1.5px solid var(--line-strong)">
+<div style="display:flex;justify-content:space-between;align-items:baseline;padding:10px 0 4px"><span style="font-family:'Reddit Mono',monospace;font-size:11px;font-weight:600">INBOX · {{ unreadCount }} NEW</span><button onClick="{{ goInbox }}" style="background:none;border:0;color:var(--ink);font-size:13px;text-decoration:underline;cursor:pointer">Open inbox</button></div>
+<sc-for list="{{ inboxPreview }}" as="e" hint-placeholder-count="3">
+<div style="display:grid;grid-template-columns:70px 28px minmax(0,1fr);gap:8px;padding:7px 0;border-bottom:1px solid var(--line);font-size:13.5px;align-items:baseline"><span style="font-family:'Reddit Mono',monospace;font-size:11px;color:var(--muted)">{{ e.time }}</span><span style="font-family:'Reddit Mono',monospace;font-size:11px;font-weight:600;color:{{ e.codeColor }}">{{ e.code }}</span><span><b>{{ e.who }}</b> {{ e.text }}</span></div>
+</sc-for>
+</div>
+</sc-if>
+
+<sc-if value="{{ is.inbox }}">
+<div data-screen-label="Inbox" style="display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap">
+<div style="display:flex;flex-direction:column;gap:4px"><span style="font-family:'Reddit Mono',monospace;font-size:11px;font-weight:600;color:var(--muted)">ACTIVITY · LIVE</span><h1 style="margin:0;font-size:34px;font-weight:700;letter-spacing:-0.03em">Inbox</h1></div>
+<button onClick="{{ markAllRead }}" style="height:34px;padding:0 14px;border:1.5px solid var(--line-strong);border-radius:5px;background:none;color:var(--ink);font-size:13.5px;font-weight:600;cursor:pointer" style-hover="background:var(--hover)">Mark all read</button>
+</div>
+<div style="display:flex;gap:6px;flex-wrap:wrap">
+<sc-for list="{{ inboxFilters }}" as="f" hint-placeholder-count="5">
+<button onClick="{{ f.pick }}" style="height:30px;padding:0 11px;border:1.5px solid var(--line-strong);border-radius:15px;background:{{ f.bg }};color:{{ f.fg }};font-size:13px;font-weight:600;cursor:pointer">{{ f.label }}</button>
+</sc-for>
+</div>
+</sc-if>
+<sc-if value="{{ show.inbox }}">
+<sc-if value="{{ isAdmin }}">
+<div style="display:flex;flex-direction:column;gap:10px;padding:14px;border:1.5px solid var(--line-strong);border-radius:8px;background:var(--surface)">
+<span style="font-family:'Reddit Mono',monospace;font-size:11px;font-weight:600">ANNOUNCEMENT TO EVERYONE</span>
+<textarea value="{{ announceText }}" onChange="{{ setAnnounceText }}" rows="2" placeholder="Write a short announcement" style="padding:10px 12px;border:1px solid var(--line);border-radius:6px;background:var(--raised);color:var(--ink);font-size:14px;resize:vertical;outline:none"></textarea>
+<div style="display:flex;justify-content:space-between;align-items:center"><span style="font-family:'Reddit Mono',monospace;font-size:11px;color:var(--muted)">{{ announceCount }} / 500</span><button onClick="{{ sendAnnouncement }}" disabled="{{ announceDisabled }}" style="height:34px;padding:0 14px;border:0;border-radius:5px;background:var(--ink);color:var(--bg);font-size:13.5px;font-weight:600;cursor:pointer;opacity:{{ announceOpacity }}">Send to everyone</button></div>
+</div>
+</sc-if>
+<div style="display:flex;flex-direction:column;border:1.5px solid var(--line-strong);border-radius:8px;background:var(--surface);overflow:hidden">
+<sc-for list="{{ inboxList }}" as="e" hint-placeholder-count="5">
+<button onClick="{{ e.read }}" style="display:grid;grid-template-columns:10px 28px minmax(0,1fr) 80px;gap:10px;align-items:baseline;padding:12px 14px;border:0;border-bottom:1px solid var(--line);background:{{ e.bg }};color:var(--ink);text-align:left;cursor:pointer;font-size:14px" style-hover="background:var(--raised)"><span style="width:7px;height:7px;border-radius:50%;background:{{ e.dot }}"></span><span style="font-family:'Reddit Mono',monospace;font-size:11px;font-weight:600;color:{{ e.codeColor }}">{{ e.code }}</span><span style="display:flex;flex-direction:column;gap:3px"><span style="font-weight:{{ e.weight }}"><b>{{ e.who }}</b> {{ e.text }}</span><span style="font-family:'Reddit Mono',monospace;font-size:10.5px;color:var(--muted)">{{ e.modLabel }}</span></span><span style="font-family:'Reddit Mono',monospace;font-size:11px;color:var(--muted);text-align:right">{{ e.time }}</span></button>
+</sc-for>
+<sc-if value="{{ inboxFilteredEmpty }}"><div style="padding:28px 14px;color:var(--muted);font-size:14px">No activity from this module yet.</div></sc-if>
+</div>
+</sc-if>
+
+<sc-if value="{{ is.hub }}">
+<div data-screen-label="Student Hub" style="display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap">
+<div style="display:flex;flex-direction:column;gap:4px"><span style="font-family:'Reddit Mono',monospace;font-size:11px;font-weight:600;color:var(--hA)">A · STUDENT INTELLIGENCE AND ACADEMIC HUB</span><h1 style="margin:0;font-size:34px;font-weight:700;letter-spacing:-0.03em">Student Hub</h1></div>
+</div>
+<div style="display:flex;gap:4px;border-bottom:1.5px solid var(--line-strong)">
+<sc-for list="{{ hubTabs }}" as="t" hint-placeholder-count="4"><button onClick="{{ t.go }}" style="background:none;border:0;border-bottom:3px solid {{ t.bar }};margin-bottom:-1.5px;padding:8px 12px;font-size:14px;font-weight:600;color:{{ t.fg }};cursor:pointer">{{ t.label }}</button></sc-for>
+</div>
+</sc-if>
+<sc-if value="{{ show.hubPrep }}">
+<div style="display:flex;flex-wrap:wrap;gap:16px;align-items:flex-start">
+<div style="flex:1 1 480px;min-width:0;display:flex;flex-direction:column;border:1.5px solid var(--line-strong);border-radius:8px;background:var(--surface);overflow:hidden">
+<div style="display:grid;grid-template-columns:minmax(0,1.3fr) 90px minmax(0,2fr) 64px;gap:14px;padding:9px 14px;border-bottom:1.5px solid var(--line-strong);font-family:'Reddit Mono',monospace;font-size:10.5px;font-weight:600;color:var(--muted)"><span>TOPIC</span><span>SOLVED</span><span>PROGRESS</span><span></span></div>
+<sc-for list="{{ prepRows }}" as="p" hint-placeholder-count="6">
+<div style="display:grid;grid-template-columns:minmax(0,1.3fr) 90px minmax(0,2fr) 64px;gap:14px;padding:11px 14px;border-bottom:1px solid var(--line);align-items:center"><span style="font-size:14px;font-weight:600;overflow-wrap:anywhere">{{ p.topic }}</span><span style="font-family:'Reddit Mono',monospace;font-size:13px">{{ p.solved }}<span style="color:var(--muted)">/{{ p.total }}</span></span><span style="display:flex;align-items:center;gap:10px"><span style="flex:1;height:8px;border-radius:2px;background:var(--line);overflow:hidden"><span style="display:block;height:100%;width:{{ p.pct }};background:var(--hA-fill)"></span></span><span style="font-family:'Reddit Mono',monospace;font-size:11px;width:36px;text-align:right">{{ p.pct }}</span></span><button onClick="{{ p.inc }}" aria-label="Add one solved" style="height:28px;border:1.5px solid var(--line-strong);border-radius:5px;background:none;color:var(--ink);font-family:'Reddit Mono',monospace;font-size:12px;font-weight:600;cursor:pointer" style-hover="background:var(--hover)">+1</button></div>
+</sc-for>
+</div>
+<div style="flex:1 1 260px;display:flex;flex-direction:column;gap:12px">
+<div style="display:flex;flex-direction:column;gap:8px;padding:14px;border:1.5px solid var(--line-strong);border-radius:8px;background:var(--surface)">
+<span style="font-family:'Reddit Mono',monospace;font-size:11px;font-weight:600">OVERALL</span>
+<span style="font-family:'Reddit Mono',monospace;font-size:36px;font-weight:500;letter-spacing:-0.03em">{{ prepPct }}</span>
+<span style="font-size:13.5px;color:var(--ink2)">{{ prepSolved }} of {{ prepTotal }} problems on the DSA sheet.</span>
+</div>
+<div style="display:flex;flex-direction:column;gap:8px;padding:14px;border:1.5px solid var(--line-strong);border-radius:8px;background:var(--surface)">
+<span style="font-family:'Reddit Mono',monospace;font-size:11px;font-weight:600">THIS WEEK'S GOAL · ENDS SAT</span>
+<div style="display:grid;grid-template-columns:repeat(20,1fr);gap:3px"><sc-for list="{{ goalCells }}" as="g" hint-placeholder-count="20"><span style="height:16px;border-radius:2px;background:{{ g.bg }}"></span></sc-for></div>
+<span style="font-size:13.5px;color:var(--ink2)">{{ goalDone }} of 20 done, {{ goalLeft }} left.</span>
+</div>
+</div>
+</div>
+</sc-if>
+<sc-if value="{{ show.hubMentors }}">
+<div style="display:flex;justify-content:space-between;align-items:baseline;gap:12px;flex-wrap:wrap"><span style="font-size:14px;color:var(--ink2);max-width:640px">Ranked by how well their expertise matches the weak topics in your prep tracker, their free slots this week, and how many mentees they already have.</span><span style="font-family:'Reddit Mono',monospace;font-size:11px;color:var(--muted)">4 MENTORS</span></div>
+<div style="display:flex;flex-direction:column;gap:10px">
+<sc-for list="{{ mentorRows }}" as="m" hint-placeholder-count="4">
+<div style="display:grid;grid-template-columns:40px minmax(0,1fr) 120px 150px;gap:16px;align-items:center;padding:14px;border:1.5px solid var(--line-strong);border-radius:8px;background:var(--surface)">
+<span style="font-family:'Reddit Mono',monospace;font-size:20px;font-weight:500">{{ m.rank }}</span>
+<div style="display:flex;flex-direction:column;gap:5px;min-width:0"><span style="font-size:15px;font-weight:600">{{ m.name }} <span style="font-weight:400;color:var(--muted)">· {{ m.dept }}</span></span><span style="font-size:13px;color:var(--ink2)">{{ m.why }}</span><div style="display:flex;gap:5px;flex-wrap:wrap"><sc-for list="{{ m.tags }}" as="t"><span style="font-family:'Reddit Mono',monospace;font-size:10.5px;padding:2px 7px;border:1px solid var(--line);border-radius:3px">{{ t }}</span></sc-for></div></div>
+<div style="display:flex;flex-direction:column;gap:2px"><span style="font-family:'Reddit Mono',monospace;font-size:22px;font-weight:500">{{ m.score }}</span><span style="font-family:'Reddit Mono',monospace;font-size:10.5px;color:var(--muted)">{{ m.slots }}</span></div>
+<button onClick="{{ m.request }}" disabled="{{ m.disabled }}" style="height:34px;border:{{ m.btnBorder }};border-radius:5px;background:{{ m.btnBg }};color:{{ m.btnFg }};font-size:13.5px;font-weight:600;cursor:pointer">{{ m.btn }}</button>
+</div>
+</sc-for>
+</div>
+</sc-if>
+<sc-if value="{{ show.hubRequests }}">
+<div style="display:flex;flex-direction:column;gap:10px">
+<sc-for list="{{ mentorRequests }}" as="r" hint-placeholder-count="3">
+<div style="display:grid;grid-template-columns:minmax(0,1fr) auto;gap:16px;align-items:center;padding:14px;border:1.5px solid var(--line-strong);border-radius:8px;background:var(--surface)">
+<div style="display:flex;flex-direction:column;gap:4px"><span style="font-size:15px;font-weight:600">{{ r.name }} <span style="font-weight:400;color:var(--muted)">· {{ r.year }}</span></span><span style="font-size:13.5px;color:var(--ink2)">"{{ r.note }}"</span><span style="font-family:'Reddit Mono',monospace;font-size:10.5px;color:var(--muted)">{{ r.meta }}</span></div>
+<sc-if value="{{ r.pending }}"><div style="display:flex;gap:8px"><button onClick="{{ r.decline }}" style="height:34px;padding:0 14px;border:1.5px solid var(--line-strong);border-radius:5px;background:none;color:var(--ink);font-size:13.5px;font-weight:600;cursor:pointer">Decline</button><button onClick="{{ r.accept }}" style="height:34px;padding:0 14px;border:0;border-radius:5px;background:var(--ink);color:var(--bg);font-size:13.5px;font-weight:600;cursor:pointer">Accept</button></div></sc-if>
+<sc-if value="{{ r.done }}"><span style="font-family:'Reddit Mono',monospace;font-size:11px;font-weight:600;padding:4px 8px;border-radius:4px;background:{{ r.chipBg }};color:{{ r.chipFg }}">{{ r.statusLabel }}</span></sc-if>
+</div>
+</sc-for>
+</div>
+</sc-if>
+<sc-if value="{{ show.hubResources }}">
+<div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+<input value="{{ resQuery }}" onChange="{{ setResQuery }}" placeholder="Search titles, subjects, uploaders" style="flex:1;min-width:240px;height:38px;padding:0 12px;border:1.5px solid var(--line-strong);border-radius:6px;background:var(--raised);color:var(--ink);font-size:14px;outline:none">
+<div style="display:flex;gap:4px"><sc-for list="{{ resSubjects }}" as="s" hint-placeholder-count="5"><button onClick="{{ s.pick }}" style="height:30px;padding:0 10px;border:1.5px solid var(--line-strong);border-radius:15px;background:{{ s.bg }};color:{{ s.fg }};font-family:'Reddit Mono',monospace;font-size:11.5px;font-weight:600;cursor:pointer">{{ s.label }}</button></sc-for></div>
+<button onClick="{{ uploadResource }}" style="height:38px;padding:0 14px;border:0;border-radius:6px;background:var(--ink);color:var(--bg);font-size:13.5px;font-weight:600;cursor:pointer">Upload PDF</button>
+</div>
+<div style="display:flex;flex-direction:column;border:1.5px solid var(--line-strong);border-radius:8px;background:var(--surface);overflow:hidden">
+<div style="display:grid;grid-template-columns:minmax(0,2fr) 70px minmax(0,1fr) 80px 90px;gap:14px;padding:9px 14px;border-bottom:1.5px solid var(--line-strong);font-family:'Reddit Mono',monospace;font-size:10.5px;font-weight:600;color:var(--muted)"><span>TITLE</span><span>SUBJECT</span><span>UPLOADED BY</span><span>SIZE</span><span>ADDED</span></div>
+<sc-for list="{{ resRows }}" as="r" hint-placeholder-count="5">
+<div style="display:grid;grid-template-columns:minmax(0,2fr) 70px minmax(0,1fr) 80px 90px;gap:14px;padding:11px 14px;border-bottom:1px solid var(--line);align-items:baseline;cursor:pointer" style-hover="background:var(--raised)"><span style="font-size:14px;font-weight:600">{{ r.title }}<span style="font-family:'Reddit Mono',monospace;font-size:10px;font-weight:600;color:var(--muted);margin-left:8px">{{ r.type }}</span></span><span style="font-family:'Reddit Mono',monospace;font-size:11.5px;color:var(--hA)">{{ r.subject }}</span><span style="font-size:13.5px;color:var(--ink2)">{{ r.by }}</span><span style="font-family:'Reddit Mono',monospace;font-size:11.5px">{{ r.size }}</span><span style="font-family:'Reddit Mono',monospace;font-size:11.5px;color:var(--muted)">{{ r.date }}</span></div>
+</sc-for>
+<sc-if value="{{ resEmpty }}"><div style="padding:28px 14px;display:flex;flex-direction:column;gap:4px"><span style="font-size:14.5px;font-weight:600">No resources match "{{ resQuery }}"</span><span style="font-size:13.5px;color:var(--muted)">Try a subject code like OS or DBMS, or clear the filter.</span></div></sc-if>
+</div>
+</sc-if>
+<sc-if value="{{ show.hubProfile }}">
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px;align-items:start">
+<div style="display:flex;flex-direction:column;gap:14px;padding:18px;border:1.5px solid var(--line-strong);border-radius:8px;background:var(--surface)">
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+<label style="display:flex;flex-direction:column;gap:6px"><span style="font-family:'Reddit Mono',monospace;font-size:11px;font-weight:600">NAME</span><input value="{{ me.name }}" readonly style="height:38px;padding:0 12px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--ink2);font-size:14px"></label>
+<label style="display:flex;flex-direction:column;gap:6px"><span style="font-family:'Reddit Mono',monospace;font-size:11px;font-weight:600">EMAIL</span><input value="{{ me.email }}" readonly style="height:38px;padding:0 12px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--ink2);font-family:'Reddit Mono',monospace;font-size:13px"></label>
+<label style="display:flex;flex-direction:column;gap:6px"><span style="font-family:'Reddit Mono',monospace;font-size:11px;font-weight:600">BRANCH</span><select style="height:38px;padding:0 10px;border:1.5px solid var(--line-strong);border-radius:6px;background:var(--raised);color:var(--ink);font-size:14px"><option>Computer Engineering</option><option>Information Technology</option><option>Electronics and Telecommunication</option></select></label>
+<label style="display:flex;flex-direction:column;gap:6px"><span style="font-family:'Reddit Mono',monospace;font-size:11px;font-weight:600">YEAR</span><select style="height:38px;padding:0 10px;border:1.5px solid var(--line-strong);border-radius:6px;background:var(--raised);color:var(--ink);font-size:14px"><option>TE (third year)</option><option>SE (second year)</option><option>BE (final year)</option></select></label>
+</div>
+<label style="display:flex;flex-direction:column;gap:6px"><span style="font-family:'Reddit Mono',monospace;font-size:11px;font-weight:600">INTERESTS · USED FOR MENTOR RANKING</span><input value="{{ profileInterests }}" onChange="{{ setProfileInterests }}" style="height:38px;padding:0 12px;border:1.5px solid var(--line-strong);border-radius:6px;background:var(--raised);color:var(--ink);font-size:14px;outline:none"></label>
+<div style="display:flex;justify-content:flex-end"><button onClick="{{ saveProfile }}" style="height:36px;padding:0 16px;border:0;border-radius:6px;background:var(--ink);color:var(--bg);font-size:13.5px;font-weight:600;cursor:pointer">Save profile</button></div>
+</div>
+<div style="display:flex;flex-direction:column;gap:12px;padding:18px;border:1.5px solid var(--line-strong);border-radius:8px;background:var(--surface)">
+<span style="font-family:'Reddit Mono',monospace;font-size:11px;font-weight:600">CHANGE PASSWORD</span>
+<input type="password" placeholder="Current password" style="height:38px;padding:0 12px;border:1.5px solid var(--line-strong);border-radius:6px;background:var(--raised);color:var(--ink);font-size:14px">
+<input type="password" value="{{ newPw }}" onChange="{{ setNewPw }}" placeholder="New password" style="height:38px;padding:0 12px;border:1.5px solid {{ pwBorder }};border-radius:6px;background:var(--raised);color:var(--ink);font-size:14px;outline:none">
+<span style="font-size:12.5px;color:{{ pwHintColor }}">{{ pwHint }}</span>
+<button onClick="{{ changePw }}" disabled="{{ pwInvalid }}" style="height:36px;border:1.5px solid var(--line-strong);border-radius:6px;background:none;color:var(--ink);font-size:13.5px;font-weight:600;cursor:pointer;opacity:{{ pwOpacity }}">Change password</button>
+<span style="font-size:12.5px;color:var(--muted)">Signs you out everywhere else.</span>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{ is.rides }}">
+<div data-screen-label="Rides" style="display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap">
+<div style="display:flex;flex-direction:column;gap:4px"><span style="font-family:'Reddit Mono',monospace;font-size:11px;font-weight:600;color:var(--hB)">B · SMART CAMPUS RIDE-POOLING</span><h1 style="margin:0;font-size:34px;font-weight:700;letter-spacing:-0.03em">Rides</h1></div>
+<span style="font-family:'Reddit Mono',monospace;font-size:11px;color:var(--muted)">MATCH ≥ 50% OVERLAP · ±10 MIN · MAX 3 RIDERS</span>
+</div>
+<div style="display:flex;gap:4px;border-bottom:1.5px solid var(--line-strong)">
+<sc-for list="{{ rideTabs }}" as="t" hint-placeholder-count="3"><button onClick="{{ t.go }}" style="background:none;border:0;border-bottom:3px solid {{ t.bar }};margin-bottom:-1.5px;padding:8px 12px;font-size:14px;font-weight:600;color:{{ t.fg }};cursor:pointer">{{ t.label }}</button></sc-for>
+</div>
+</sc-if>
+<sc-if value="{{ show.ridesFind }}">
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:16px;align-items:start">
+<form onSubmit="{{ findMatches }}" style="display:flex;flex-direction:column;gap:14px;padding:18px;border:1.5px solid var(--line-strong);border-radius:8px;background:var(--surface)">
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+<label style="display:flex;flex-direction:column;gap:6px"><span style="font-family:'Reddit Mono',monospace;font-size:11px;font-weight:600">FROM</span><select value="{{ rideFrom }}" onChange="{{ setRideFrom }}" style="height:38px;padding:0 10px;border:1.5px solid var(--line-strong);border-radius:6px;background:var(--raised);color:var(--ink);font-size:14px"><option value="BOR">Borivali Stn</option><option value="DAH">Dahisar</option><option value="KAN">Kandivali</option><option value="MAL">Malad</option><option value="GOR">Goregaon</option><option value="POW">Powai</option></select></label>
+<label style="display:flex;flex-direction:column;gap:6px"><span style="font-family:'Reddit Mono',monospace;font-size:11px;font-weight:600">TO</span><select value="{{ rideTo }}" onChange="{{ setRideTo }}" style="height:38px;padding:0 10px;border:1.5px solid var(--line-strong);border-radius:6px;background:var(--raised);color:var(--ink);font-size:14px"><option value="SPIT">SPIT Gate</option><option value="AND">Andheri Stn</option></select></label>
+<label style="display:flex;flex-direction:column;gap:6px"><span style="font-family:'Reddit Mono',monospace;font-size:11px;font-weight:600">DATE</span><input type="date" value="2026-10-30" style="height:38px;padding:0 10px;border:1.5px solid var(--line-strong);border-radius:6px;background:var(--raised);color:var(--ink);font-size:14px"></label>
+<label style="display:flex;flex-direction:column;gap:6px"><span style="font-family:'Reddit Mono',monospace;font-size:11px;font-weight:600">PICKUP AROUND</span><input type="time" value="{{ rideTime }}" onChange="{{ setRideTime }}" style="height:38px;padding:0 10px;border:1.5px solid var(--line-strong);border-radius:6px;background:var(--raised);color:var(--ink);font-family:'Reddit Mono',monospace;font-size:14px"></label>
+</div>
+<sc-if value="{{ rideFormError }}"><span role="alert" style="font-size:13px;font-weight:500;color:var(--err)">{{ rideFormError }}</span></sc-if>
+<div style="display:flex;justify-content:space-between;align-items:center;gap:12px;padding-top:12px;border-top:1px solid var(--line)"><span style="font-size:13px;color:var(--muted)">We look for cars already heading your way within 10 minutes of this time.</span><button type="submit" style="height:38px;padding:0 18px;border:0;border-radius:6px;background:var(--ink);color:var(--bg);font-size:14px;font-weight:600;cursor:pointer">Find matches</button></div>
+</form>
+<div style="display:flex;flex-direction:column;gap:10px;padding:16px;border:1.5px solid var(--line-strong);border-radius:8px;background:var(--surface)">
+<span style="font-family:'Reddit Mono',monospace;font-size:11px;font-weight:600">YOUR RIDES</span>
+<div style="display:flex;flex-direction:column;gap:2px;padding:9px 10px;border:1px solid var(--line);border-radius:5px;background:var(--raised)"><span style="font-family:'Reddit Mono',monospace;font-size:10.5px;color:var(--hB)">FRI 30 · 08:10</span><span style="font-size:13.5px;font-weight:600">Borivali Stn → SPIT Gate</span><span style="font-family:'Reddit Mono',monospace;font-size:10.5px;color:var(--ok)">● confirmed · Diya Kulkarni driving</span></div>
+<div style="display:flex;flex-direction:column;gap:2px;padding:9px 10px;border:1px dashed var(--faint);border-radius:5px;background:var(--raised)"><span style="font-family:'Reddit Mono',monospace;font-size:10.5px;color:var(--hB)">FRI 30 · 17:30</span><span style="font-size:13.5px;font-weight:600">SPIT Gate → Borivali Stn</span><span style="font-family:'Reddit Mono',monospace;font-size:10.5px;color:var(--warn)">● searching, no match yet</span></div>
+</div>
+</div>
+</sc-if>
+<sc-if value="{{ show.ridesMatches }}">
+<div style="display:flex;align-items:baseline;gap:12px;flex-wrap:wrap"><span style="font-size:15px;font-weight:600">Fri 30 Oct · Borivali Stn → SPIT Gate · around {{ rideTime }}</span><span style="font-family:'Reddit Mono',monospace;font-size:11px;color:var(--muted)">3 MATCHES · 1 HIDDEN (PICKUP 08:25 IS OUTSIDE ±10 MIN)</span></div>
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:16px;align-items:start">
+<div style="display:flex;flex-direction:column;gap:10px;padding:14px;border:1.5px solid var(--line-strong);border-radius:8px;background:var(--surface);min-width:0">
+<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><span style="font-family:'Reddit Mono',monospace;font-size:11px;font-weight:600">STOP GRAPH</span><div style="display:flex;gap:12px;font-family:'Reddit Mono',monospace;font-size:10.5px;color:var(--ink2)"><span style="display:flex;align-items:center;gap:5px"><span style="width:16px;height:0;border-top:3px solid var(--ink)"></span>you</span><span style="display:flex;align-items:center;gap:5px"><span style="width:16px;height:0;border-top:3px dashed var(--hB-fill)"></span>their route</span><span style="display:flex;align-items:center;gap:5px"><span style="width:16px;height:0;border-top:5px solid var(--hB-fill)"></span>shared</span></div></div>
+<div style="position:relative;width:100%;max-width:560px;aspect-ratio:560/320">
+<sc-for list="{{ graphEdges }}" as="e" hint-placeholder-count="11"><div style="position:absolute;left:{{ e.left }};top:{{ e.top }};width:{{ e.width }};height:0;border-top:{{ e.border }};margin-top:{{ e.mt }};transform:{{ e.tf }};transform-origin:0 50%"></div></sc-for>
+<sc-for list="{{ graphNodes }}" as="n" hint-placeholder-count="10"><div style="position:absolute;left:{{ n.left }};top:{{ n.top }};width:{{ n.size }};height:{{ n.size }};border-radius:50%;background:{{ n.fill }};border:2px solid {{ n.stroke }}"><span style="position:absolute;left:{{ n.lx }};top:{{ n.ly }};white-space:nowrap;font-family:'Reddit Mono',monospace;font-size:10.5px;font-weight:{{ n.weight }};color:{{ n.labelColor }}">{{ n.name }}</span></div></sc-for>
+</div>
+<span style="font-size:12.5px;color:var(--muted)">Routes are shortest paths on the campus stop graph. Shared segments count toward route similarity.</span>
+</div>
+<div style="display:flex;flex-direction:column;gap:10px">
+<sc-for list="{{ matchCards }}" as="m" hint-placeholder-count="3">
+<div onClick="{{ m.select }}" style="display:flex;flex-direction:column;gap:10px;padding:14px;border:{{ m.border }};border-radius:8px;background:{{ m.bg }};cursor:pointer">
+<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px"><div style="display:flex;flex-direction:column;gap:3px"><span style="font-size:15px;font-weight:600">{{ m.name }} <span style="font-weight:400;color:var(--muted)">· {{ m.sub }}</span></span><span style="font-family:'Reddit Mono',monospace;font-size:11px;color:var(--ink2)">{{ m.routeText }}</span></div><div style="display:flex;flex-direction:column;align-items:flex-end"><span style="font-family:'Reddit Mono',monospace;font-size:28px;font-weight:500;letter-spacing:-0.03em;line-height:1">{{ m.score }}</span><span style="font-family:'Reddit Mono',monospace;font-size:10px;color:var(--muted)">MATCH SCORE</span></div></div>
+<div style="display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:4px 12px;font-family:'Reddit Mono',monospace;font-size:11.5px;padding:8px 10px;border:1px solid var(--line);border-radius:5px;background:var(--raised)">
+<span style="color:var(--ink2)">route similarity {{ m.sim }} × 0.7</span><span></span><span style="text-align:right">{{ m.simPts }}</span>
+<span style="color:var(--ink2)">time fit {{ m.time }} × 0.3 <span style="color:var(--muted)">({{ m.diff }} min apart)</span></span><span></span><span style="text-align:right">{{ m.timePts }}</span>
+</div>
+<div style="display:flex;gap:16px;flex-wrap:wrap;font-family:'Reddit Mono',monospace;font-size:11.5px"><span>detour <b>{{ m.detour }}</b></span><span>overlap <b>{{ m.overlap }}</b></span><span>pickup <b>{{ m.pickup }}</b></span><span>{{ m.seats }}</span></div>
+<div style="display:flex;justify-content:space-between;align-items:center;gap:10px"><span style="font-family:'Reddit Mono',monospace;font-size:11px;font-weight:600;color:{{ m.statusColor }}">{{ m.status }}</span><button onClick="{{ m.request }}" disabled="{{ m.disabled }}" style="height:32px;padding:0 14px;border:{{ m.btnBorder }};border-radius:5px;background:{{ m.btnBg }};color:{{ m.btnFg }};font-size:13px;font-weight:600;cursor:pointer">{{ m.btn }}</button></div>
+</div>
+</sc-for>
+</div>
+</div>
+</sc-if>
+<sc-if value="{{ show.ridesDriver }}">
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:16px;align-items:start">
+<div style="display:flex;flex-direction:column;gap:14px;padding:18px;border:1.5px solid var(--line-strong);border-radius:8px;background:var(--surface)">
+<span style="font-family:'Reddit Mono',monospace;font-size:11px;font-weight:600">OFFER A RIDE</span>
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+<label style="display:flex;flex-direction:column;gap:6px"><span style="font-family:'Reddit Mono',monospace;font-size:11px;font-weight:600">FROM</span><select style="height:38px;padding:0 10px;border:1.5px solid var(--line-strong);border-radius:6px;background:var(--raised);color:var(--ink);font-size:14px"><option>Malad</option><option>Borivali Stn</option><option>Goregaon</option></select></label>
+<label style="display:flex;flex-direction:column;gap:6px"><span style="font-family:'Reddit Mono',monospace;font-size:11px;font-weight:600">TO</span><select style="height:38px;padding:0 10px;border:1.5px solid var(--line-strong);border-radius:6px;background:var(--raised);color:var(--ink);font-size:14px"><option>SPIT Gate</option></select></label>
+<label style="display:flex;flex-direction:column;gap:6px"><span style="font-family:'Reddit Mono',monospace;font-size:11px;font-weight:600">LEAVING</span><input type="time" value="08:30" style="height:38px;padding:0 10px;border:1.5px solid var(--line-strong);border-radius:6px;background:var(--raised);color:var(--ink);font-family:'Reddit Mono',monospace;font-size:14px"></label>
+<div style="display:flex;flex-direction:column;gap:6px"><span style="font-family:'Reddit Mono',monospace;font-size:11px;font-weight:600">SEATS</span><div style="display:flex;align-items:center;height:38px;border:1.5px solid var(--line-strong);border-radius:6px;background:var(--raised);overflow:hidden"><button onClick="{{ seatsDown }}" style="width:38px;height:100%;border:0;border-right:1px solid var(--line);background:none;color:var(--ink);font-size:16px;cursor:pointer">−</button><span style="flex:1;text-align:center;font-family:'Reddit Mono',monospace;font-size:14px">{{ seats }}</span><button onClick="{{ seatsUp }}" style="width:38px;height:100%;border:0;border-left:1px solid var(--line);background:none;color:var(--ink);font-size:16px;cursor:pointer">+</button></div></div>
+</div>
+<label style="display:flex;flex-direction:column;gap:6px"><span style="font-family:'Reddit Mono',monospace;font-size:11px;font-weight:600">VEHICLE</span><input value="Maruti Swift · MH 47 AB 1234" style="height:38px;padding:0 12px;border:1.5px solid var(--line-strong);border-radius:6px;background:var(--raised);color:var(--ink);font-size:14px"></label>
+<div style="display:flex;justify-content:space-between;align-items:center;padding-top:12px;border-top:1px solid var(--line)"><span style="font-size:13px;color:var(--muted)">Max 3 riders. You approve every request.</span><button onClick="{{ publishRide }}" style="height:38px;padding:0 18px;border:0;border-radius:6px;background:var(--ink);color:var(--bg);font-size:14px;font-weight:600;cursor:pointer">{{ publishLabel }}</button></div>
+</div>
+<div style="display:flex;flex-direction:column;gap:10px">
+<div style="display:flex;justify-content:space-between;align-items:baseline"><span style="font-family:'Reddit Mono',monospace;font-size:11px;font-weight:600">JOIN REQUESTS · FRI 08:30 FROM MALAD</span><span style="font-family:'Reddit Mono',monospace;font-size:11px;color:var(--muted)">{{ seatsTaken }} OF {{ seats }} SEATS TAKEN</span></div>
+<sc-for list="{{ joinRequests }}" as="r" hint-placeholder-count="3">
+<div style="display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px;align-items:center;padding:12px 14px;border:1.5px solid var(--line-strong);border-radius:8px;background:var(--surface)">
+<div style="display:flex;flex-direction:column;gap:3px"><span style="font-size:14.5px;font-weight:600">{{ r.name }}</span><span style="font-family:'Reddit Mono',monospace;font-size:11px;color:var(--ink2)">pickup {{ r.stop }} · {{ r.time }} · score {{ r.score }} · detour {{ r.detour }}</span></div>
+<sc-if value="{{ r.pending }}"><div style="display:flex;gap:6px"><button onClick="{{ r.decline }}" style="height:32px;padding:0 12px;border:1.5px solid var(--line-strong);border-radius:5px;background:none;color:var(--ink);font-size:13px;font-weight:600;cursor:pointer">Decline</button><button onClick="{{ r.accept }}" disabled="{{ r.full }}" style="height:32px;padding:0 12px;border:0;border-radius:5px;background:var(--ink);color:var(--bg);font-size:13px;font-weight:600;cursor:pointer;opacity:{{ r.acceptOpacity }}">Accept</button></div></sc-if>
+<sc-if value="{{ r.done }}"><span style="font-family:'Reddit Mono',monospace;font-size:11px;font-weight:600;padding:4px 8px;border-radius:4px;background:{{ r.chipBg }};color:{{ r.chipFg }}">{{ r.statusLabel }}</span></sc-if>
+</div>
+</sc-for>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{ is.observatory }}">
+<div data-screen-label="Observatory" style="display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap">
+<div style="display:flex;flex-direction:column;gap:4px"><span style="font-family:'Reddit Mono',monospace;font-size:11px;font-weight:600;color:var(--hC)">C · SUSTAINABLE COMPUTING OBSERVATORY</span><h1 style="margin:0;font-size:34px;font-weight:700;letter-spacing:-0.03em">Observatory</h1></div>
+<div style="display:flex;border:1.5px solid var(--line-strong);border-radius:6px;overflow:hidden"><sc-for list="{{ obsRanges }}" as="r" hint-placeholder-count="3"><button onClick="{{ r.pick }}" style="height:32px;padding:0 14px;border:0;background:{{ r.bg }};color:{{ r.fg }};font-family:'Reddit Mono',monospace;font-size:12px;font-weight:600;cursor:pointer">{{ r.label }}</button></sc-for></div>
+</div>
+</sc-if>
+<sc-if value="{{ show.observatory }}">
+<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px">
+<sc-for list="{{ obsKpis }}" as="k" hint-placeholder-count="4">
+<div style="display:flex;flex-direction:column;gap:6px;padding:14px;border:1.5px solid var(--line-strong);border-radius:8px;background:var(--surface)"><span style="font-family:'Reddit Mono',monospace;font-size:11px;font-weight:600;color:var(--muted)">{{ k.label }}</span><span style="font-family:'Reddit Mono',monospace;font-size:30px;font-weight:500;letter-spacing:-0.03em">{{ k.value }}<span style="font-size:14px;color:var(--muted)"> {{ k.unit }}</span></span><span style="font-size:12.5px;color:var(--ink2)">{{ k.note }}</span></div>
+</sc-for>
+</div>
+<div style="display:flex;flex-direction:column;gap:12px;padding:16px;border:1.5px solid var(--line-strong);border-radius:8px;background:var(--surface)">
+<div style="display:flex;justify-content:space-between;align-items:baseline"><span style="font-family:'Reddit Mono',monospace;font-size:11px;font-weight:600">{{ obsChartTitle }}</span><span style="font-family:'Reddit Mono',monospace;font-size:11px;color:var(--muted)">kWh · ESTIMATE</span></div>
+<div style="display:flex;align-items:flex-end;gap:3px;height:150px">
+<sc-for list="{{ obsBars }}" as="b" hint-placeholder-count="24"><div title="{{ b.tip }}" style="flex:1;height:{{ b.h }};background:{{ b.bg }};border-radius:2px 2px 0 0" style-hover="opacity:0.7"></div></sc-for>
+</div>
+<div style="display:flex;justify-content:space-between;font-family:'Reddit Mono',monospace;font-size:10.5px;color:var(--muted)"><span>{{ obsAxis.a }}</span><span>{{ obsAxis.b }}</span><span>{{ obsAxis.c }}</span></div>
+</div>
+<div style="display:flex;flex-direction:column;border:1.5px solid var(--line-strong);border-radius:8px;background:var(--surface);overflow:hidden">
+<div style="display:grid;grid-template-columns:minmax(0,1.4fr) 100px 100px 90px minmax(0,2fr);gap:14px;padding:9px 14px;border-bottom:1.5px solid var(--line-strong);font-family:'Reddit Mono',monospace;font-size:10.5px;font-weight:600;color:var(--muted)"><span>LAB</span><span>kWh (EST.)</span><span>UTILISATION</span><span>IDLE</span><span>SUGGESTION</span></div>
+<sc-for list="{{ labs }}" as="l" hint-placeholder-count="4">
+<div style="display:grid;grid-template-columns:minmax(0,1.4fr) 100px 100px 90px minmax(0,2fr);gap:14px;padding:11px 14px;border-bottom:1px solid var(--line);align-items:baseline"><span style="display:flex;flex-direction:column;gap:2px"><span style="font-size:14px;font-weight:600">{{ l.name }}</span><span style="font-family:'Reddit Mono',monospace;font-size:10.5px;color:var(--muted)">{{ l.machines }}</span></span><span style="font-family:'Reddit Mono',monospace;font-size:13px">{{ l.kwh }}</span><span style="font-family:'Reddit Mono',monospace;font-size:13px">{{ l.util }}</span><span style="font-family:'Reddit Mono',monospace;font-size:13px">{{ l.idle }}</span><span style="font-size:13px;color:{{ l.noteColor }}">{{ l.note }}</span></div>
+</sc-for>
+</div>
+<span style="font-size:12.5px;color:var(--muted);max-width:760px;line-height:1.5">All energy and carbon figures are estimates: measured utilisation × rated power × time, and energy × 0.71 kg CO₂e per kWh (grid emission factor, estimate).</span>
+</sc-if>
+
+<sc-if value="{{ is.wellbeing }}">
+<div data-screen-label="Wellbeing" style="display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap">
+<div style="display:flex;flex-direction:column;gap:4px"><span style="font-family:'Reddit Mono',monospace;font-size:11px;font-weight:600;color:var(--hD)">D · PRIVACY-AWARE DIGITAL WELLBEING</span><h1 style="margin:0;font-size:34px;font-weight:700;letter-spacing:-0.03em">Wellbeing</h1></div>
+<span style="font-family:'Reddit Mono',monospace;font-size:11px;color:var(--muted)">ONLY YOU CAN SEE THIS · NOT ADMINS, NOT MENTORS</span>
+</div>
+<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:10px 12px;border:1.5px solid var(--line-strong);border-radius:8px;background:var(--surface)">
+<span style="display:flex;align-items:center;gap:8px;font-size:14px;font-weight:600"><span style="width:9px;height:9px;border-radius:50%;background:{{ wbDot }}"></span>{{ wbStatus }}</span>
+<div style="display:flex;gap:6px;flex-wrap:wrap">
+<button onClick="{{ togglePause }}" style="height:32px;padding:0 12px;border:0;border-radius:5px;background:var(--ink);color:var(--bg);font-size:13px;font-weight:600;cursor:pointer">{{ pauseLabel }}</button>
+<button onClick="{{ openData }}" style="height:32px;padding:0 12px;border:1.5px solid var(--line-strong);border-radius:5px;background:none;color:var(--ink);font-size:13px;font-weight:600;cursor:pointer" style-hover="background:var(--hover)">See my data</button>
+<button onClick="{{ exportData }}" style="height:32px;padding:0 12px;border:1.5px solid var(--line-strong);border-radius:5px;background:none;color:var(--ink);font-size:13px;font-weight:600;cursor:pointer" style-hover="background:var(--hover)">Export JSON</button>
+<button onClick="{{ askDelete }}" style="height:32px;padding:0 12px;border:1.5px solid var(--err);border-radius:5px;background:none;color:var(--err);font-size:13px;font-weight:600;cursor:pointer" style-hover="background:var(--err-bg)">Delete everything</button>
+</div>
+</div>
+</sc-if>
+<sc-if value="{{ show.wellbeing }}">
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px;align-items:start">
+<div style="display:flex;flex-direction:column;gap:12px;padding:16px;border:1.5px solid var(--line-strong);border-radius:8px;background:var(--surface)">
+<span style="font-family:'Reddit Mono',monospace;font-size:11px;font-weight:600">TODAY · DAILY TOTALS</span>
+<span style="font-family:'Reddit Mono',monospace;font-size:36px;font-weight:500;letter-spacing:-0.03em">{{ wbToday }}</span>
+<span style="font-size:13px;color:var(--ink2)">{{ wbCompare }}</span>
+<div style="display:flex;flex-direction:column;gap:8px">
+<sc-for list="{{ wbCats }}" as="c" hint-placeholder-count="5"><div style="display:grid;grid-template-columns:minmax(0,110px) minmax(40px,1fr) 52px;gap:10px;align-items:center;font-size:13px;opacity:{{ c.opacity }}"><span>{{ c.label }}</span><span style="height:8px;background:var(--line);border-radius:2px;overflow:hidden"><span style="display:block;height:100%;width:{{ c.w }};background:var(--hD-fill)"></span></span><span style="font-family:'Reddit Mono',monospace;font-size:11.5px;text-align:right">{{ c.value }}</span></div></sc-for>
+</div>
+</div>
+<div style="display:flex;flex-direction:column;gap:12px;padding:16px;border:1.5px solid var(--line-strong);border-radius:8px;background:var(--surface)">
+<span style="font-family:'Reddit Mono',monospace;font-size:11px;font-weight:600">LAST 7 DAYS</span>
+<div style="display:flex;align-items:flex-end;gap:8px;height:170px">
+<sc-for list="{{ wbWeek }}" as="d" hint-placeholder-count="7"><div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;height:100%;justify-content:flex-end"><span style="font-family:'Reddit Mono',monospace;font-size:10px;color:var(--muted)">{{ d.v }}</span><div style="width:100%;height:{{ d.h }};background:{{ d.bg }};border-radius:3px 3px 0 0"></div><span style="font-family:'Reddit Mono',monospace;font-size:10.5px;font-weight:600">{{ d.d }}</span></div></sc-for>
+</div>
+</div>
+<div style="display:flex;flex-direction:column;gap:12px;padding:16px;border:1.5px solid var(--line-strong);border-radius:8px;background:var(--surface)">
+<span style="font-family:'Reddit Mono',monospace;font-size:11px;font-weight:600">CONSENT · WHAT IS COUNTED</span>
+<sc-for list="{{ wbConsent }}" as="c" hint-placeholder-count="5">
+<button onClick="{{ c.toggle }}" role="switch" aria-checked="{{ c.on }}" style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:0;border:0;background:none;color:var(--ink);font-size:13.5px;cursor:pointer;text-align:left">{{ c.label }}<span style="width:34px;height:20px;border-radius:10px;background:{{ c.track }};position:relative;flex:none"><span style="position:absolute;top:2px;left:{{ c.knob }};width:16px;height:16px;border-radius:50%;background:var(--raised)"></span></span></button>
+</sc-for>
+<span style="font-size:12.5px;color:var(--muted);line-height:1.45;padding-top:10px;border-top:1px solid var(--line)">Stored: one total in minutes per category per day. Never URLs, page titles, app content or messages.</span>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{ is.exam }}">
+<div data-screen-label="Exam Review" style="display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap">
+<div style="display:flex;flex-direction:column;gap:4px"><span style="font-family:'Reddit Mono',monospace;font-size:11px;font-weight:600;color:var(--hE)">E · RESPONSIBLE EXAMINATION MONITORING</span><h1 style="margin:0;font-size:34px;font-weight:700;letter-spacing:-0.03em">Flag review</h1></div>
+<select style="height:34px;padding:0 10px;border:1.5px solid var(--line-strong);border-radius:6px;background:var(--raised);color:var(--ink);font-size:13.5px"><option>OS Midterm · Hall B · Thu 29 Oct</option><option>DBMS Internal · Hall B · Fri 30 Oct</option></select>
+</div>
+<div role="note" style="display:flex;gap:12px;align-items:baseline;padding:12px 14px;border:1.5px solid var(--line-strong);border-radius:8px;background:var(--inv-bg);color:var(--inv-fg)"><span style="font-family:'Reddit Mono',monospace;font-size:11px;font-weight:600;flex:none">READ FIRST</span><span style="font-size:14px;line-height:1.45">Flags are prompts for human review, not evidence. The system never applies a penalty. Nothing happens to a candidate unless an invigilator records a decision with a note.</span></div>
+</sc-if>
+<sc-if value="{{ show.exam }}">
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:16px;align-items:start">
+<div style="display:flex;flex-direction:column;gap:10px">
+<div style="display:flex;gap:4px;flex-wrap:wrap"><sc-for list="{{ flagFilters }}" as="f" hint-placeholder-count="4"><button onClick="{{ f.pick }}" style="height:28px;padding:0 10px;border:1.5px solid var(--line-strong);border-radius:14px;background:{{ f.bg }};color:{{ f.fg }};font-size:12.5px;font-weight:600;cursor:pointer">{{ f.label }}</button></sc-for></div>
+<div style="display:flex;flex-direction:column;border:1.5px solid var(--line-strong);border-radius:8px;background:var(--surface);overflow:hidden">
+<sc-for list="{{ flagRows }}" as="f" hint-placeholder-count="5">
+<button onClick="{{ f.select }}" style="display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 10px;padding:11px 12px;border:0;border-bottom:1px solid var(--line);border-left:4px solid {{ f.selBar }};background:{{ f.bg }};color:var(--ink);text-align:left;cursor:pointer" style-hover="background:var(--raised)">
+<span style="font-size:14px;font-weight:600">{{ f.signal }}</span><span style="font-family:'Reddit Mono',monospace;font-size:10.5px;font-weight:600;color:{{ f.statusColor }}">{{ f.statusLabel }}</span>
+<span style="font-family:'Reddit Mono',monospace;font-size:11px;color:var(--muted)">{{ f.id }} · seat {{ f.seat }} · {{ f.at }}</span><span style="font-family:'Reddit Mono',monospace;font-size:11px;color:var(--muted)">{{ f.conf }}</span>
+</button>
+</sc-for>
+<sc-if value="{{ flagListEmpty }}"><div style="padding:24px 12px;font-size:13.5px;color:var(--muted)">No flags in this view.</div></sc-if>
+</div>
+</div>
+<sc-if value="{{ hasFlag }}">
+<div style="display:flex;flex-direction:column;gap:14px;padding:16px;border:1.5px solid var(--line-strong);border-radius:8px;background:var(--surface)">
+<div style="display:flex;justify-content:space-between;align-items:baseline;gap:12px;flex-wrap:wrap"><span style="font-size:20px;font-weight:700;letter-spacing:-0.02em">{{ flag.signal }}</span><span style="font-family:'Reddit Mono',monospace;font-size:11.5px;color:var(--muted)">{{ flag.id }} · ROLL {{ flag.roll }} · SEAT {{ flag.seat }}</span></div>
+<div style="aspect-ratio:16/7;border-radius:6px;background:#1b1d1f;color:#a9adb2;display:flex;flex-direction:column;justify-content:space-between;padding:12px;font-family:'Reddit Mono',monospace;font-size:11px">
+<div style="display:flex;justify-content:space-between"><span>CLIP PLACEHOLDER · CAMERA HALL-B-2</span><span>{{ flag.clipLen }}</span></div>
+<span style="align-self:center;color:#7d8186">recorded clip plays here (Range-streamed from /api/files/:id)</span>
+<div style="position:relative;height:6px;border-radius:3px;background:#34363a"><div style="position:absolute;left:{{ flag.segLeft }};width:{{ flag.segWidth }};top:0;bottom:0;border-radius:3px;background:#f0b44c"></div></div>
+</div>
+<div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px">
+<div style="display:flex;flex-direction:column;gap:3px"><span style="font-family:'Reddit Mono',monospace;font-size:10.5px;font-weight:600;color:var(--muted)">AT</span><span style="font-family:'Reddit Mono',monospace;font-size:14px">{{ flag.at }}</span></div>
+<div style="display:flex;flex-direction:column;gap:3px"><span style="font-family:'Reddit Mono',monospace;font-size:10.5px;font-weight:600;color:var(--muted)">DURATION</span><span style="font-family:'Reddit Mono',monospace;font-size:14px">{{ flag.dur }}</span></div>
+<div style="display:flex;flex-direction:column;gap:3px"><span style="font-family:'Reddit Mono',monospace;font-size:10.5px;font-weight:600;color:var(--muted)">MODEL CONFIDENCE</span><span style="font-family:'Reddit Mono',monospace;font-size:14px">{{ flag.confNum }}</span></div>
+<div style="display:flex;flex-direction:column;gap:3px"><span style="font-family:'Reddit Mono',monospace;font-size:10.5px;font-weight:600;color:var(--muted)">STATUS</span><span style="font-family:'Reddit Mono',monospace;font-size:14px;color:{{ flag.statusColor }}">{{ flag.statusLabel }}</span></div>
+</div>
+<span style="font-size:13.5px;color:var(--ink2);line-height:1.45">{{ flag.detail }}</span>
+<sc-if value="{{ flag.open }}">
+<label style="display:flex;flex-direction:column;gap:6px"><span style="font-family:'Reddit Mono',monospace;font-size:11px;font-weight:600">REVIEW NOTE · REQUIRED</span><textarea value="{{ flagNote }}" onChange="{{ setFlagNote }}" rows="3" placeholder="What you saw in the clip and why you decided this way" style="padding:10px 12px;border:1.5px solid var(--line-strong);border-radius:6px;background:var(--raised);color:var(--ink);font-size:14px;resize:vertical;outline:none"></textarea></label>
+<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><span style="font-size:12.5px;color:var(--muted)">Your decision and note are written to the audit log.</span><div style="display:flex;gap:8px"><button onClick="{{ dismissFlag }}" disabled="{{ noteMissing }}" style="height:36px;padding:0 14px;border:1.5px solid var(--line-strong);border-radius:5px;background:none;color:var(--ink);font-size:13.5px;font-weight:600;cursor:pointer;opacity:{{ noteOpacity }}">Dismiss flag</button><button onClick="{{ resolveFlag }}" disabled="{{ noteMissing }}" style="height:36px;padding:0 14px;border:0;border-radius:5px;background:var(--ink);color:var(--bg);font-size:13.5px;font-weight:600;cursor:pointer;opacity:{{ noteOpacity }}">Resolve, follow up</button></div></div>
+</sc-if>
+<sc-if value="{{ flag.closed }}">
+<div style="display:flex;flex-direction:column;gap:4px;padding:12px;border:1px solid var(--line);border-radius:6px;background:var(--raised)"><span style="font-family:'Reddit Mono',monospace;font-size:11px;font-weight:600">{{ flag.decisionLine }}</span><span style="font-size:14px">"{{ flag.note }}"</span><span style="font-family:'Reddit Mono',monospace;font-size:10.5px;color:var(--muted)">audit: exam.flag_reviewed</span></div>
+<div><button onClick="{{ reopenFlag }}" style="height:32px;padding:0 12px;border:1.5px solid var(--line-strong);border-radius:5px;background:none;color:var(--ink);font-size:13px;font-weight:600;cursor:pointer">Reopen</button></div>
+</sc-if>
+</div>
+</sc-if>
+</div>
+</sc-if>
+
+<sc-if value="{{ is.admin }}">
+<div data-screen-label="Admin" style="display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap">
+<div style="display:flex;flex-direction:column;gap:4px"><span style="font-family:'Reddit Mono',monospace;font-size:11px;font-weight:600;color:var(--muted)">PLATFORM · ADMIN</span><h1 style="margin:0;font-size:34px;font-weight:700;letter-spacing:-0.03em">Admin</h1></div>
+<button onClick="{{ openNewUser }}" style="height:36px;padding:0 16px;border:0;border-radius:6px;background:var(--ink);color:var(--bg);font-size:13.5px;font-weight:600;cursor:pointer">New user</button>
+</div>
+<div style="display:flex;gap:4px;border-bottom:1.5px solid var(--line-strong)">
+<sc-for list="{{ adminTabs }}" as="t" hint-placeholder-count="2"><button onClick="{{ t.go }}" style="background:none;border:0;border-bottom:3px solid {{ t.bar }};margin-bottom:-1.5px;padding:8px 12px;font-size:14px;font-weight:600;color:{{ t.fg }};cursor:pointer">{{ t.label }}</button></sc-for>
+</div>
+</sc-if>
+<sc-if value="{{ show.adminUsers }}">
+<div style="display:flex;gap:10px;flex-wrap:wrap"><input value="{{ userQuery }}" onChange="{{ setUserQuery }}" placeholder="Search name or email" style="flex:1;min-width:240px;height:38px;padding:0 12px;border:1.5px solid var(--line-strong);border-radius:6px;background:var(--raised);color:var(--ink);font-size:14px;outline:none"><div style="display:flex;gap:4px"><sc-for list="{{ roleFilters }}" as="f" hint-placeholder-count="5"><button onClick="{{ f.pick }}" style="height:38px;padding:0 10px;border:1.5px solid var(--line-strong);border-radius:6px;background:{{ f.bg }};color:{{ f.fg }};font-family:'Reddit Mono',monospace;font-size:11.5px;font-weight:600;cursor:pointer">{{ f.label }}</button></sc-for></div></div>
+<div style="display:flex;flex-direction:column;border:1.5px solid var(--line-strong);border-radius:8px;background:var(--surface);overflow:hidden">
+<div style="display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1.4fr) 100px 90px 100px 110px;gap:14px;padding:9px 14px;border-bottom:1.5px solid var(--line-strong);font-family:'Reddit Mono',monospace;font-size:10.5px;font-weight:600;color:var(--muted)"><span>NAME</span><span>EMAIL</span><span>ROLE</span><span>STATUS</span><span>LAST SEEN</span><span></span></div>
+<sc-for list="{{ userRows }}" as="u" hint-placeholder-count="6">
+<div style="display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1.4fr) 100px 90px 100px 110px;gap:14px;padding:10px 14px;border-bottom:1px solid var(--line);align-items:center;opacity:{{ u.opacity }}"><span style="font-size:14px;font-weight:600">{{ u.name }}</span><span style="font-family:'Reddit Mono',monospace;font-size:12px;color:var(--ink2)">{{ u.email }}</span><span style="font-family:'Reddit Mono',monospace;font-size:12px">{{ u.role }}</span><span style="font-family:'Reddit Mono',monospace;font-size:11px;font-weight:600;color:{{ u.statusColor }}">{{ u.status }}</span><span style="font-family:'Reddit Mono',monospace;font-size:11.5px;color:var(--muted)">{{ u.seen }}</span><button onClick="{{ u.toggle }}" disabled="{{ u.self }}" style="height:30px;border:1.5px solid var(--line-strong);border-radius:5px;background:none;color:var(--ink);font-size:12.5px;font-weight:600;cursor:pointer;opacity:{{ u.btnOpacity }}">{{ u.action }}</button></div>
+</sc-for>
+<sc-if value="{{ usersEmpty }}"><div style="padding:24px 14px;font-size:13.5px;color:var(--muted)">No users match this search.</div></sc-if>
+</div>
+</sc-if>
+<sc-if value="{{ show.adminAudit }}">
+<div style="display:flex;gap:4px;flex-wrap:wrap"><sc-for list="{{ auditFilters }}" as="f" hint-placeholder-count="5"><button onClick="{{ f.pick }}" style="height:30px;padding:0 10px;border:1.5px solid var(--line-strong);border-radius:15px;background:{{ f.bg }};color:{{ f.fg }};font-family:'Reddit Mono',monospace;font-size:11.5px;font-weight:600;cursor:pointer">{{ f.label }}</button></sc-for></div>
+<div style="display:flex;flex-direction:column;border:1.5px solid var(--line-strong);border-radius:8px;background:var(--surface);overflow:hidden">
+<div style="display:grid;grid-template-columns:70px minmax(0,1fr) minmax(0,1.3fr) minmax(0,1fr) 100px;gap:14px;padding:9px 14px;border-bottom:1.5px solid var(--line-strong);font-family:'Reddit Mono',monospace;font-size:10.5px;font-weight:600;color:var(--muted)"><span>TIME</span><span>ACTOR</span><span>ACTION</span><span>TARGET</span><span>REQUEST</span></div>
+<sc-for list="{{ auditRows }}" as="a" hint-placeholder-count="7">
+<div style="display:grid;grid-template-columns:70px minmax(0,1fr) minmax(0,1.3fr) minmax(0,1fr) 100px;gap:14px;padding:9px 14px;border-bottom:1px solid var(--line);align-items:baseline"><span style="font-family:'Reddit Mono',monospace;font-size:12px">{{ a.time }}</span><span style="font-size:13.5px">{{ a.actor }}</span><span style="font-family:'Reddit Mono',monospace;font-size:12px;font-weight:600">{{ a.action }}</span><span style="font-size:13px;color:var(--ink2)">{{ a.target }}</span><span style="font-family:'Reddit Mono',monospace;font-size:11px;color:var(--muted)">{{ a.req }}</span></div>
+</sc-for>
+</div>
+<span style="font-size:12.5px;color:var(--muted)">Append-only. Entries cannot be edited or deleted, by anyone.</span>
+</sc-if>
+
+<sc-if value="{{ panel.loading }}">
+<div aria-busy="true" style="display:flex;flex-direction:column;gap:12px">
+<div style="height:120px;border-radius:8px;background:var(--skel);animation:uvPulse 1.4s ease-in-out infinite"></div>
+<div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px"><div style="height:110px;border-radius:8px;background:var(--skel);animation:uvPulse 1.4s ease-in-out infinite"></div><div style="height:110px;border-radius:8px;background:var(--skel);animation:uvPulse 1.4s ease-in-out .15s infinite"></div><div style="height:110px;border-radius:8px;background:var(--skel);animation:uvPulse 1.4s ease-in-out .3s infinite"></div></div>
+<div style="height:44px;border-radius:6px;background:var(--skel);animation:uvPulse 1.4s ease-in-out infinite"></div>
+<div style="height:44px;border-radius:6px;background:var(--skel);animation:uvPulse 1.4s ease-in-out .15s infinite"></div>
+<span style="font-family:'Reddit Mono',monospace;font-size:11px;color:var(--muted)">LOADING {{ panel.what }}…</span>
+</div>
+</sc-if>
+<sc-if value="{{ panel.empty }}">
+<div style="display:flex;flex-direction:column;align-items:flex-start;gap:10px;padding:40px 28px;border:1.5px dashed var(--line-strong);border-radius:8px">
+<span style="font-family:'Reddit Mono',monospace;font-size:11px;font-weight:600;color:var(--muted)">EMPTY</span>
+<span style="font-size:22px;font-weight:700;letter-spacing:-0.02em">{{ panel.emptyTitle }}</span>
+<span style="font-size:14px;color:var(--ink2);max-width:520px;line-height:1.45">{{ panel.emptyBody }}</span>
+<sc-if value="{{ panel.emptyAction }}"><button onClick="{{ panel.emptyGo }}" style="height:36px;padding:0 16px;border:0;border-radius:6px;background:var(--ink);color:var(--bg);font-size:13.5px;font-weight:600;cursor:pointer">{{ panel.emptyAction }}</button></sc-if>
+</div>
+</sc-if>
+<sc-if value="{{ panel.error }}">
+<div role="alert" style="display:flex;flex-direction:column;align-items:flex-start;gap:10px;padding:24px;border:1.5px solid var(--err);border-radius:8px;background:var(--err-bg);color:var(--err)">
+<span style="font-family:'Reddit Mono',monospace;font-size:11px;font-weight:600">ERROR · 503 SERVICE UNAVAILABLE</span>
+<span style="font-size:20px;font-weight:700;letter-spacing:-0.02em">Couldn't load {{ panel.what }}.</span>
+<span style="font-size:14px;line-height:1.45;max-width:560px">The rest of UniVerse still works. Try again, or quote this request ID if it keeps happening.</span>
+<span style="font-family:'Reddit Mono',monospace;font-size:12px">request_id 7f3c2a91-0e4b-4d1a-9c55-b2a1e0d8f6c3</span>
+<button onClick="{{ retry }}" style="height:36px;padding:0 16px;border:1.5px solid var(--err);border-radius:6px;background:none;color:var(--err);font-size:13.5px;font-weight:600;cursor:pointer">Try again</button>
+</div>
+</sc-if>
+
+</main>
+</div>
+</sc-if>
+
+<sc-if value="{{ dataOpen }}">
+<div style="position:fixed;inset:0;background:rgba(20,21,22,0.45);display:flex;justify-content:flex-end;z-index:50" onClick="{{ closeData }}">
+<div onClick="{{ stop }}" style="width:440px;max-width:100%;height:100%;overflow:auto;background:var(--bg);border-left:1.5px solid var(--line-strong);padding:22px;display:flex;flex-direction:column;gap:14px">
+<div style="display:flex;justify-content:space-between;align-items:baseline"><span style="font-size:20px;font-weight:700">Your stored data</span><button onClick="{{ closeData }}" style="background:none;border:0;color:var(--ink);font-size:13.5px;text-decoration:underline;cursor:pointer">Close</button></div>
+<span style="font-size:13.5px;color:var(--ink2)">Exactly what the server holds for you: {{ wbRecordCount }} records. Nothing else.</span>
+<div style="display:flex;flex-direction:column;border:1.5px solid var(--line-strong);border-radius:8px;background:var(--surface);overflow:hidden">
+<div style="display:grid;grid-template-columns:90px minmax(0,1fr) 70px;gap:10px;padding:8px 12px;border-bottom:1.5px solid var(--line-strong);font-family:'Reddit Mono',monospace;font-size:10.5px;font-weight:600;color:var(--muted)"><span>DATE</span><span>CATEGORY</span><span>MINUTES</span></div>
+<sc-for list="{{ wbRecords }}" as="r" hint-placeholder-count="8"><div style="display:grid;grid-template-columns:90px minmax(0,1fr) 70px;gap:10px;padding:6px 12px;border-bottom:1px solid var(--line);font-family:'Reddit Mono',monospace;font-size:12px"><span>{{ r.date }}</span><span>{{ r.cat }}</span><span style="text-align:right">{{ r.min }}</span></div></sc-for>
+</div>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{ confirmDelete }}">
+<div style="position:fixed;inset:0;background:rgba(20,21,22,0.45);display:flex;align-items:center;justify-content:center;z-index:50">
+<div role="dialog" style="width:420px;max-width:calc(100% - 32px);background:var(--bg);border:1.5px solid var(--line-strong);border-radius:10px;padding:22px;display:flex;flex-direction:column;gap:14px">
+<span style="font-size:20px;font-weight:700">Delete all wellbeing data?</span>
+<span style="font-size:14px;color:var(--ink2);line-height:1.45">This removes {{ wbRecordCount }} daily totals from the server right away and pauses tracking. It can't be undone.</span>
+<div style="display:flex;justify-content:flex-end;gap:8px"><button onClick="{{ cancelDelete }}" style="height:36px;padding:0 14px;border:1.5px solid var(--line-strong);border-radius:5px;background:none;color:var(--ink);font-size:13.5px;font-weight:600;cursor:pointer">Keep my data</button><button onClick="{{ doDelete }}" style="height:36px;padding:0 14px;border:0;border-radius:5px;background:var(--err);color:var(--bg);font-size:13.5px;font-weight:600;cursor:pointer">Delete everything</button></div>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{ newUserOpen }}">
+<div style="position:fixed;inset:0;background:rgba(20,21,22,0.45);display:flex;align-items:center;justify-content:center;z-index:50">
+<div role="dialog" style="width:440px;max-width:calc(100% - 32px);background:var(--bg);border:1.5px solid var(--line-strong);border-radius:10px;padding:22px;display:flex;flex-direction:column;gap:14px">
+<sc-if value="{{ tempPwShown }}">
+<span style="font-size:20px;font-weight:700">User created</span>
+<span style="font-size:14px;color:var(--ink2)">Temporary password for {{ newUserName }}. It is shown once; they must change it at first sign-in.</span>
+<span style="font-family:'Reddit Mono',monospace;font-size:16px;font-weight:600;padding:12px;border:1.5px dashed var(--line-strong);border-radius:6px;background:var(--surface);letter-spacing:0.02em">{{ tempPw }}</span>
+<div style="display:flex;justify-content:flex-end"><button onClick="{{ closeNewUser }}" style="height:36px;padding:0 16px;border:0;border-radius:5px;background:var(--ink);color:var(--bg);font-size:13.5px;font-weight:600;cursor:pointer">Done</button></div>
+</sc-if>
+<sc-if value="{{ newUserForm }}">
+<span style="font-size:20px;font-weight:700">New user</span>
+<label style="display:flex;flex-direction:column;gap:6px"><span style="font-family:'Reddit Mono',monospace;font-size:11px;font-weight:600">NAME</span><input value="{{ newUserName }}" onChange="{{ setNewUserName }}" style="height:38px;padding:0 12px;border:1.5px solid var(--line-strong);border-radius:6px;background:var(--raised);color:var(--ink);font-size:14px;outline:none"></label>
+<label style="display:flex;flex-direction:column;gap:6px"><span style="font-family:'Reddit Mono',monospace;font-size:11px;font-weight:600">EMAIL</span><input value="{{ newUserEmail }}" onChange="{{ setNewUserEmail }}" placeholder="name@spit.ac.in" style="height:38px;padding:0 12px;border:1.5px solid var(--line-strong);border-radius:6px;background:var(--raised);color:var(--ink);font-family:'Reddit Mono',monospace;font-size:13px;outline:none"></label>
+<label style="display:flex;flex-direction:column;gap:6px"><span style="font-family:'Reddit Mono',monospace;font-size:11px;font-weight:600">ROLE</span><select value="{{ newUserRole }}" onChange="{{ setNewUserRole }}" style="height:38px;padding:0 10px;border:1.5px solid var(--line-strong);border-radius:6px;background:var(--raised);color:var(--ink);font-size:14px"><option value="student">student</option><option value="mentor">mentor</option><option value="invigilator">invigilator</option><option value="admin">admin</option></select></label>
+<sc-if value="{{ newUserError }}"><span role="alert" style="font-size:13px;font-weight:500;color:var(--err)">{{ newUserError }}</span></sc-if>
+<div style="display:flex;justify-content:flex-end;gap:8px"><button onClick="{{ closeNewUser }}" style="height:36px;padding:0 14px;border:1.5px solid var(--line-strong);border-radius:5px;background:none;color:var(--ink);font-size:13.5px;font-weight:600;cursor:pointer">Cancel</button><button onClick="{{ createUser }}" style="height:36px;padding:0 14px;border:0;border-radius:5px;background:var(--ink);color:var(--bg);font-size:13.5px;font-weight:600;cursor:pointer">Create user</button></div>
+</sc-if>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{ toast }}">
+<div role="status" style="position:fixed;left:50%;bottom:24px;transform:translateX(-50%);padding:10px 16px;border-radius:6px;background:var(--inv-bg);color:var(--inv-fg);font-size:13.5px;font-weight:500;z-index:60;display:flex;gap:10px;align-items:baseline"><span style="font-family:'Reddit Mono',monospace;font-size:11px;font-weight:600;color:var(--inv-muted)">DONE</span>{{ toast }}</div>
+</sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;theme&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;light&quot;,&quot;dark&quot;],&quot;default&quot;:&quot;light&quot;,&quot;tsType&quot;:&quot;'light' | 'dark'&quot;},&quot;dataState&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;normal&quot;,&quot;loading&quot;,&quot;empty&quot;,&quot;error&quot;],&quot;default&quot;:&quot;normal&quot;,&quot;tsType&quot;:&quot;'normal' | 'loading' | 'empty' | 'error'&quot;,&quot;section&quot;:&quot;Screen state&quot;},&quot;startOnLogin&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;}}">
+const MOD = {
+  hub: { label: 'Student Hub', code: 'A', c: 'var(--hA)', f: 'var(--hA-fill)' },
+  rides: { label: 'Rides', code: 'B', c: 'var(--hB)', f: 'var(--hB-fill)' },
+  observatory: { label: 'Observatory', code: 'C', c: 'var(--hC)', f: 'var(--hC-fill)' },
+  wellbeing: { label: 'Wellbeing', code: 'D', c: 'var(--hD)', f: 'var(--hD-fill)' },
+  exam: { label: 'Exam Review', code: 'E', c: 'var(--hE)', f: 'var(--hE-fill)' },
+  admin: { label: 'Admin', code: '§', c: 'var(--ink2)', f: 'var(--ink)' },
+  platform: { label: 'Platform', code: '—', c: 'var(--muted)', f: 'var(--ink)' },
+};
+const ROLES = {
+  student: { name: 'Aarav Mehta', email: 'student@universe.test', nav: ['hub', 'rides', 'observatory', 'wellbeing'] },
+  mentor: { name: 'Prof. Neha Iyer', email: 'mentor@universe.test', nav: ['hub', 'rides', 'observatory', 'wellbeing'] },
+  invigilator: { name: 'Rohan Desai', email: 'invigilator@universe.test', nav: ['observatory', 'exam'] },
+  admin: { name: 'Admin Office', email: 'admin@universe.test', nav: ['hub', 'rides', 'observatory', 'exam', 'admin'] },
+};
+const STOPS = { DAH: { n: 'Dahisar', x: 40, y: 30 }, BOR: { n: 'Borivali Stn', x: 90, y: 78 }, KAN: { n: 'Kandivali', x: 150, y: 116 }, MAL: { n: 'Malad', x: 212, y: 150 }, GOR: { n: 'Goregaon', x: 276, y: 178 }, JOG: { n: 'Jogeshwari', x: 340, y: 198 }, AND: { n: 'Andheri Stn', x: 404, y: 216 }, SPIT: { n: 'SPIT Gate', x: 470, y: 262 }, LOK: { n: 'Lokhandwala', x: 336, y: 284 }, POW: { n: 'Powai', x: 470, y: 120 } };
+const EDGES = [['DAH', 'BOR'], ['BOR', 'KAN'], ['KAN', 'MAL'], ['MAL', 'GOR'], ['GOR', 'JOG'], ['JOG', 'AND'], ['AND', 'SPIT'], ['GOR', 'LOK'], ['LOK', 'SPIT'], ['JOG', 'POW'], ['AND', 'POW']];
+const MY_ROUTE = ['BOR', 'KAN', 'MAL', 'GOR', 'JOG', 'AND', 'SPIT'];
+const MATCHES = [
+  { id: 'm1', name: 'Diya Kulkarni', sub: 'TE Comp · driving', route: ['KAN', 'MAL', 'GOR', 'JOG', 'AND', 'SPIT'], pickup: '08:11', diff: 1, detour: '+1.2 km', seats: '1 of 3 seats left', joined: true },
+  { id: 'm2', name: 'Kabir Shah', sub: 'SE IT · driving', route: ['MAL', 'GOR', 'JOG', 'AND', 'SPIT'], pickup: '08:17', diff: 7, detour: '+2.1 km', seats: '2 of 3 seats left' },
+  { id: 'm3', name: 'Ishita Rao', sub: 'BE EXTC · driving', route: ['BOR', 'KAN', 'MAL', 'GOR', 'LOK', 'SPIT'], pickup: '08:12', diff: 2, detour: '+0.4 km', seats: '2 of 3 seats left' },
+];
+const k = (a, b) => [a, b].sort().join('-');
+const edgeSet = (r) => { const s = new Set(); for (let i = 0; i < r.length - 1; i++) s.add(k(r[i], r[i + 1])); return s; };
+const MY_EDGES = edgeSet(MY_ROUTE);
+function scoreOf(m) {
+  const e = edgeSet(m.route); let shared = 0; e.forEach((x) => { if (MY_EDGES.has(x)) shared++; });
+  const union = MY_EDGES.size + e.size - shared; const sim = shared / union;
+  const overlap = shared / Math.min(MY_EDGES.size, e.size); const time = Math.max(0, 1 - m.diff / 10);
+  return { sim, overlap, time, score: 0.7 * sim + 0.3 * time, edges: e };
+}
+const HOURLY = [0.9, 0.8, 0.8, 0.8, 0.9, 1.1, 1.4, 1.8, 2.3, 2.6, 2.8, 2.9, 3.1, 3.0, 2.9, 2.7, 2.5, 2.2, 1.9, 1.6, 1.4, 1.2, 1.1, 1.0];
+const DAILY7 = [38.2, 40.1, 44.9, 42.3, 36.0, 21.4, 43.7];
+const DAILY30 = Array.from({ length: 30 }, (_, i) => +(i % 7 === 5 ? 20 + (i % 3) * 1.7 : 36 + ((i * 7) % 10) * 0.9).toFixed(1));
+const LABS = [
+  { name: 'Lab 301 · GPU', machines: '8 GPU nodes', kwh: 18.6, util: '71%', idle: '2.1 h', note: 'Healthy load.', warn: false },
+  { name: 'Lab 204', machines: '40 desktops', kwh: 12.4, util: '38%', idle: '9.5 h', note: '14 machines idle over 4 h. Schedule sleep after 19:00.', warn: true },
+  { name: 'Lab 105', machines: '30 desktops', kwh: 7.9, util: '52%', idle: '5.2 h', note: 'Monitors left on overnight on 6 seats.', warn: true },
+  { name: 'Server room', machines: '4 nodes', kwh: 4.8, util: '84%', idle: '0.3 h', note: 'Healthy load.', warn: false },
+];
+const CATS = [{ id: 'study', label: 'Study', min: 95 }, { id: 'comm', label: 'Communication', min: 52 }, { id: 'social', label: 'Social', min: 38 }, { id: 'ent', label: 'Entertainment', min: 27 }, { id: 'other', label: 'Other', min: 10 }];
+const WEEK_MIN = [{ d: 'F', v: 252 }, { d: 'S', v: 301 }, { d: 'S', v: 284 }, { d: 'M', v: 236 }, { d: 'T', v: 262 }, { d: 'W', v: 249 }, { d: 'T', v: 222 }];
+const DAYS = ['THU 29', 'FRI 30', 'SAT 31', 'SUN 01', 'MON 02', 'TUE 03', 'WED 04'];
+const fmtMin = (m) => `${Math.floor(m / 60)}h ${String(m % 60).padStart(2, '0')}m`;
+const INBOX = {
+  student: [
+    { id: 1, mod: 'platform', who: 'Admin Office', text: 'announced: Library open until 23:00 through exam week.', time: '22:02', unread: true },
+    { id: 2, mod: 'rides', who: 'Diya Kulkarni', text: 'accepted you on her Friday 08:10 ride.', time: '19:40', unread: true },
+    { id: 3, mod: 'hub', who: 'Prof. Neha Iyer', text: 'accepted your mentorship request for Mon 15:30.', time: '17:15', unread: true },
+    { id: 4, mod: 'wellbeing', who: '', text: 'Your weekly summary is ready. Only you can see it.', time: 'Wed', unread: false },
+    { id: 5, mod: 'platform', who: '', text: 'Welcome to UniVerse.', time: 'Wed', unread: false },
+  ],
+  mentor: [
+    { id: 1, mod: 'platform', who: 'Admin Office', text: 'announced: Library open until 23:00 through exam week.', time: '22:02', unread: true },
+    { id: 2, mod: 'hub', who: 'Diya Kulkarni', text: 'requested mentorship: interval DP.', time: '20:31', unread: true },
+    { id: 3, mod: 'rides', who: 'Kabir Shah', text: 'asked to join your Friday 08:30 ride.', time: '18:05', unread: false },
+    { id: 4, mod: 'platform', who: '', text: 'Welcome to UniVerse.', time: 'Wed', unread: false },
+  ],
+  invigilator: [
+    { id: 1, mod: 'platform', who: 'Admin Office', text: 'announced: Library open until 23:00 through exam week.', time: '22:02', unread: true },
+    { id: 2, mod: 'exam', who: '', text: '5 new flags from OS Midterm · Hall B need review.', time: '11:30', unread: true },
+    { id: 3, mod: 'observatory', who: '', text: 'Lab cluster maintenance on Wed 04 at 02:00.', time: 'Tue', unread: false },
+  ],
+  admin: [
+    { id: 1, mod: 'platform', who: 'You', text: 'announced: Library open until 23:00 through exam week.', time: '22:02', unread: false },
+    { id: 2, mod: 'exam', who: 'Rohan Desai', text: 'dismissed flag F-1039 with a note.', time: '21:40', unread: true },
+    { id: 3, mod: 'platform', who: '', text: '3 new accounts created this week.', time: 'Mon', unread: false },
+  ],
+};
+const MENTORS = [
+  { id: 'n', name: 'Prof. Neha Iyer', dept: 'Computer Engg.', why: 'Covers your two weakest topics: Dynamic Programming and Graphs.', tags: ['DP', 'Graphs', 'System design'], score: '0.92', slots: '2 slots this week', accepted: true },
+  { id: 's', name: 'Dr. Sameer Joshi', dept: 'IT', why: 'Strong on Graphs; one free slot left.', tags: ['Graphs', 'Greedy'], score: '0.81', slots: '1 slot this week' },
+  { id: 'k', name: 'Prof. Kavita Nair', dept: 'Computer Engg.', why: 'Covers Trees and DP; currently mentoring 5 students.', tags: ['Trees', 'DP', 'OS'], score: '0.77', slots: '3 slots this week' },
+  { id: 'a', name: 'Prof. Arjun Menon', dept: 'EXTC', why: 'Overlaps on Greedy only.', tags: ['Greedy', 'CN'], score: '0.64', slots: '4 slots this week' },
+];
+const RESOURCES = [
+  { title: 'OS Unit 3 · Process scheduling notes', subject: 'OS', by: 'Prof. Kavita Nair', size: '2.4 MB', date: '28 Oct', type: 'PDF' },
+  { title: 'DBMS normalisation worked examples', subject: 'DBMS', by: 'Diya Kulkarni', size: '1.1 MB', date: '27 Oct', type: 'PDF' },
+  { title: 'CN subnetting cheat sheet', subject: 'CN', by: 'Kabir Shah', size: '640 KB', date: '25 Oct', type: 'PNG' },
+  { title: 'Graph algorithms, 40 problems', subject: 'DSA', by: 'Prof. Neha Iyer', size: '3.8 MB', date: '22 Oct', type: 'PDF' },
+  { title: 'OS previous year papers 2022–2025', subject: 'OS', by: 'Admin Office', size: '6.2 MB', date: '20 Oct', type: 'PDF' },
+  { title: 'Deadlock detection diagrams', subject: 'OS', by: 'Ishita Rao', size: '880 KB', date: '18 Oct', type: 'JPEG' },
+];
+const FLAGS = [
+  { id: 'F-1042', signal: 'Face not visible', seat: 'B-17', roll: '2023-CE-117', at: '10:42:18', dur: '14 s', conf: 0.71, clip: '00:40', segL: 38, segW: 35, detail: 'The candidate\u2019s face left the camera frame for 14 seconds. Common harmless causes: bending to pick up a pen, adjusting a chair, poor lighting.', status: 'open' },
+  { id: 'F-1043', signal: 'Second face in frame', seat: 'B-09', roll: '2023-CE-092', at: '10:51:02', dur: '6 s', conf: 0.64, clip: '00:30', segL: 45, segW: 20, detail: 'A second face was detected near seat B-09 for 6 seconds. An invigilator walking past is the most common cause.', status: 'open' },
+  { id: 'F-1044', signal: 'Looking away repeatedly', seat: 'B-22', roll: '2023-CE-148', at: '11:03:40', dur: '6× in 2 min', conf: 0.58, clip: '02:00', segL: 10, segW: 80, detail: 'Gaze moved away from the paper 6 times within 2 minutes. Low confidence; looking at the wall clock produces the same signal.', status: 'open' },
+  { id: 'F-1045', signal: 'Phone-like object', seat: 'B-04', roll: '2023-CE-031', at: '11:10:27', dur: '9 s', conf: 0.77, clip: '00:35', segL: 30, segW: 28, detail: 'An object shaped like a phone was detected on the desk. Calculators and pencil boxes can produce this signal.', status: 'open' },
+  { id: 'F-1046', signal: 'Left seat', seat: 'B-31', roll: '2023-CE-203', at: '11:26:55', dur: '3 min 10 s', conf: 0.93, clip: '03:30', segL: 5, segW: 88, detail: 'Seat B-31 was empty for 3 min 10 s. Check the hall log for an approved washroom break.', status: 'open' },
+  { id: 'F-1039', signal: 'Face not visible', seat: 'B-12', roll: '2023-CE-104', at: '10:18:09', dur: '8 s', conf: 0.52, clip: '00:30', segL: 40, segW: 26, detail: 'Face left the frame for 8 seconds.', status: 'dismissed', note: 'Candidate bent down to pick up a dropped pen. Visible in the clip.', by: 'Rohan Desai', when: '21:40' },
+];
+const USERS = [
+  { id: 'u1', name: 'Aarav Mehta', email: 'student@universe.test', role: 'student', active: true, seen: '22:10' },
+  { id: 'u2', name: 'Diya Kulkarni', email: 'student2@universe.test', role: 'student', active: true, seen: '19:41' },
+  { id: 'u3', name: 'Prof. Neha Iyer', email: 'mentor@universe.test', role: 'mentor', active: true, seen: '20:02' },
+  { id: 'u4', name: 'Rohan Desai', email: 'invigilator@universe.test', role: 'invigilator', active: true, seen: '21:40' },
+  { id: 'u5', name: 'Admin Office', email: 'admin@universe.test', role: 'admin', active: true, seen: 'now', self: true },
+  { id: 'u6', name: 'Kabir Shah', email: 'kabir.shah@spit.ac.in', role: 'student', active: true, seen: '18:05' },
+  { id: 'u7', name: 'Ishita Rao', email: 'ishita.rao@spit.ac.in', role: 'student', active: false, seen: '12 Oct' },
+];
+const AUDIT = [
+  { time: '22:14', actor: 'Admin Office', action: 'auth.login', target: '—', req: 'req_7f3c2a' },
+  { time: '22:02', actor: 'Admin Office', action: 'platform.announcement_sent', target: '5 recipients', req: 'req_6b91de' },
+  { time: '21:40', actor: 'Rohan Desai', action: 'exam.flag_reviewed', target: 'exam_flag F-1039', req: 'req_5a20c4' },
+  { time: '21:12', actor: '(unknown)', action: 'auth.login_failed', target: 'email hmac 3f9a…', req: 'req_49e7b0' },
+  { time: '20:55', actor: 'Admin Office', action: 'admin.user_created', target: 'user Kabir Shah', req: 'req_38d1f2' },
+  { time: '20:31', actor: 'Admin Office', action: 'admin.password_reset', target: 'user Ishita Rao', req: 'req_27c6a9' },
+  { time: '19:58', actor: 'Prof. Neha Iyer', action: 'auth.password_changed', target: 'self', req: 'req_16b5e1' },
+  { time: '19:02', actor: 'Admin Office', action: 'admin.user_deactivated', target: 'user Ishita Rao', req: 'req_05a4d8' },
+];
+const SCREEN_TEXT = {
+  dashboard: { what: 'your dashboard', t: 'Nothing on your week yet', b: 'Rides, mentor sessions and goals show up here as soon as you add them.', a: 'Find a ride', go: 'rides' },
+  inbox: { what: 'your inbox', t: 'No activity yet', b: 'Announcements and updates from every module arrive here live.', a: '', go: '' },
+  hub: { what: 'the Student Hub', t: 'Your prep tracker is empty', b: 'Pick the topics you are preparing and we will rank mentors who cover them.', a: 'Add topics', go: '' },
+  rides: { what: 'rides', t: 'No rides yet', b: 'Request a ride or offer seats in your car. Matches appear within seconds.', a: 'Find a ride', go: '' },
+  observatory: { what: 'observatory readings', t: 'No readings for this period', b: 'Lab agents have not reported yet. Readings appear every 15 minutes once they do.', a: '', go: '' },
+  wellbeing: { what: 'your wellbeing data', t: 'Nothing stored', b: 'Tracking is off and the server holds no data for you. Turn it on to count daily totals by category.', a: 'Turn on tracking', go: '' },
+  exam: { what: 'flags', t: 'No flags to review', b: 'Nothing from today\u2019s exams needs a human look. New flags appear here live.', a: '', go: '' },
+  admin: { what: 'users', t: 'No users match', b: 'Create the first account or clear your filters.', a: 'New user', go: '' },
+};
+
+class Component extends DCLogic {
+  state = {
+    signedIn: !(this.props.startOnLogin ?? false), role: this.props.initialRole || 'student', screen: this.props.initialScreen || 'dashboard', theme: null, override: null, localLoading: false,
+    roleMenuOpen: false, toast: '', loginEmail: 'student@universe.test', loginPassword: '', loginError: '', loginBusy: false,
+    inbox: JSON.parse(JSON.stringify(INBOX)), inboxFilter: 'all', announceText: '',
+    hubTab: this.props.initialTab || null, prep: [['Arrays & Strings', 44, 50], ['Linked Lists', 18, 20], ['Trees', 21, 30], ['Graphs', 16, 30], ['Dynamic Programming', 11, 35], ['Greedy', 8, 25]], goalDone: 14,
+    mentorReq: {}, requests: [
+      { id: 'r1', name: 'Diya Kulkarni', year: 'TE Comp', note: 'Need help with interval DP before placements.', meta: 'REQUESTED 20:31 · PREP 54%', status: 'pending' },
+      { id: 'r2', name: 'Kabir Shah', year: 'SE IT', note: 'Would like a weekly check-in on graphs.', meta: 'REQUESTED TUE · PREP 31%', status: 'pending' },
+      { id: 'r3', name: 'Aarav Mehta', year: 'TE Comp', note: 'DP and graphs, mock interview practice.', meta: 'SESSION MON 15:30', status: 'accepted' },
+    ],
+    resQuery: '', resSubject: 'All', resources: RESOURCES.slice(), profileInterests: 'Graphs, Dynamic Programming, System design', newPw: '',
+    rideTab: ['find', 'matches', 'driver'].includes(this.props.initialTab) ? this.props.initialTab : 'find', rideFrom: 'BOR', rideTo: 'SPIT', rideTime: '08:10', rideFormError: '', selMatch: 'm1', matchReq: {}, seats: 3, published: false,
+    joins: [
+      { id: 'j1', name: 'Kabir Shah', stop: 'Goregaon', time: '08:36', score: '0.78', detour: '+0.6 km', status: 'pending' },
+      { id: 'j2', name: 'Ishita Rao', stop: 'Malad', time: '08:30', score: '0.91', detour: '+0.0 km', status: 'accepted' },
+      { id: 'j3', name: 'Aarav Mehta', stop: 'Kandivali', time: '08:24', score: '0.64', detour: '+1.8 km', status: 'pending' },
+    ],
+    obsRange: 'today', wbPaused: true, wbDeleted: false, wbConsent: { study: true, comm: true, social: true, ent: true, other: false }, dataOpen: false, confirmDelete: false,
+    flags: JSON.parse(JSON.stringify(FLAGS)), flagFilter: 'open', selFlag: 'F-1042', flagNote: '',
+    adminTab: this.props.initialTab === 'audit' ? 'audit' : 'users', users: USERS.slice(), userQuery: '', roleFilter: 'all', auditFilter: 'all',
+    newUserOpen: false, newUserName: '', newUserEmail: '', newUserRole: 'student', newUserError: '', tempPw: '',
+  };
+  timers = [];
+  componentWillUnmount() { this.timers.forEach(clearTimeout); }
+  componentDidUpdate(prev) {
+    if (prev.dataState !== this.props.dataState && this.state.override) this.setState({ override: null });
+    if (prev.theme !== this.props.theme && this.state.theme) this.setState({ theme: null });
+  }
+  later(fn, ms) { this.timers.push(setTimeout(fn, ms)); }
+  flash(msg) { this.setState({ toast: msg }); clearTimeout(this.toastT); this.toastT = setTimeout(() => this.setState({ toast: '' }), 2600); this.timers.push(this.toastT); }
+  go(screen) { this.setState({ screen, roleMenuOpen: false }); }
+
+  renderVals() {
+    const s = this.state; const p = this.props;
+    const theme = s.theme || p.theme || 'light';
+    const role = s.role; const R = ROLES[role];
+    const scr = s.screen;
+    let dataState = s.override || p.dataState || p.screenState || 'normal';
+    if (s.localLoading) dataState = 'loading';
+    if (scr === 'wellbeing' && s.wbDeleted && dataState === 'normal') dataState = 'empty';
+    const normal = dataState === 'normal';
+    const inbox = s.inbox[role];
+    const unread = inbox.filter((e) => e.unread).length;
+    const self = this;
+
+    const navBtn = (id, label, badge, code) => {
+      const active = scr === id;
+      return { label, badge, code: code || '', codeColor: active ? 'var(--bg)' : (MOD[id] ? MOD[id].c : 'var(--ink)'), bg: active ? 'var(--ink)' : 'transparent', fg: active ? 'var(--bg)' : 'var(--ink)', go: () => self.go(id) };
+    };
+    const openFlags = s.flags.filter((f) => f.status === 'open').length;
+    const topNav = [navBtn('dashboard', 'Dashboard', ''), navBtn('inbox', 'Inbox', unread ? String(unread) : '')];
+    const modNav = R.nav.map((id) => navBtn(id, MOD[id].label, id === 'exam' && openFlags ? String(openFlags) : '', MOD[id].code));
+
+    // prep
+    const prepSolved = s.prep.reduce((a, r) => a + r[1], 0); const prepTotal = s.prep.reduce((a, r) => a + r[2], 0);
+    const prepPct = Math.round((prepSolved / prepTotal) * 100) + '%';
+    const scored = MATCHES.map((m) => ({ ...m, ...scoreOf(m) })).sort((a, b) => b.score - a.score);
+    const obsTotal = HOURLY.reduce((a, b) => a + b, 0);
+    const wbTodayMin = CATS.reduce((a, c) => a + (s.wbConsent[c.id] ? c.min : 0), 0);
+    const prevAvg = WEEK_MIN.slice(0, 6).reduce((a, d) => a + d.v, 0) / 6;
+    const wbDiff = Math.round((1 - WEEK_MIN[6].v / prevAvg) * 100);
+
+    // week strip
+    const it = (mod, meta, text, status, tone, dashed) => ({ meta: `${MOD[mod].code} · ${meta}`, text, status: status ? '● ' + status : '', codeColor: MOD[mod].c, statusColor: tone === 'ok' ? 'var(--ok)' : tone === 'warn' ? 'var(--warn)' : 'var(--muted)', bg: 'var(--raised)', borderStyle: dashed ? 'dashed' : 'solid', borderColor: dashed ? 'var(--faint)' : 'var(--line)', go: () => self.go(mod) });
+    const W = {
+      student: [[it('wellbeing', '20:00', s.wbPaused ? 'Tracking paused' : 'Tracking on', '', '')], [it('rides', '08:10', 'Ride to SPIT', 'confirmed', 'ok'), it('rides', '17:30', 'Return ride', 'searching', 'warn', true)], [it('hub', 'all day', `Prep goal ends, ${20 - s.goalDone} left`, '', '')], [it('wellbeing', '09:00', 'Weekly summary', '', '')], [it('hub', '15:30', 'Mentor session, Prof. Neha Iyer', 'accepted', 'ok')], [], [it('observatory', '02:00', 'Lab cluster maintenance', '', '')]],
+      mentor: [[it('hub', 'now', `${s.requests.filter((r) => r.status === 'pending').length} mentorship requests`, 'waiting', 'warn')], [it('rides', '08:30', 'Driving from Malad', `${s.joins.filter((j) => j.status === 'accepted').length} of ${s.seats} seats`, 'ok')], [], [it('wellbeing', '09:00', 'Weekly summary', '', '')], [it('hub', '15:30', 'Session with Aarav Mehta', 'confirmed', 'ok')], [it('hub', '11:00', 'Session with Diya Kulkarni', 'tentative', 'warn', true)], [it('observatory', '02:00', 'Lab cluster maintenance', '', '')]],
+      invigilator: [[it('exam', 'today', `${openFlags} flags open · OS Midterm`, openFlags ? 'needs review' : 'all reviewed', openFlags ? 'warn' : 'ok')], [it('exam', '10:00', 'DBMS Internal · Hall B', 'scheduled', '')], [], [], [it('exam', '14:00', 'CN Quiz · Lab 204', 'scheduled', '')], [], [it('observatory', '02:00', 'Lab cluster maintenance', '', '')]],
+      admin: [[it('exam', 'today', `${openFlags} exam flags open`, '', '')], [it('exam', '10:00', 'DBMS Internal · Hall B', 'scheduled', '')], [], [], [it('admin', '10:00', 'Weekly audit review', '', '')], [], [it('observatory', '02:00', 'Lab cluster maintenance', '', '')]],
+    }[role];
+    const week = W.map((items, i) => ({ label: i === 0 ? 'THU 29 · TODAY' : DAYS[i], items: i === 0 ? items.map((x) => ({ ...x, bg: 'var(--inv-raised)', borderColor: 'var(--inv-raised)', statusColor: x.statusColor })) : items, none: items.length === 0, bg: i === 0 ? 'var(--inv-bg)' : 'transparent', fg: i === 0 ? 'var(--inv-fg)' : 'var(--ink)', border: i === 0 ? '0' : '1px solid var(--line)' }));
+    const fixToday = week[0].items.map((x) => ({ ...x, codeColor: 'var(--inv-fg)', statusColor: 'var(--inv-muted)' })); week[0].items = fixToday;
+
+    const card = (id, big, text, status, tone) => ({ label: MOD[id].label, code: MOD[id].code, fill: MOD[id].f, big, text, status, statusColor: tone === 'ok' ? 'var(--ok)' : tone === 'warn' ? 'var(--warn)' : 'var(--muted)', go: () => self.go(id) });
+    const C = {
+      hub: role === 'mentor' ? card('hub', String(s.requests.filter((r) => r.status === 'pending').length), 'Mentorship requests waiting. 6 mentees this term.', '', '') : role === 'admin' ? card('hub', String(s.resources.length), 'Resources in the shared repository.', '', '') : card('hub', prepPct, `DSA sheet, ${prepSolved} of ${prepTotal}. 4 new resources in OS.`, 'ON TRACK', 'ok'),
+      rides: role === 'mentor' ? card('rides', `${s.joins.filter((j) => j.status === 'accepted').length}/${s.seats}`, 'Seats filled on your Friday 08:30 drive.', `${s.joins.filter((j) => j.status === 'pending').length} REQUESTS WAITING`, 'warn') : role === 'admin' ? card('rides', '37', 'Shared rides this week across campus.', '', '') : card('rides', scored[0].score.toFixed(2), `Match score for Friday, ${scored[0].detour} detour.`, 'CONFIRMED', 'ok'),
+      observatory: card('observatory', obsTotal.toFixed(1) + ' kWh', `Lab cluster today, estimate. About ${Math.round(obsTotal * 0.71)} kg CO₂e, estimate.`, 'ESTIMATE', ''),
+      wellbeing: card('wellbeing', s.wbDeleted ? '—' : fmtMin(wbTodayMin), s.wbDeleted ? 'No data stored.' : `Screen time today, ${wbDiff}% under your average.`, s.wbPaused ? 'PAUSED' : 'COLLECTING', s.wbPaused ? 'warn' : 'ok'),
+      exam: card('exam', String(openFlags), 'Flags waiting for human review from OS Midterm.', openFlags ? 'NEEDS REVIEW' : 'ALL REVIEWED', openFlags ? 'warn' : 'ok'),
+      admin: card('admin', String(s.users.length), `Accounts, ${s.users.filter((u) => !u.active).length} deactivated. 8 audit entries today.`, '', ''),
+    };
+    const indexCards = R.nav.map((id) => C[id]);
+
+    const inboxRow = (e) => ({ ...e, code: MOD[e.mod].code, codeColor: MOD[e.mod].c, modLabel: MOD[e.mod].label.toUpperCase(), dot: e.unread ? 'var(--ink)' : 'transparent', bg: e.unread ? 'var(--surface)' : 'transparent', weight: e.unread ? 500 : 400, read: () => self.setState((st) => ({ inbox: { ...st.inbox, [role]: st.inbox[role].map((x) => (x.id === e.id ? { ...x, unread: false } : x)) } })) });
+    const inboxMods = ['all', ...Array.from(new Set(inbox.map((e) => e.mod)))];
+    const inboxList = inbox.filter((e) => s.inboxFilter === 'all' || e.mod === s.inboxFilter).map(inboxRow);
+    const chip = (active) => ({ bg: active ? 'var(--ink)' : 'transparent', fg: active ? 'var(--bg)' : 'var(--ink)' });
+
+    const tabs = (list, cur, key) => list.map(([id, label]) => ({ label, bar: cur === id ? 'var(--ink)' : 'transparent', fg: cur === id ? 'var(--ink)' : 'var(--muted)', go: () => self.setState({ [key]: id }) }));
+    const hubList = role === 'mentor' ? [['requests', 'Requests'], ['resources', 'Resources'], ['profile', 'Profile']] : role === 'admin' ? [['resources', 'Resources'], ['mentors', 'Mentor ranking']] : [['prep', 'Prep tracker'], ['mentors', 'Mentors'], ['resources', 'Resources'], ['profile', 'Profile']];
+    const hubTab = hubList.some((t) => t[0] === s.hubTab) ? s.hubTab : hubList[0][0];
+    const rideList = [['find', 'Find a ride'], ['matches', 'Matches'], ['driver', 'Offer a ride']];
+
+    const resRows = s.resources.filter((r) => (s.resSubject === 'All' || r.subject === s.resSubject) && (!s.resQuery || (r.title + r.subject + r.by).toLowerCase().includes(s.resQuery.toLowerCase())));
+
+    // graph
+    const sel = scored.find((m) => m.id === s.selMatch) || scored[0];
+    const graphEdges = EDGES.map(([a, b]) => {
+      const A = STOPS[a], B = STOPS[b]; const dx = B.x - A.x, dy = B.y - A.y; const key = k(a, b);
+      const mine = MY_EDGES.has(key), theirs = sel.edges.has(key);
+      const w = mine && theirs ? 5 : mine || theirs ? 3 : 1.5;
+      const border = mine && theirs ? `${w}px solid var(--hB-fill)` : theirs ? `${w}px dashed var(--hB-fill)` : mine ? `${w}px solid var(--ink)` : `${w}px solid var(--line)`;
+      return { left: (A.x / 560) * 100 + '%', top: (A.y / 320) * 100 + '%', width: (Math.hypot(dx, dy) / 560) * 100 + '%', border, mt: -w / 2 + 'px', tf: `rotate(${(Math.atan2(dy, dx) * 180) / Math.PI}deg)` };
+    });
+    const graphNodes = Object.entries(STOPS).map(([id, n]) => {
+      const onMine = MY_ROUTE.includes(id), onSel = sel.route.includes(id); const end = id === 'BOR' || id === 'SPIT'; const size = end ? 14 : 10;
+      const below = id === 'SPIT' || id === 'LOK';
+      return { name: n.n, left: `calc(${(n.x / 560) * 100}% - ${size / 2}px)`, top: `calc(${(n.y / 320) * 100}% - ${size / 2}px)`, size: size + 'px', fill: onMine ? 'var(--ink)' : onSel ? 'var(--hB-fill)' : 'var(--raised)', stroke: onMine ? 'var(--ink)' : onSel ? 'var(--hB-fill)' : 'var(--line-strong)', lx: below ? '-10px' : size + 4 + 'px', ly: below ? size + 3 + 'px' : '-14px', weight: onMine || onSel ? 600 : 400, labelColor: onMine || onSel ? 'var(--ink)' : 'var(--muted)' };
+    });
+    const matchCards = scored.map((m) => {
+      const isSel = m.id === sel.id; const req = s.matchReq[m.id];
+      const status = m.joined ? 'JOINED · YOU ARE IN THIS CAR' : req ? 'REQUESTED · WAITING FOR DRIVER' : 'ELIGIBLE';
+      return { name: m.name, sub: m.sub, routeText: m.route.map((r) => STOPS[r].n).join(' → '), score: m.score.toFixed(2), sim: m.sim.toFixed(2), simPts: (0.7 * m.sim).toFixed(2), time: m.time.toFixed(2), timePts: (0.3 * m.time).toFixed(2), diff: m.diff, detour: m.detour, overlap: Math.round(m.overlap * 100) + '%', pickup: m.pickup, seats: m.seats, status, statusColor: m.joined ? 'var(--ok)' : req ? 'var(--warn)' : 'var(--muted)', border: isSel ? '1.5px solid var(--line-strong)' : '1px solid var(--line)', bg: isSel ? 'var(--surface)' : 'transparent', select: () => self.setState({ selMatch: m.id }), btn: m.joined ? 'Joined' : req ? 'Cancel request' : 'Request to join', disabled: !!m.joined, btnBorder: req || m.joined ? '1.5px solid var(--line-strong)' : '0', btnBg: req || m.joined ? 'transparent' : 'var(--ink)', btnFg: req || m.joined ? 'var(--ink)' : 'var(--bg)', request: (e) => { e.stopPropagation(); self.setState((st) => ({ matchReq: { ...st.matchReq, [m.id]: !st.matchReq[m.id] } })); if (!req) self.flash(`Request sent to ${m.name}.`); } };
+    });
+    const seatsTaken = s.joins.filter((j) => j.status === 'accepted').length;
+    const joinRequests = s.joins.map((j) => ({ ...j, pending: j.status === 'pending', done: j.status !== 'pending', full: seatsTaken >= s.seats, acceptOpacity: seatsTaken >= s.seats ? 0.4 : 1, statusLabel: j.status === 'accepted' ? 'ACCEPTED' : 'DECLINED', chipBg: j.status === 'accepted' ? 'var(--ok-bg)' : 'var(--hover)', chipFg: j.status === 'accepted' ? 'var(--ok)' : 'var(--muted)', accept: () => self.setState((st) => ({ joins: st.joins.map((x) => (x.id === j.id ? { ...x, status: 'accepted' } : x)) })), decline: () => self.setState((st) => ({ joins: st.joins.map((x) => (x.id === j.id ? { ...x, status: 'declined' } : x)) })) }));
+
+    // observatory
+    const data = s.obsRange === 'today' ? HOURLY : s.obsRange === '7d' ? DAILY7 : DAILY30;
+    const max = Math.max(...data); const tot = data.reduce((a, b) => a + b, 0);
+    const obsBars = data.map((v, i) => ({ h: Math.round((v / max) * 100) + '%', bg: s.obsRange === 'today' && i > 21 ? 'var(--line-strong)' : 'var(--hC-fill)', tip: `${v.toFixed(1)} kWh (estimate)` }));
+    const obsKpis = [
+      { label: 'ENERGY · ESTIMATE', value: tot.toFixed(1), unit: 'kWh', note: s.obsRange === 'today' ? 'Lab cluster since 00:00.' : `Lab cluster, ${s.obsRange === '7d' ? 'last 7 days' : 'last 30 days'}.` },
+      { label: 'CARBON · ESTIMATE', value: (tot * 0.71).toFixed(1), unit: 'kg CO₂e', note: 'At 0.71 kg CO₂e per kWh.' },
+      { label: 'AVG UTILISATION', value: '58', unit: '%', note: 'Across 82 machines.' },
+      { label: 'IDLE OVER 4 H', value: '14', unit: 'machines', note: 'Mostly in Lab 204.' },
+    ];
+    const obsAxis = s.obsRange === 'today' ? { a: '00:00', b: '12:00', c: '23:00' } : s.obsRange === '7d' ? { a: 'FRI 23', b: 'MON 26', c: 'THU 29' } : { a: '30 SEP', b: '15 OCT', c: '29 OCT' };
+
+    // wellbeing
+    const wbMax = Math.max(...CATS.map((c) => c.min));
+    const wbCats = CATS.map((c) => ({ label: c.label, w: s.wbConsent[c.id] ? Math.round((c.min / wbMax) * 100) + '%' : '0%', value: s.wbConsent[c.id] ? fmtMin(c.min).replace('0h ', '') : 'off', opacity: s.wbConsent[c.id] ? 1 : 0.5 }));
+    const wkMax = Math.max(...WEEK_MIN.map((d) => d.v));
+    const wbWeek = WEEK_MIN.map((d, i) => ({ d: d.d, v: (d.v / 60).toFixed(1) + 'h', h: Math.round((d.v / wkMax) * 82) + '%', bg: i === 6 ? 'var(--hD-fill)' : 'var(--line-strong)' }));
+    const wbConsent = CATS.map((c) => ({ label: c.label, on: String(!!s.wbConsent[c.id]), track: s.wbConsent[c.id] ? 'var(--hD-fill)' : 'var(--line-strong)', knob: s.wbConsent[c.id] ? '16px' : '2px', toggle: () => self.setState((st) => ({ wbConsent: { ...st.wbConsent, [c.id]: !st.wbConsent[c.id] } })) }));
+    const wbRecords = [];
+    if (!s.wbDeleted) { ['29 Oct', '28 Oct', '27 Oct', '26 Oct', '25 Oct', '24 Oct', '23 Oct'].forEach((d, di) => CATS.forEach((c) => { if (s.wbConsent[c.id] || di > 0) wbRecords.push({ date: d, cat: c.label.toLowerCase(), min: String(Math.max(4, Math.round(c.min * (WEEK_MIN[6 - di].v / 222)))) }); })); }
+
+    // exam
+    const fCounts = { open: 0, dismissed: 0, resolved: 0 }; s.flags.forEach((f) => fCounts[f.status]++);
+    const statusTone = (st) => (st === 'open' ? 'var(--warn)' : st === 'resolved' ? 'var(--ink)' : 'var(--muted)');
+    const flagRows = s.flags.filter((f) => s.flagFilter === 'all' || f.status === s.flagFilter).map((f) => ({ ...f, conf: 'conf ' + f.conf.toFixed(2), statusLabel: f.status.toUpperCase(), statusColor: statusTone(f.status), bg: f.id === s.selFlag ? 'var(--raised)' : 'transparent', selBar: f.id === s.selFlag ? 'var(--hE-fill)' : 'transparent', select: () => self.setState({ selFlag: f.id, flagNote: '' }) }));
+    const F = s.flags.find((f) => f.id === s.selFlag);
+    const flag = F ? { ...F, confNum: F.conf.toFixed(2), clipLen: F.clip, segLeft: F.segL + '%', segWidth: F.segW + '%', statusLabel: F.status.toUpperCase(), statusColor: statusTone(F.status), open: F.status === 'open', closed: F.status !== 'open', decisionLine: `${F.status.toUpperCase()} BY ${(F.by || '').toUpperCase()} · ${F.when || ''}` } : null;
+    const setFlag = (status) => { const note = s.flagNote.trim(); if (!note) return; self.setState((st) => ({ flags: st.flags.map((f) => (f.id === st.selFlag ? { ...f, status, note, by: R.name, when: '22:14' } : f)), flagNote: '' })); self.flash(`${F.id} ${status}. Written to the audit log.`); };
+
+    // admin
+    const userRows = s.users.filter((u) => (s.roleFilter === 'all' || u.role === s.roleFilter) && (!s.userQuery || (u.name + u.email).toLowerCase().includes(s.userQuery.toLowerCase()))).map((u) => ({ ...u, status: u.active ? 'ACTIVE' : 'INACTIVE', statusColor: u.active ? 'var(--ok)' : 'var(--muted)', opacity: u.active ? 1 : 0.65, action: u.self ? 'You' : u.active ? 'Deactivate' : 'Reactivate', btnOpacity: u.self ? 0.4 : 1, self: !!u.self, toggle: () => { self.setState((st) => ({ users: st.users.map((x) => (x.id === u.id ? { ...x, active: !x.active } : x)) })); self.flash(`${u.name} ${u.active ? 'deactivated. Their sessions were closed.' : 'reactivated.'}`); } }));
+    const auditKinds = ['all', 'auth', 'admin', 'exam', 'platform'];
+    const auditRows = AUDIT.filter((a) => s.auditFilter === 'all' || a.action.startsWith(s.auditFilter + '.'));
+
+    const T = SCREEN_TEXT[scr] || SCREEN_TEXT.dashboard;
+    const panelVisible = s.signedIn && dataState !== 'normal';
+    const show = {
+      dashboard: scr === 'dashboard' && normal, inbox: scr === 'inbox' && normal,
+      hubPrep: scr === 'hub' && normal && hubTab === 'prep', hubMentors: scr === 'hub' && normal && hubTab === 'mentors', hubRequests: scr === 'hub' && normal && hubTab === 'requests', hubResources: scr === 'hub' && normal && hubTab === 'resources', hubProfile: scr === 'hub' && normal && hubTab === 'profile',
+      ridesFind: scr === 'rides' && normal && s.rideTab === 'find', ridesMatches: scr === 'rides' && normal && s.rideTab === 'matches', ridesDriver: scr === 'rides' && normal && s.rideTab === 'driver',
+      observatory: scr === 'observatory' && normal, wellbeing: scr === 'wellbeing' && normal, exam: scr === 'exam' && normal,
+      adminUsers: scr === 'admin' && normal && s.adminTab === 'users', adminAudit: scr === 'admin' && normal && s.adminTab === 'audit',
+    };
+    const pwLen = s.newPw.length; const pwBad = pwLen > 0 && (pwLen < 12 || s.newPw.toLowerCase().includes(R.email.split('@')[0].slice(0, 7)));
+
+    return {
+      rootH: p.embedded ? 'auto' : '100vh', loginH: p.embedded ? '680px' : '100vh', sidePos: p.embedded ? 'relative' : 'sticky', sideH: p.embedded ? 'auto' : '100vh',
+      theme, themeLabel: theme === 'dark' ? 'DARK' : 'LIGHT', toggleTheme: () => this.setState({ theme: theme === 'dark' ? 'light' : 'dark' }),
+      nowLabel: 'THU 29 OCT 2026 · 22:14 IST',
+      showLogin: !s.signedIn, showApp: s.signedIn,
+      loginModules: [['A', 'Student Hub', 'students · mentors'], ['B', 'Rides', 'students · mentors'], ['C', 'Observatory', 'everyone'], ['D', 'Wellbeing', 'only you'], ['E', 'Exam Review', 'invigilators']].map(([code, label, who]) => ({ code, label, who })),
+      loginEmail: s.loginEmail, loginPassword: s.loginPassword, loginError: s.loginError, loginBusy: s.loginBusy, loginButton: s.loginBusy ? 'Signing in…' : 'Sign in',
+      setLoginEmail: (e) => this.setState({ loginEmail: e.target.value, loginError: '' }), setLoginPassword: (e) => this.setState({ loginPassword: e.target.value, loginError: '' }),
+      demoAccounts: Object.entries(ROLES).map(([r, v]) => ({ email: v.email, role: r, fill: () => this.setState({ loginEmail: v.email, loginPassword: 'demo-password-2026', loginError: '' }) })),
+      submitLogin: (e) => {
+        e.preventDefault(); const found = Object.entries(ROLES).find(([, v]) => v.email === s.loginEmail.trim().toLowerCase());
+        this.setState({ loginBusy: true, loginError: '' });
+        this.later(() => { if (!found || !s.loginPassword || s.loginPassword === 'wrong') this.setState({ loginBusy: false, loginError: 'Email or password is incorrect.' }); else this.setState({ loginBusy: false, signedIn: true, role: found[0], screen: 'dashboard', loginPassword: '' }); }, 700);
+      },
+      signOut: () => this.setState({ signedIn: false, roleMenuOpen: false, loginEmail: R.email }),
+      me: { name: R.name, email: R.email }, role, isAdmin: role === 'admin',
+      roleMenuOpen: s.roleMenuOpen, toggleRoleMenu: () => this.setState({ roleMenuOpen: !s.roleMenuOpen }),
+      roleOptions: Object.entries(ROLES).map(([r, v]) => ({ name: v.name, role: r, bg: r === role ? 'var(--hover)' : 'transparent', pick: () => this.setState({ role: r, screen: 'dashboard', roleMenuOpen: false, hubTab: null }) })),
+      topNav, modNav, is: { dashboard: scr === 'dashboard', inbox: scr === 'inbox', hub: scr === 'hub', rides: scr === 'rides', observatory: scr === 'observatory', wellbeing: scr === 'wellbeing', exam: scr === 'exam', admin: scr === 'admin' }, show,
+      greeting: `${{ student: 'GOOD EVENING, AARAV', mentor: 'GOOD EVENING, PROF. IYER', invigilator: 'GOOD EVENING, ROHAN', admin: 'ADMIN OFFICE' }[role]} · THU 29 OCT`,
+      week, indexCards, unreadCount: unread, inboxPreview: inbox.slice(0, 3).map(inboxRow), goInbox: () => this.go('inbox'),
+      markAllRead: () => this.setState((st) => ({ inbox: { ...st.inbox, [role]: st.inbox[role].map((x) => ({ ...x, unread: false })) } })),
+      inboxFilters: inboxMods.map((m) => ({ label: m === 'all' ? 'All' : `${MOD[m].code} ${MOD[m].label}`, ...chip(s.inboxFilter === m), pick: () => this.setState({ inboxFilter: m }) })),
+      inboxList, inboxFilteredEmpty: inboxList.length === 0,
+      announceText: s.announceText, announceCount: s.announceText.length, announceDisabled: !s.announceText.trim(), announceOpacity: s.announceText.trim() ? 1 : 0.4,
+      setAnnounceText: (e) => this.setState({ announceText: e.target.value.slice(0, 500) }),
+      sendAnnouncement: () => { const text = s.announceText.trim(); if (!text) return; this.setState((st) => { const nx = {}; Object.keys(st.inbox).forEach((r) => { nx[r] = [{ id: Date.now(), mod: 'platform', who: r === 'admin' ? 'You' : 'Admin Office', text: 'announced: ' + text, time: '22:14', unread: r !== 'admin' }, ...st.inbox[r]]; }); return { inbox: nx, announceText: '' }; }); this.flash('Sent to 7 people.'); },
+      hubTabs: tabs(hubList, hubTab, 'hubTab'),
+      prepRows: s.prep.map((r, i) => ({ topic: r[0], solved: r[1], total: r[2], pct: Math.round((r[1] / r[2]) * 100) + '%', inc: () => this.setState((st) => ({ prep: st.prep.map((x, j) => (j === i && x[1] < x[2] ? [x[0], x[1] + 1, x[2]] : x)), goalDone: Math.min(20, st.goalDone + (r[1] < r[2] ? 1 : 0)) })) })),
+      prepPct, prepSolved, prepTotal, goalDone: s.goalDone, goalLeft: 20 - s.goalDone, goalCells: Array.from({ length: 20 }, (_, i) => ({ bg: i < s.goalDone ? 'var(--hA-fill)' : 'var(--line)' })),
+      mentorRows: MENTORS.map((m, i) => { const st = m.accepted ? 'accepted' : s.mentorReq[m.id]; return { ...m, rank: '#' + (i + 1), btn: st === 'accepted' ? 'Accepted · Mon 15:30' : st ? 'Requested' : role === 'admin' ? 'View profile' : 'Request mentor', disabled: st === 'accepted', btnBorder: st ? '1.5px solid var(--line-strong)' : '0', btnBg: st ? 'transparent' : 'var(--ink)', btnFg: st === 'accepted' ? 'var(--ok)' : st ? 'var(--warn)' : 'var(--bg)', request: () => { if (role === 'admin') return; this.setState((x) => ({ mentorReq: { ...x.mentorReq, [m.id]: !x.mentorReq[m.id] } })); if (!st) this.flash(`Request sent to ${m.name}.`); } }; }),
+      mentorRequests: s.requests.map((r) => ({ ...r, pending: r.status === 'pending', done: r.status !== 'pending', statusLabel: r.status === 'accepted' ? 'ACCEPTED' : 'DECLINED', chipBg: r.status === 'accepted' ? 'var(--ok-bg)' : 'var(--hover)', chipFg: r.status === 'accepted' ? 'var(--ok)' : 'var(--muted)', accept: () => { this.setState((st) => ({ requests: st.requests.map((x) => (x.id === r.id ? { ...x, status: 'accepted' } : x)) })); this.flash(`${r.name} notified.`); }, decline: () => this.setState((st) => ({ requests: st.requests.map((x) => (x.id === r.id ? { ...x, status: 'declined' } : x)) })) })),
+      resQuery: s.resQuery, setResQuery: (e) => this.setState({ resQuery: e.target.value }),
+      resSubjects: ['All', 'OS', 'DBMS', 'CN', 'DSA'].map((x) => ({ label: x, ...chip(s.resSubject === x), pick: () => this.setState({ resSubject: x }) })),
+      resRows, resEmpty: resRows.length === 0,
+      uploadResource: () => { this.setState((st) => ({ resources: [{ title: 'OS Unit 4 · Deadlocks', subject: 'OS', by: R.name, size: '1.9 MB', date: 'now', type: 'PDF' }, ...st.resources] })); this.flash('Uploaded. Type checked from the file bytes: PDF.'); },
+      profileInterests: s.profileInterests, setProfileInterests: (e) => this.setState({ profileInterests: e.target.value }), saveProfile: () => this.flash('Profile saved. Mentor ranking updated.'),
+      newPw: s.newPw, setNewPw: (e) => this.setState({ newPw: e.target.value }), pwInvalid: pwLen === 0 || pwBad, pwOpacity: pwLen === 0 || pwBad ? 0.4 : 1,
+      pwBorder: pwBad ? 'var(--err)' : 'var(--line-strong)', pwHintColor: pwBad ? 'var(--err)' : 'var(--muted)', pwHint: pwBad ? (pwLen < 12 ? `${12 - pwLen} more characters needed.` : 'Must not contain your email name.') : '12 to 256 characters, not your email name.',
+      changePw: () => { this.setState({ newPw: '' }); this.flash('Password changed. Other sessions signed out.'); },
+      rideTabs: tabs(rideList, s.rideTab, 'rideTab'),
+      rideFrom: s.rideFrom, rideTo: s.rideTo, rideTime: s.rideTime, rideFormError: s.rideFormError,
+      setRideFrom: (e) => this.setState({ rideFrom: e.target.value, rideFormError: '' }), setRideTo: (e) => this.setState({ rideTo: e.target.value, rideFormError: '' }), setRideTime: (e) => this.setState({ rideTime: e.target.value }),
+      findMatches: (e) => { e.preventDefault(); if (s.rideFrom === s.rideTo) { this.setState({ rideFormError: 'Pick two different stops.' }); return; } this.setState({ localLoading: true }); this.later(() => this.setState({ localLoading: false, rideTab: 'matches' }), 800); },
+      graphEdges, graphNodes, matchCards,
+      seats: s.seats, seatsTaken, seatsUp: () => this.setState({ seats: Math.min(3, s.seats + 1) }), seatsDown: () => this.setState({ seats: Math.max(Math.max(1, seatsTaken), s.seats - 1) }),
+      publishLabel: s.published ? 'Update ride' : 'Publish ride', publishRide: () => { this.setState({ published: true }); this.flash('Ride published. Matching riders are notified.'); },
+      joinRequests,
+      obsRanges: [['today', 'TODAY'], ['7d', '7 DAYS'], ['30d', '30 DAYS']].map(([id, label]) => ({ label, ...chip(s.obsRange === id), pick: () => this.setState({ obsRange: id }) })),
+      obsKpis, obsBars, obsAxis, obsChartTitle: s.obsRange === 'today' ? 'HOURLY ENERGY · TODAY (LAST 2 BARS PROJECTED)' : 'DAILY ENERGY', labs: LABS.map((l) => ({ ...l, kwh: l.kwh.toFixed(1), noteColor: l.warn ? 'var(--warn)' : 'var(--muted)' })),
+      wbStatus: s.wbDeleted ? 'Nothing stored · tracking off' : s.wbPaused ? 'Paused since 20:00 · nothing is being counted' : 'Collecting daily totals', wbDot: s.wbDeleted ? 'var(--muted)' : s.wbPaused ? 'var(--warn)' : 'var(--ok)',
+      pauseLabel: s.wbPaused || s.wbDeleted ? 'Resume tracking' : 'Pause tracking', togglePause: () => { const resume = s.wbPaused || s.wbDeleted; this.setState({ wbPaused: !resume, wbDeleted: false }); this.flash(resume ? 'Tracking resumed.' : 'Tracking paused. Nothing new is counted.'); },
+      openData: () => this.setState({ dataOpen: true }), closeData: () => this.setState({ dataOpen: false }), stop: (e) => e.stopPropagation(), dataOpen: s.dataOpen,
+      exportData: () => this.flash(`wellbeing-export-2026-10-29.json · ${wbRecords.length} records`),
+      askDelete: () => this.setState({ confirmDelete: true }), cancelDelete: () => this.setState({ confirmDelete: false }), confirmDelete: s.confirmDelete,
+      doDelete: () => { this.setState({ confirmDelete: false, wbDeleted: true, wbPaused: true }); this.flash('All wellbeing data deleted from the server.'); },
+      wbToday: fmtMin(wbTodayMin), wbCompare: `${wbDiff}% under your 7-day average of ${fmtMin(Math.round(prevAvg))}.`, wbCats, wbWeek, wbConsent, wbRecords, wbRecordCount: wbRecords.length,
+      flagFilters: [['open', `Open ${fCounts.open}`], ['dismissed', `Dismissed ${fCounts.dismissed}`], ['resolved', `Resolved ${fCounts.resolved}`], ['all', 'All']].map(([id, label]) => ({ label, ...chip(s.flagFilter === id), pick: () => this.setState({ flagFilter: id }) })),
+      flagRows, flagListEmpty: flagRows.length === 0, hasFlag: !!flag, flag: flag || {},
+      flagNote: s.flagNote, setFlagNote: (e) => this.setState({ flagNote: e.target.value }), noteMissing: !s.flagNote.trim(), noteOpacity: s.flagNote.trim() ? 1 : 0.4,
+      dismissFlag: () => setFlag('dismissed'), resolveFlag: () => setFlag('resolved'),
+      reopenFlag: () => this.setState((st) => ({ flags: st.flags.map((f) => (f.id === st.selFlag ? { ...f, status: 'open' } : f)) })),
+      adminTabs: tabs([['users', 'Users'], ['audit', 'Audit log']], s.adminTab, 'adminTab'),
+      userQuery: s.userQuery, setUserQuery: (e) => this.setState({ userQuery: e.target.value }),
+      roleFilters: ['all', 'student', 'mentor', 'invigilator', 'admin'].map((r) => ({ label: r, ...chip(s.roleFilter === r), pick: () => this.setState({ roleFilter: r }) })),
+      userRows, usersEmpty: userRows.length === 0,
+      auditFilters: auditKinds.map((a) => ({ label: a === 'all' ? 'all' : a + '.*', ...chip(s.auditFilter === a), pick: () => this.setState({ auditFilter: a }) })), auditRows,
+      openNewUser: () => this.setState({ newUserOpen: true, tempPw: '', newUserName: '', newUserEmail: '', newUserError: '' }), closeNewUser: () => this.setState({ newUserOpen: false }),
+      newUserOpen: s.newUserOpen, tempPwShown: !!s.tempPw, newUserForm: !s.tempPw, tempPw: s.tempPw, newUserName: s.newUserName, newUserEmail: s.newUserEmail, newUserRole: s.newUserRole, newUserError: s.newUserError,
+      setNewUserName: (e) => this.setState({ newUserName: e.target.value }), setNewUserEmail: (e) => this.setState({ newUserEmail: e.target.value, newUserError: '' }), setNewUserRole: (e) => this.setState({ newUserRole: e.target.value }),
+      createUser: () => {
+        const email = s.newUserEmail.trim().toLowerCase();
+        if (!s.newUserName.trim() || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) { this.setState({ newUserError: 'Enter a name and a valid email.' }); return; }
+        if (s.users.some((u) => u.email === email)) { this.setState({ newUserError: 'An account with this email already exists.' }); return; }
+        this.setState((st) => ({ users: [...st.users, { id: 'u' + Date.now(), name: s.newUserName.trim(), email, role: s.newUserRole, active: true, seen: 'never' }], tempPw: 'q7Vd-2mKx_9TfL4w-Rb8sNe' }));
+      },
+      toast: s.toast,
+      panel: { loading: panelVisible && dataState === 'loading', empty: panelVisible && dataState === 'empty', error: panelVisible && dataState === 'error', what: T.what, emptyTitle: T.t, emptyBody: T.b, emptyAction: T.a, emptyGo: () => { if (scr === 'wellbeing') { this.setState({ wbDeleted: false, wbPaused: false }); return; } if (scr === 'admin') { this.setState({ newUserOpen: true, tempPw: '' }); return; } if (T.go) this.go(T.go); } },
+      retry: () => { this.setState({ localLoading: true }); this.later(() => this.setState({ localLoading: false, override: 'normal' }), 900); },
+    };
+  }
+}
+</script>
+</body>
+</html>
