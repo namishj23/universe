@@ -12,7 +12,7 @@ function start(modules: ModuleDefinition[]) {
   const server = createApp({ modules }).listen(env.PORT, () => {
     logger.info({ port: env.PORT, modules: modules.map((m) => m.id) }, 'API listening');
   });
-  const stopTimers = [startSessionCleanup(), startFileSweep()];
+  const stopTimers = [startSessionCleanup(), startFileSweep(modules)];
 
   let shuttingDown = false;
   function shutdown(signal: NodeJS.Signals) {

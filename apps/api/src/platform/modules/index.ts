@@ -26,6 +26,11 @@ export interface FilePurpose {
   maxBytes: number;
   /** Decides downloads; a `false` answer is a 404 so ids cannot be probed. */
   authorizeRead(user: PublicUser, file: StoredFile): boolean | Promise<boolean>;
+  /**
+   * Which of these file ids the module still references (one batched lookup). A referenced
+   * file can't be deleted (409 `FILE_IN_USE`) and the sweep never removes its bytes.
+   */
+  inUse?(fileIds: readonly string[]): Promise<ReadonlySet<string>>;
 }
 
 /**
@@ -75,6 +80,7 @@ const Definition = z
             mimeTypes: z.array(z.string().min(3)).min(1),
             maxBytes: z.number().int().positive(),
             authorizeRead: fn,
+            inUse: fn.optional(),
           })
           .strict(),
       )
