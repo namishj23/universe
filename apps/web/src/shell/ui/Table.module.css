@@ -9,6 +9,8 @@
 
 /* Narrow screens: the table scrolls inside its card, never the page. */
 .scroll {
+  /* Positioned, so visually hidden header text stays inside the scrolling card. */
+  position: relative;
   overflow-x: auto;
 }
 
