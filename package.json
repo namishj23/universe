@@ -25,6 +25,7 @@
     "db:migrate": "prisma migrate dev",
     "db:deploy": "prisma migrate deploy",
     "db:seed": "prisma db seed",
+    "demo:reset": "tsx --conditions=@universe/source prisma/seed/demo-reset.ts",
     "db:test:reset": "ENV_FILE=apps/api/.env.test prisma migrate reset --force",
     "design:compare": "playwright test -c tools/design-compare/playwright.config.ts --project=compare; node tools/design-compare/report.mjs",
     "test:visual": "playwright test -c tools/design-compare/playwright.config.ts --project=visual"
