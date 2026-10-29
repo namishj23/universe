@@ -57,9 +57,9 @@ export const apiError = (status: number, code: string, message: string) => ({
 export function mockApi(routes: Routes) {
   const calls: { method: string; path: string; body: unknown }[] = [];
   const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
-    const url = new URL(String(input), 'http://localhost');
+    const url = new URL(input instanceof Request ? input.url : input, 'http://localhost');
     const method = init?.method ?? 'GET';
-    const body = typeof init?.body === 'string' ? JSON.parse(init.body) : undefined;
+    const body: unknown = typeof init?.body === 'string' ? JSON.parse(init.body) : undefined;
     calls.push({ method, path: url.pathname + url.search, body });
     let reply = routes[`${method} ${url.pathname}`] ?? apiError(404, 'NOT_FOUND', 'no mock');
     if (typeof reply === 'function') reply = await reply(new Request(url, init));
