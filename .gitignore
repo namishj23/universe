@@ -1,0 +1,22 @@
+node_modules/
+dist/
+coverage/
+*.log
+.DS_Store
+
+# Environment files: only the examples are committed
+.env
+.env.*
+!.env.example
+!.env.test.example
+
+# Generated Prisma client
+apps/api/src/generated/
+
+# Python
+.venv/
+venv/
+__pycache__/
+*.pyc
+
+*.tsbuildinfo
