@@ -345,7 +345,16 @@ function Users({ onNewUser }: { onNewUser: () => void }) {
         label="Users"
         columns={USER_COLUMNS}
         minWidth="720px"
-        headers={['NAME', 'EMAIL', 'ROLE', 'STATUS', 'LAST SEEN', '']}
+        headers={[
+          'NAME',
+          'EMAIL',
+          'ROLE',
+          'STATUS',
+          'LAST SEEN',
+          <span key="a" className="uv-visually-hidden">
+            Actions
+          </span>,
+        ]}
       >
         {rows.map((u) => {
           const self = u.id === me.id;

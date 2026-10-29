@@ -1,7 +1,26 @@
-import type { ReactNode } from 'react';
+import { useRef, type ReactNode } from 'react';
 import { Dialog } from 'radix-ui';
 import { cx } from './cx';
 import s from './Overlay.module.css';
+
+/**
+ * Radix returns focus to its own Dialog.Trigger; ours are opened by ordinary buttons, so we
+ * remember whatever had focus when the dialog opened and put focus back there on close.
+ */
+function useReturnFocus() {
+  const opener = useRef<HTMLElement | null>(null);
+  return {
+    onOpenAutoFocus: () => {
+      opener.current =
+        document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    },
+    onCloseAutoFocus: (e: Event) => {
+      if (!opener.current?.isConnected) return;
+      e.preventDefault();
+      opener.current.focus();
+    },
+  };
+}
 
 interface OverlayProps {
   open: boolean;
@@ -24,12 +43,14 @@ export function Modal({
   children,
   narrow,
 }: OverlayProps & { narrow?: boolean }) {
+  const focus = useReturnFocus();
   return (
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
       <Dialog.Portal>
         <Dialog.Overlay className={s.scrim} />
         <Dialog.Content
           className={cx(s.modal, narrow && s.narrow)}
+          {...focus}
           {...(!description && { 'aria-describedby': undefined })}
         >
           <Dialog.Title className={s.title}>{title}</Dialog.Title>
@@ -53,12 +74,14 @@ export function Drawer({
   side = 'right',
   hideHead,
 }: OverlayProps & { side?: 'left' | 'right'; hideHead?: boolean }) {
+  const focus = useReturnFocus();
   return (
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
       <Dialog.Portal>
         <Dialog.Overlay className={s.scrim} />
         <Dialog.Content
           className={cx(s.drawer, side === 'left' && s.left)}
+          {...focus}
           {...(!description && { 'aria-describedby': undefined })}
         >
           {hideHead ? (

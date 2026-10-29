@@ -38,7 +38,7 @@ function useNow() {
 export function BrandPanel() {
   const now = useNow();
   return (
-    <div className={s.brand}>
+    <aside className={s.brand} aria-label="About UniVerse">
       <div className={s.top}>
         <span className={s.institute}>SARDAR PATEL INSTITUTE OF TECHNOLOGY</span>
         <span className={s.now}>{longNow(now)}</span>
@@ -58,7 +58,7 @@ export function BrandPanel() {
           </li>
         ))}
       </ul>
-    </div>
+    </aside>
   );
 }
 
