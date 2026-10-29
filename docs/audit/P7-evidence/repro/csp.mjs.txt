@@ -1,0 +1,27 @@
+// P7 check 11: load the built web app (served by the API on 4199, universe_test) in headless
+// Chromium, sign in, visit every platform screen, and collect console errors and CSP violations.
+// Run from <clone>/repo with the API on 4199: SEED_DEMO_PASSWORD=... node <this file>
+import { chromium } from '@playwright/test';
+const base = 'http://localhost:4199';
+const browser = await chromium.launch();
+const page = await browser.newPage();
+const problems = [];
+page.on('console', (m) => { if (m.type() === 'error' || /Content Security Policy/i.test(m.text())) problems.push(`${page.url()} console: ${m.text()}`); });
+page.on('pageerror', (e) => problems.push(`${page.url()} pageerror: ${e.message}`));
+await page.goto(`${base}/`);
+await page.waitForLoadState('networkidle');
+await page.fill('input[type=email], input[name=email]', 'admin@universe.test');
+await page.fill('input[type=password]', process.env.SEED_DEMO_PASSWORD ?? '');
+const [loginRes] = await Promise.all([
+  page.waitForResponse((r) => r.url().endsWith('/api/auth/login')),
+  page.keyboard.press('Enter'),
+]);
+console.log('login', loginRes.status(), (await loginRes.text()).slice(0, 120));
+await page.waitForLoadState('networkidle');
+const ls = await page.evaluate(() => JSON.stringify(Object.keys(localStorage)));
+for (const path of ['/', '/inbox', '/admin/users', '/admin/audit', '/hub', '/rides', '/no-such-page']) {
+  await page.goto(`${base}${path}`);
+  await page.waitForLoadState('networkidle');
+}
+console.log(JSON.stringify({ localStorageKeys: JSON.parse(ls), problems }, null, 2));
+await browser.close();

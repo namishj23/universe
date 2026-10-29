@@ -1,0 +1,92 @@
+// P7 probes (run in a temporary clone: copy to apps/api/test/p7/ and `npx vitest run test/p7`).
+// universe_test only (the vitest config and global setup refuse anything else).
+import request from 'supertest';
+import { beforeAll, describe, expect, it } from 'vitest';
+import { createApp, type MountedRouter } from '../../src/app.js';
+import { prisma } from '../../src/platform/db.js';
+import { loadModules, seedModules } from '../../src/platform/modules/index.js';
+import { routeTable } from '../../src/platform/routeTable.js';
+import { as, DEMO_ACCOUNTS, login, seed } from '../helpers.js';
+
+let app: ReturnType<typeof createApp>;
+let mounted: MountedRouter[];
+let modules: Awaited<ReturnType<typeof loadModules>>;
+beforeAll(async () => {
+  modules = await loadModules();
+  app = createApp({ modules });
+  mounted = app.locals.mounted as MountedRouter[];
+  await seed();
+  await seedModules(modules);
+}, 120_000);
+
+const UNSAFE = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
+const fill = (path: string) =>
+  path.replace(/\{(\w+)\}/g, (_m, name: string) =>
+    name === 'purpose' ? 'hub.resource' : name === 'date' ? '2026-10-01' : name === 'category' ? 'study' : name === 'topicId' ? 'dsa-arrays' : '00000000-0000-4000-8000-000000000000',
+  );
+
+describe('CSRF on every unsafe route', () => {
+  it('refuses every unsafe route without the token (admin and student sessions)', async () => {
+    const routes = routeTable(mounted).filter((r) => UNSAFE.has(r.method) && r.path !== '/api/auth/login');
+    expect(routes.length).toBeGreaterThan(50);
+    const sessions = [await login('admin@universe.test', app), await login(DEMO_ACCOUNTS.find((a) => a.role === 'student')!.email, app)];
+    const failures: string[] = [];
+    for (const s of sessions)
+      for (const r of routes) {
+        const res = await request(app)[r.method.toLowerCase() as 'post'](fill(r.path)).set('Cookie', s.cookie).send({});
+        if (res.status !== 403 || res.body?.error?.code !== 'CSRF_FAILED') failures.push(`${s.user.role} ${r.method} ${r.path} -> ${res.status}`);
+      }
+    console.log(`CSRF probe: ${routes.length} unsafe routes x ${sessions.length} sessions`);
+    expect(failures).toEqual([]);
+  });
+
+  it('refuses a wrong token, and a foreign Origin even with the right token', async () => {
+    const s = await login('admin@universe.test', app);
+    const wrong = await request(app).post('/api/activity/read-all').set('Cookie', s.cookie).set('X-CSRF-Token', 'x'.repeat(43));
+    expect(wrong.status).toBe(403);
+    const foreign = await as(s).post('/api/activity/read-all').set('Origin', 'https://evil.example');
+    expect(foreign.status).toBe(403);
+    const nullOrigin = await as(s).post('/api/activity/read-all').set('Origin', 'null');
+    expect(nullOrigin.status).toBe(403);
+    const loginForeign = await request(app).post('/api/auth/login').set('Origin', 'https://evil.example').send({ email: 'admin@universe.test', password: 'x' });
+    expect(loginForeign.status).toBe(403);
+    const ok = await as(s).post('/api/activity/read-all').set('Origin', 'http://localhost:5173');
+    expect(ok.status).toBe(204);
+  });
+
+  it('a token from one session does not work for another', async () => {
+    const a = await login('admin@universe.test', app);
+    const b = await login(DEMO_ACCOUNTS.find((x) => x.role === 'student')!.email, app);
+    const res = await request(app).post('/api/activity/read-all').set('Cookie', b.cookie).set('X-CSRF-Token', a.csrfToken);
+    expect(res.status).toBe(403);
+  });
+});
+
+describe('cookie flags and session lifetime', () => {
+  // A fresh app: the login rate limit (10 a minute) is per app instance.
+  beforeAll(() => {
+    app = createApp({ modules });
+  });
+  it('sets HttpOnly, SameSite=Lax, Path=/ and no Secure on http', async () => {
+    const res = await request(app).post('/api/auth/login').send({ email: 'admin@universe.test', password: process.env.SEED_DEMO_PASSWORD });
+    const cookie = res.get('Set-Cookie')?.[0] ?? '';
+    console.log('Set-Cookie flags:', cookie.replace(/uv_session=[^;]+/, 'uv_session=<token>'));
+    expect(cookie).toMatch(/HttpOnly/);
+    expect(cookie).toMatch(/SameSite=Lax/);
+    expect(res.body).not.toHaveProperty('token');
+  });
+
+  it('idle timeout: same scenario with the value written from JavaScript', async () => {
+    const s = await login('admin@universe.test', app);
+    await prisma.session.updateMany({ where: { userId: s.user.id }, data: { lastSeenAt: new Date(Date.now() - 3 * 3_600_000) } });
+    expect((await as(s).get('/api/auth/me')).status).toBe(401);
+  });
+
+  it('a freshly created session reads back last_seen_at in the future', async () => {
+    const s = await login('admin@universe.test', app);
+    const row = await prisma.session.findFirstOrThrow({ where: { userId: s.user.id }, orderBy: { createdAt: 'desc' } });
+    const skewMin = (row.lastSeenAt.getTime() - Date.now()) / 60_000;
+    console.log('fresh session last_seen_at skew vs JS now (min):', skewMin.toFixed(1));
+    expect(Math.abs(skewMin)).toBeLessThan(1);
+  });
+});

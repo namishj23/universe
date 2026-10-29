@@ -1,0 +1,11 @@
+{
+  "id": "388876b6-00dc-42a7-a66d-b5aecd11d6fc",
+  "ownerId": "20660af2-8d24-4ce1-b1ac-cc22bb807b80",
+  "module": "hub",
+  "purpose": "hub.resource",
+  "originalName": "p7-big.pdf",
+  "mimeType": "application/pdf",
+  "sizeBytes": 3000009,
+  "sha256": "ee3dc337487d83fc57c75de9f85e3405729a4c5ead8886579e7afc4431db3290",
+  "createdAt": "2026-10-29T22:41:18.432Z"
+}

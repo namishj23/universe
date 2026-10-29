@@ -1,0 +1,37 @@
+// P7 repro 2: how $queryRaw parameters and results treat timestamptz (universe_test, rolled back).
+// ENV_FILE=apps/api/.env.test npx tsx docs/audit/P7-evidence/repro/tz-raw.ts
+import { PrismaPg } from '@prisma/adapter-pg';
+import { PrismaClient } from '../../../../apps/api/src/generated/prisma/client.js';
+
+process.loadEnvFile(process.env.ENV_FILE ?? 'apps/api/.env.test');
+const url = process.env.DATABASE_URL ?? '';
+if (!new URL(url).pathname.endsWith('_test')) throw new Error('universe_test only');
+const prisma = new PrismaClient({ adapter: new PrismaPg({ connectionString: url }) });
+class Rollback extends Error {}
+const min = (d: Date | undefined, ref: number) => (((d?.getTime() ?? NaN) - ref) / 60_000).toFixed(1);
+try {
+  await prisma.$transaction(async (tx) => {
+    const t = Date.now();
+    const at = new Date(t);
+    const u = await tx.user.create({ data: { email: `p7-raw-${t}@x.test`, name: 'x', passwordHash: 'x', role: 'student', lastLoginAt: at } });
+    const [r] = await tx.$queryRaw<{ c: Date; l: Date; ltext: string; ptext: string; cmp: boolean }[]>`
+      SELECT created_at AS c, last_login_at AS l, last_login_at::text AS ltext,
+             ${at}::timestamptz::text AS ptext, last_login_at = ${at} AS cmp
+      FROM users WHERE id = ${u.id}::uuid`;
+    console.log('model write lastLoginAt=JS now; raw read of last_login_at :', min(r?.l, t), 'min');
+    console.log('raw read of created_at (db default)                        :', min(r?.c, t), 'min');
+    console.log('last_login_at::text (stored value, IST display)            :', r?.ltext);
+    console.log('JS param as timestamptz::text                              :', r?.ptext, '(JS now', at.toISOString(), ')');
+    console.log('stored last_login_at = JS param (raw compare)              :', r?.cmp);
+    const m = await tx.user.findUniqueOrThrow({ where: { id: u.id } });
+    console.log('model read of last_login_at                                :', min(m.lastLoginAt ?? undefined, t), 'min');
+    const [n] = await tx.$queryRaw<{ n: bigint }[]>`SELECT count(*) AS n FROM users WHERE id = ${u.id}::uuid AND created_at >= ${new Date(t - 60_000)}`;
+    console.log('raw filter created_at >= JS(now-1min) finds the new row     :', n?.n === 1n);
+    throw new Rollback();
+  });
+} catch (e) {
+  if (!(e instanceof Rollback)) throw e;
+  console.log('rolled back');
+} finally {
+  await prisma.$disconnect();
+}
