@@ -10,7 +10,7 @@ Master plan (scope, architecture, rubric): the "UniVerse — Implementation Plan
 | --- | --- | --- | --- |
 | Platform | Person 1 | P3a (module factories, `driver` role, login-lockout fix) | Done — PR open to `main` (needs Person 2 review: shared areas) |
 | A · Student Hub | Person 1 | — | Not started |
-| B · Ride-Pooling | Person 1 | P3a Module B onto the platform | Done — PR open to `main`; P3b next |
+| B · Ride-Pooling | Person 1 | P3b carpool offers, campus graph, detour matching, savings | Done — PR #4 open (stacked on #3) |
 | D · Digital Wellbeing | Person 1 | — | Not started |
 | C · Observatory | Person 2 | — | Not started |
 | E · Exam Monitoring | Person 2 | — | Not started |
@@ -22,7 +22,7 @@ Master plan (scope, architecture, rubric): the "UniVerse — Implementation Plan
 | P1 | Platform core: auth, sessions, roles, activity feed with SSE | Opus 5.5 / high | Done |
 | P2 | Platform services: module registry, dashboard API, admin user management, password change, audit log, file storage, OpenAPI contract | Opus 5.5 / high | Done (report: `docs/sessions/P2.md`) |
 | P3a | Module B onto the platform (Opus 5.5 / high) | Opus 5.5 / high | Done (report: `docs/sessions/P3a.md`) |
-| P3b | Rides: driver offers, campus graph, detour matching, savings (Opus 5.5 / high) | Opus 5.5 / high | Not started |
+| P3b | Rides: driver offers, campus graph, detour matching, savings (Opus 5.5 / high) | Opus 5.5 / high | Done (report: `docs/sessions/P3b.md`) |
 | P4 | Module A backend: profiles, prep tracker, mentor ranking, mentorship requests, resource repository with search | Opus 5.5 / high | Not started |
 | P5 | Module D: privacy logic library (sanitise, categorise, metrics) and API for opt-in daily totals, consent, export and delete | Sonnet 5.5 / high | Not started |
 | P6 | Cross-module links, seed data, test scenarios, demo storyline run through the API | Sonnet 5.5 / medium | Not started |
@@ -35,6 +35,37 @@ Master plan (scope, architecture, rubric): the "UniVerse — Implementation Plan
 Checkpoints with Person 2: merge to `main` at Hour 5 and Hour 7. Feature freeze at Hour 9.
 
 ## Decisions (newest first)
+
+- 2026-10-30 (P3b) — **Scope (user decision mid-session): RoutePool's ported backend is not reworked.** Only what RoutePool never had was written (carpool drivers, offers, bookings, detour matching, offer costs, stats, the 22-stop graph). Pooled-auto matching, joins and fares are P3a's port unchanged. So the "one auto on one line" rule still applies to pooled autos, and riders whose routes share a stretch then split are matched by the carpool matcher only. Offer matches use RoutePool's `MatchCard` field names (`score`, `routeSimilarity`, `seatsLeft`, `pickupNode`, `womenOnly`), so its components can be reused in U2.
+- 2026-10-30 (P3b) — **Graph source:** `apps/api/scripts/rides-graph.mjs` → `apps/api/src/modules/rides/data/graph.json` (committed, Prettier-ignored).
+  - 22 stops and 27 edges. OSRM road distances and Nominatim coordinates for the city stops; RoutePool's six stops keep their cached ids, coordinates and distances.
+  - The 8 campus points are hand-placed; their 11 edges are straight line × 1.3 and marked `estimated`.
+  - Edge kinds are `road`, `campus_road` and `walk`. Vehicles never use `walk`.
+  - Durations come from 20/10/5 km/h.
+  - The graph is validated when the module loads and after the seed.
+  - Details in `docs/ASSUMPTIONS.md`.
+- 2026-10-30 (P3b) — **Shortest paths:** binary-heap Dijkstra (`lib/dijkstra.js`, O((V+E) log V)). `core.loadGraph` caches the graph by an md5 fingerprint of the two tables (one query per call) and keeps path trees in a 256-source LRU.
+- 2026-10-30 (P3b) — **Carpool drivers are `rides_drivers` rows with `kind = 'carpool'`** and `status` pending | approved | rejected | suspended (auto rows default to approved).
+  - Their platform role stays student or mentor. Offer routes check the record (approved and documents verified), not a role.
+  - The same `rides.driver_document` upload and review is used.
+  - The admin decides with `POST /admin/drivers/:id/review` (audited, plus an activity event). Approving needs verified documents; suspending cancels upcoming offers.
+- 2026-10-30 (P3b) — **Vehicle rules:**
+  - `rides_vehicles.vehicle_type` is auto | car | bike.
+  - Permit, fitness and service dates are auto-only; a CHECK makes them required for autos and lets them be null otherwise.
+  - Cars and bikes need a validated, unique Indian plate plus insurance and PUC valid on the departure day. A bike carries exactly 1 passenger (CHECK).
+  - Inspections, the complaint rules and the admin fleet board stay auto-only.
+- 2026-10-30 (P3b) — **Detour, delay and cost limits** (`config.offers`):
+  - default detour 2,000 m (0–10,000), with a default time budget equal to that distance at 20 km/h (≤ 3,600 s);
+  - confirmed pickups may move ≤ 10 minutes; a ride may be ≤ 1.5 × the direct path;
+  - trips ≤ 180 minutes;
+  - cost per km: car ₹7, bike ₹2.50 (driver can override);
+  - cancellations within 15 minutes of departure are audited; a ride can be marked departed from 30 minutes before.
+- 2026-10-30 (P3b) — **Scoring weights:** the same 0.7 route similarity + 0.3 time fit as pooled matching (`config.matching`). Detour, seats and delay are hard rules, not score terms.
+- 2026-10-30 (P3b) — **Offer edit rules:** with no accepted passenger, any field can change (requested bookings are re-checked when accepted). With accepted passengers, only seats up (never below `peak_onboard`), more detour budget, a lower cost per km and `autoAccept`; anything else gets 409 `OFFER_HAS_PASSENGERS`.
+- 2026-10-30 (P3b) — **Seats are per segment:** a seat freed at a drop can be reused by a later pickup. Status `full` means the busiest stretch is full: `full` offers are hidden from matches but can still take a passenger whose stretch fits.
+- 2026-10-30 (P3b) — **Files in use:** `FilePurpose.inUse(ids)` (platform). `DELETE /api/files/:id` returns 409 `FILE_IN_USE` for a claimed file, and `sweepFiles(modules)` skips claimed files. Rides claims any file still referenced by a driver document or inspection (old rows are the review trail, so not only the current one). New indexes on those file id columns.
+- 2026-10-30 (P3b) — **`GET /api/rides/stats` was already RoutePool's rider totals route**, so the new admin report is `GET /api/rides/admin/stats`, next to `GET /api/rides/stats/me`.
+- 2026-10-30 (P3b) — Removed `apps/api/.vitest/json/output.json` (a test-run artifact committed by accident in P3a's report commit; it failed the Prettier check) and ignored `.vitest/`.
 
 - 2026-10-29 (P3a) — **One module pattern: factories.** Every module folder default-exports `(platform) => ModuleDefinition` (CommonJS: `module.exports = (platform) => ({...})`); `loadModules({ dir?, platform? })` refuses a plain definition. `platform` (`apps/api/src/platform/modules/platform.ts`, type `Platform`) is a frozen object built once at startup (`platform()` in `server.ts`, the seed and `api:docs` use the same shared instance; tests may pass `createPlatform(overrides)`): `prisma`, `transaction`, `emit`, `pushEvent`, `audit.record`, `authOf`, `requireRole`, `http.{ApiError, asyncHandler}`, `paging.*`, `files.save`, `contracts` (the whole `@universe/contracts` namespace, for CommonJS modules), `config.{nodeEnv, isProduction}` and `logger(moduleId)` (cached child). No environment variables or secrets. Hub and wellbeing were converted. **Why:** P3a found that a CommonJS module cannot `require()` the TypeScript platform in dev (`tsx`) or Vitest — Node's native loader finds no `db.js` next to `db.ts` (`Cannot find module`) — and where it can (built `dist/`), it would load a second Prisma client and a second SSE broker. File purposes are still registered through the definition's `filePurposes`.
 - 2026-10-29 (P3a) — **Login lockout reserves attempts before checking the password** (`apps/api/src/platform/auth/throttle.ts` `reserveAttempt`): under a row lock (`INSERT … ON CONFLICT DO NOTHING`, then `SELECT … FOR UPDATE`) the count is read and raised; the sixth reservation locks the key. The P1–P2 audit reproduced 30 of 30 parallel wrong passwords being verified with the old read-then-count code. Regression test in `apps/api/test/auth.test.ts`.
@@ -101,7 +132,25 @@ Ported from `routepool2-react-` @ `0c57429` into `apps/api/src/modules/rides/` (
 - **Data** (short): users → platform `users` + `rides_profiles`; nodes/edges → `rides_nodes` (PostGIS) / `rides_route_edges` (metres); requests, groups (+ the in-memory driver → `vehicle_id`, `driver_assigned_at`, `eta_minutes`, `driver_female_requested`, `driver_accepted_at`), members, chat → `rides_*`; mock vehicles, inspections, feedback, safety reports, notices → new `rides_*` tables; drivers/documents/trips → `rides_drivers` (PK `user_id`), `rides_driver_documents` (platform file id), `rides_driver_trips`; admin action log → platform `audit_log`; OTP codes dropped.
 - **For P3b:** `rides_drivers.kind` has a CHECK of `('auto')` — P3b adds `'carpool'` (a student or mentor offering rides, possibly with `vehicle_id` NULL, so they need a driver row without the `driver` role or a rule for it). The stop graph is still Module B's six stops in a line (`data/stops.js`); Dijkstra (`lib/dijkstra.js`) already works on any edge list. Matching rules live in `lib/matching.js` (`evaluate`) and `config.js`; maximum-detour matching replaces the "one line" checks there and in `services/riders.js` `join` (backbone check). Savings are computed in `services/history.js` (`totals`). Fares: `lib/fare.js` (paise). Assignment: `services/drivers.js` `assignInTx`; the busy rule is in config **and** in the exclusion constraint's `rides_vehicle_busy_until` (change both). Seed: `seed.js` (+ driver accounts in `prisma/seed/platform.ts`, names duplicated from `data/roster.js`).
 
+## Module B (rides) after P3b — what later phases must know
+
+- **New routes** (all under `/api/rides`, in `routes.js` and `docs/api/openapi.json`):
+  - shared: `GET /graph`, `GET /route?from&to`;
+  - carpool (student or mentor): `POST/GET /carpool/driver`, `POST /carpool/driver/documents`, `POST /offers`, `GET /offers/mine`, `PATCH /offers/:id`, `POST /offers/:id/cancel|depart|complete`, `POST /bookings/:id/accept|decline`;
+  - rider: `GET /offers/matches?requestId=`, `GET /offers/:id` (members only), `POST /offers/:id/bookings`, `GET /bookings/mine`, `POST /bookings/:id/cancel`, `GET /stats/me`;
+  - admin: `POST /admin/drivers/:id/review`, `GET /admin/stats`.
+- **Tables:** `rides_offers` (plan as JSON, plus the plan totals, peak onboard and costs) and `rides_offer_bookings` (unique offer + passenger; planned pickup, in-vehicle metres, cost share, solo fare).
+- **Migrations:** `20261029191650_p3b_rides_offers` and `20261029192926_p3b_file_reference_indexes`.
+- **Dashboard:** the rider summary's `upcomingRide` is now `{ rideType: 'pool' | 'carpool', id, … }`, totals cover both ride types, and there is a new `carpool: { seatsFilled, costRecoveredPaise } | null`.
+- **Seed:** `mentor@` (car, 3 seats) and `student2@` (bike, women-only offer) are approved carpool drivers. Each first seed creates two open offers (Borivali → SPIT at about now + 75 min, auto-accept; Goregaon → SPIT at about now + 50 min, women-only) and one completed ride yesterday with `student@` aboard (Malad → Andheri, share ₹41.21, saved ₹213.13).
+
 ## Requests for the other owner
+
+- 2026-10-30 (P3b, for Person 2): please review PR #4. It is **stacked on #3, so merge #3 first**. Shared areas it changes:
+  - `apps/api/src/platform/` — `FilePurpose.inUse` hook in `modules/index.ts`; 409 `FILE_IN_USE` on delete and the sweep skipping claimed files in `files/index.ts`; `server.ts` passes modules to the sweep;
+  - `packages/contracts/` — new `rides/offers.ts`, rides activity and audit entries, and the rides dashboard summary shape.
+  - Also `eslint.config.js` (`*.mjs` linted without type info), `.gitignore` (`.vitest/`) and `.prettierignore` (`graph.json`).
+  - If your module stores file ids, add `inUse` to its purpose so your files can't be deleted from under you.
 
 - 2026-10-29 (P3a, for Person 2): please review the P3a pull request. It changes shared areas: `packages/contracts/` (role `driver`, rides contracts and registry lines), `apps/api/src/platform/` (module factories + `platform.ts`, `pushEvent`, `saveFile`, test-only query events in `db.ts`, login-lockout fix), `prisma/schema/platform.prisma` (role `driver`, two back-relations on `User`), `prisma/seed/platform.ts` (driver accounts), `prisma.config.ts` (shadow database), `eslint.config.js`. **Your modules now default-export a factory** `(platform) => definition` — see "How to plug in your module" below. Also create `universe_shadow` (README step 2) before your first `prisma migrate dev`.
 
@@ -183,6 +232,8 @@ From the independent P1–P2 verification in P3a (the one high finding, the logi
 
 ## Open questions
 
+- P3b: should pooled autos also pool riders whose routes share a stretch and then split (as carpool offers do)? Left out on purpose (user: don't rework RoutePool's backend), so today they don't.
+- P3b: should a carpool driver also need the auto-style inspection certificate? Today carpool drivers upload the same two documents as auto drivers (licence and inspection certificate), as the prompt asked.
 - P3a: Module B's rider payment is a recorded step only (no gateway) — confirm that is enough for the demo.
 - P3a: the two state-demo drivers (Kiran Pawar, Ganesh Salunkhe) have no vehicle (the roster has seven autos). Give them vehicles if the demo needs them on the road.
 - GitHub usernames of both people (for CODEOWNERS): `.github/CODEOWNERS` has placeholders `@PERSON1_GITHUB` and `@PERSON2_GITHUB`. The repo is `github.com/namishj23/universe` (private), so Person 1 is probably `namishj23`: confirm.
@@ -192,6 +243,13 @@ From the independent P1–P2 verification in P3a (the one high finding, the logi
 
 ## Session log (newest first)
 
+- 2026-10-30 00:40–01:20 — P3b Rides: carpool offers, campus graph, detour matching, savings, backend only (Person 1, Opus 5.5 / high).
+  - Files-in-use hook: 409 on delete, and the sweep skips claimed files.
+  - 22-stop branching graph from OSRM and Nominatim, plus estimated campus paths; heap Dijkstra; LRU path cache; validation.
+  - Carpool drivers (apply, documents, admin review); offers and bookings with row-locked seat safety; O(k²) detour insertion with seat, delay and ride-length limits; RoutePool's 0.7/0.3 score; per-segment cost split in paise; stats for both ride types; dashboard update.
+  - RoutePool's pooled backend left as ported (user decision).
+  - 177 API + 1 web tests. 200 open offers matched in a median of 23 ms.
+  - Branch `p1/p3b-rides-offers`, PR #4 stacked on #3. Full report: `docs/sessions/P3b.md`. Next: P4.
 - 2026-10-29 23:18–2026-10-30 00:30 — P3a Module B onto the platform, backend only (Person 1, Opus 5.5 / high). P1–P2 verified from a fresh clone (all green; one high finding — login lockout race — fixed with a test); module factories with one frozen `platform` object for every module; role `driver`; Module B ported as the `rides` module on the shared database (15 `rides_*` tables, 56 routes) with row-locked joins, atomic driver assignment/accept, paise fares, exclusion constraint for busy vehicles, audit + activity, `rides.chat` over SSE, file purposes, dashboard summary, OpenAPI, seed; Module B's check scripts ported to Vitest. 146 API + 1 web tests. Branch `p1/p3a-rides-move-in`, PR to `main`. Full report: `docs/sessions/P3a.md`. Next: P3b.
 - 2026-10-29 21:25–22:07 — P2 Platform services, backend only (Person 1, Opus 5.5 / high). Backend-first switch (phase table, CLAUDE.md rule, P1 screens removed), P1 review fixes (email-HMAC login throttle, index guard test), module registry and discovery, dashboard API, admin users with last-admin lock, change password + forced change, append-only audit log, file storage (busboy + file-type, quota, Range), OpenAPI 3.1 contract with `npm run api:docs`. 95 API + 1 web tests. Branch `p1/p2-platform-services`, PR to `main`. Full report: `docs/sessions/P2.md`. Next: P3 Module B backend.
 - 2026-10-29 20:30–21:10 — P1 Platform core (Person 1, Opus 5.5 / high). Monorepo, DB setup, contracts, auth/sessions/CSRF/roles, transaction-safe activity feed with SSE, seed, minimal web, 33 tests, README setup. Branch `p1/p1-platform-core`, PR to `main`. Full report: `docs/sessions/P1.md`. Next: P2 app shell.

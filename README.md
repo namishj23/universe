@@ -124,7 +124,10 @@ API tests refuse to run unless `DATABASE_URL` in `apps/api/.env.test` points at 
 | Feature | Status |
 | --- | --- |
 | Sign-in, sessions, roles (student, mentor, invigilator, driver, admin), CSRF, audit log, activity feed with live SSE, file storage | Implemented |
-| Rides: stop graph and road distances | Real coordinates and OpenStreetMap/OSRM distances for 6 stops on one line (seeded); not live routing |
+| Rides: stop graph and road distances | 22 stops with branches: OSRM road distances and Nominatim coordinates for 14 city stops (generated once, committed); 8 campus points hand-placed with straight-line x 1.3 edges, marked `estimated`; durations from documented average speeds. Not live routing or live traffic |
+| Rides: carpool (students and mentors drive their own car or bike) | Implemented: application, document and admin approval, offers, seat requests, auto/manual accept, detour-based matching, cost sharing in paise, depart/complete |
+| Rides: cost sharing and savings | Implemented as estimates: carpool cost per km (car Rs 7, bike Rs 2.50) and the solo auto fare it is compared with are fixed demo rates; no money moves |
+| Rides: shared-ride statistics (per week, busiest routes, occupancy) | Implemented from completed rides; every figure labelled an estimate |
 | Rides: requests, matching, groups, seat locking, leave lock, women-only groups, fares in paise | Implemented |
 | Rides: auto-rickshaw tariff (Rs 27 first 1.5 km, Rs 18/km, x1.2) | Implemented with fixed Mumbai demo rates |
 | Rides: drivers and vehicles | Seeded roster of 7 autos and 9 driver accounts; driver assignment, accept/decline, trip steps, document review implemented |
