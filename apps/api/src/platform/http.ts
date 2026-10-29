@@ -2,6 +2,8 @@ import { randomUUID } from 'node:crypto';
 import type { NextFunction, Request, RequestHandler, Response } from 'express';
 import { z } from 'zod';
 import type { ApiErrorBody } from '@universe/contracts';
+// Loads pino-http's `req.id` / `req.log` typings for files compiled without app.ts (the seed).
+import type {} from 'pino-http';
 import { Prisma } from '../generated/prisma/client.js';
 
 export class ApiError extends Error {
@@ -23,6 +25,8 @@ export const asyncHandler =
   };
 
 const uuid = z.uuid();
+
+export const IdParam = z.object({ id: uuid }).strict();
 
 /** Reuses an incoming X-Request-Id only when it is a valid UUID. */
 export const requestId: RequestHandler = (req, res, next) => {

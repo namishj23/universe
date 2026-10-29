@@ -23,23 +23,28 @@ enum ActivityModule {
 }
 
 model User {
-  id               String    @id @default(uuid()) @db.Uuid
-  email            String    @unique // always stored lowercased
-  name             String
-  passwordHash     String    @map("password_hash")
-  role             Role
-  isActive         Boolean   @default(true) @map("is_active")
-  failedLoginCount Int       @default(0) @map("failed_login_count")
-  lockedUntil      DateTime? @map("locked_until") @db.Timestamptz(3)
-  lastLoginAt      DateTime? @map("last_login_at") @db.Timestamptz(3)
-  createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt        DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+  id                 String    @id @default(uuid()) @db.Uuid
+  email              String    @unique // always stored lowercased
+  name               String
+  passwordHash       String    @map("password_hash")
+  role               Role
+  isActive           Boolean   @default(true) @map("is_active")
+  lastLoginAt        DateTime? @map("last_login_at") @db.Timestamptz(3)
+  mustChangePassword Boolean   @default(false) @map("must_change_password")
+  createdAt          DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt          DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
 
   sessions         Session[]
   activityReceived ActivityEvent[] @relation("ActivityRecipient")
   activitySent     ActivityEvent[] @relation("ActivityActor")
+  auditEntries     AuditLog[]
+  files            File[]
 
   @@index([role])
+  @@index([createdAt(sort: Desc), id(sort: Desc)], map: "users_list_idx")
+  // pg_trgm GIN indexes serve the admin search's ILIKE '%term%' on name and email.
+  @@index([name(ops: raw("gin_trgm_ops"))], type: Gin, map: "users_name_trgm_idx")
+  @@index([email(ops: raw("gin_trgm_ops"))], type: Gin, map: "users_email_trgm_idx")
   @@map("users")
 }
 
@@ -75,4 +80,57 @@ model ActivityEvent {
   @@index([recipientId], map: "activity_events_unread_idx", where: { readAt: null })
   @@index([actorId])
   @@map("activity_events")
+}
+
+/// Failed sign-in counting per email, for known and unknown addresses alike. The key is an
+/// HMAC of the lowercased email (server secret), so the table holds no readable addresses.
+model LoginThrottle {
+  keyHash     String    @id @map("key_hash")
+  failedCount Int       @default(0) @map("failed_count")
+  lockedUntil DateTime? @map("locked_until") @db.Timestamptz(3)
+  updatedAt   DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  @@index([updatedAt])
+  @@map("login_throttle")
+}
+
+/// Append-only: a trigger in the migration rejects UPDATE and DELETE.
+model AuditLog {
+  id         String   @id @default(uuid()) @db.Uuid
+  actorId    String?  @map("actor_id") @db.Uuid
+  action     String
+  targetType String?  @map("target_type")
+  targetId   String?  @map("target_id")
+  metadata   Json     @db.JsonB
+  requestId  String?  @map("request_id")
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  actor User? @relation(fields: [actorId], references: [id], onDelete: Restrict)
+
+  @@index([createdAt(sort: Desc), id(sort: Desc)], map: "audit_log_list_idx")
+  @@index([actorId, createdAt(sort: Desc), id(sort: Desc)], map: "audit_log_actor_idx")
+  @@index([targetType, targetId, createdAt(sort: Desc), id(sort: Desc)], map: "audit_log_target_idx")
+  @@index([action, createdAt(sort: Desc), id(sort: Desc)], map: "audit_log_action_idx")
+  @@map("audit_log")
+}
+
+model File {
+  id           String    @id @default(uuid()) @db.Uuid
+  ownerId      String    @map("owner_id") @db.Uuid
+  module       String
+  purpose      String
+  originalName String    @map("original_name")
+  mimeType     String    @map("mime_type")
+  sizeBytes    Int       @map("size_bytes")
+  sha256       String
+  storageKey   String    @unique @map("storage_key")
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  deletedAt    DateTime? @map("deleted_at") @db.Timestamptz(3)
+
+  owner User @relation(fields: [ownerId], references: [id], onDelete: Restrict)
+
+  @@index([ownerId])
+  @@index([module, purpose])
+  @@index([deletedAt], map: "files_deleted_idx", where: raw("deleted_at IS NOT NULL"))
+  @@map("files")
 }

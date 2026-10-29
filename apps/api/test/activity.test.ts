@@ -17,7 +17,11 @@ beforeAll(async () => {
   student2 = await userId('student2@universe.test');
 });
 
-const fakeStream = () => ({ send: vi.fn<Stream['send']>(), close: vi.fn<Stream['close']>() });
+const fakeStream = () => ({
+  sessionId: 'test',
+  send: vi.fn<Stream['send']>(),
+  close: vi.fn<Stream['close']>(),
+});
 
 describe('emit', () => {
   it('rejects an unknown type', async () => {

@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { prisma } from './db.js';
+import { storage } from './files/storage.js';
 import { ApiError, asyncHandler } from './http.js';
 
 export const healthRoutes = Router();
@@ -22,6 +23,8 @@ healthRoutes.get(
     } finally {
       clearTimeout(timer);
     }
+    if (!(await storage.isWritable()))
+      throw new ApiError(503, 'NOT_READY', 'File storage is not writable');
     res.json({ status: 'ok' });
   }),
 );

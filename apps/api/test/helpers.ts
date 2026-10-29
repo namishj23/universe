@@ -23,3 +23,17 @@ export async function login(email: string, app: Express = createApp()) {
   const { csrfToken, user } = SessionResponse.parse(res.body);
   return { app, cookie, csrfToken, user };
 }
+
+/** A signed-in request builder: cookie and CSRF header already set. */
+export function as(session: { app: Express; cookie: string; csrfToken: string }) {
+  const agent = request(session.app);
+  return {
+    get: (url: string) => agent.get(url).set('Cookie', session.cookie),
+    post: (url: string) =>
+      agent.post(url).set('Cookie', session.cookie).set('X-CSRF-Token', session.csrfToken),
+    patch: (url: string) =>
+      agent.patch(url).set('Cookie', session.cookie).set('X-CSRF-Token', session.csrfToken),
+    delete: (url: string) =>
+      agent.delete(url).set('Cookie', session.cookie).set('X-CSRF-Token', session.csrfToken),
+  };
+}

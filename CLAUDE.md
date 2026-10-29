@@ -88,7 +88,8 @@ Honesty
 3. Build in small commits with clear messages. Run the owner's tests and `npm run typecheck` and `npm run lint` before finishing.
 4. Never delete data, drop tables, force-push, rewrite history or change another owner's files without asking first.
 5. Fix root causes. No temporary workarounds, no disabled tests, no `any` to silence the type checker, no `// @ts-ignore`.
-6. End the session by:
+6. Backend first: until the team's UI design arrives (phases U1–U2), sessions build no screens, styling or layout. Front-end logic that already exists in `apps/web/src/platform/` is kept for reuse.
+7. End the session by:
    - updating `PROGRESS.md` (phase status, decisions, issues, requests, next step) with exact file paths;
    - updating this `CLAUDE.md` only if a rule or the stack changed;
    - writing the full session report below to `docs/sessions/<phase id>.md`, committing it, and printing the same report in full at the end of the session so it can be pasted into the implementation plan.

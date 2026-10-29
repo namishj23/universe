@@ -47,7 +47,14 @@ cp apps/api/.env.example apps/api/.env
 cp apps/api/.env.test.example apps/api/.env.test
 ```
 
-In both files, put the role password into `DATABASE_URL` and generate `CSRF_SECRET` with `openssl rand -base64 32` (use a different one for each file). In `apps/api/.env`, set `SEED_DEMO_PASSWORD` (12+ characters): every demo account uses it. `.env` files are git-ignored; never commit them.
+In both files, put the role password into `DATABASE_URL` and generate `CSRF_SECRET` and `EMAIL_HMAC_SECRET` with `openssl rand -base64 32` (a different value for each variable and each file). In `apps/api/.env`, set `SEED_DEMO_PASSWORD` (12+ characters): every demo account uses it. `.env` files are git-ignored; never commit them.
+
+Uploaded files are stored outside the repository. Create the folder and put its absolute path in `apps/api/.env` as `STORAGE_DIR` (tests use a fresh temporary folder on their own):
+
+```bash
+mkdir -p ~/universe-storage && chmod 700 ~/universe-storage
+echo "STORAGE_DIR=$HOME/universe-storage" >> apps/api/.env
+```
 
 ### 4. Install, migrate, seed
 
@@ -81,7 +88,7 @@ All use the `SEED_DEMO_PASSWORD` from `apps/api/.env`.
 | invigilator@universe.test | Rohan Desai | invigilator |
 | admin@universe.test | Admin Office | admin |
 
-To see the live feed, sign in as the admin in one browser and as a student in another (or a private window), then send an announcement from the admin page.
+The web app is a placeholder until the team's UI design arrives (phases U1–U2); every feature is reachable through the API (see `docs/api/openapi.json`).
 
 ### Tests and checks
 
@@ -90,7 +97,10 @@ npm test               # API tests against universe_test (migrations applied fir
 npm run typecheck
 npm run lint
 npm run db:test:reset  # optional: drop and re-create universe_test's tables from migrations
+npm run api:docs       # regenerate docs/api/openapi.json after changing routes (a test checks it)
 ```
+
+The API contract is `docs/api/openapi.json` (OpenAPI 3.1). With `npm run dev` running, browse it at http://localhost:4000/api/docs (not served in production).
 
 API tests refuse to run unless `DATABASE_URL` in `apps/api/.env.test` points at a database whose name ends in `_test`.
 

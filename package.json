@@ -18,6 +18,7 @@
     "typecheck": "npm run typecheck --workspaces",
     "lint": "eslint . && prettier --check .",
     "format": "prettier --write .",
+    "api:docs": "npm run api:docs -w @universe/api",
     "test": "npm test --workspaces --if-present",
     "db:migrate": "prisma migrate dev",
     "db:deploy": "prisma migrate deploy",
