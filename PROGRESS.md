@@ -8,7 +8,7 @@ Master plan (scope, architecture, rubric): the "UniVerse — Implementation Plan
 
 | Area | Owner | Phase now | Status |
 | --- | --- | --- | --- |
-| Platform | Person 1 | P3a (module factories, `driver` role, login-lockout fix) | Done — PR open to `main` (needs Person 2 review: shared areas) |
+| Platform | Person 1 | P6 integration: cross-module `publicApi`, week providers, route-guard metadata + `docs/ROLES.md`, demo story seed, `demo:reset`, storyline test (U1 merged) | Done — PR open (stacked on P5; contains the `main` and U1 merges) |
 | A · Student Hub | Person 1 | P4 profiles, prep tracker, mentor ranking, mentorship requests, resource repository (backend) | Done — PR open (stacked on #4) |
 | B · Ride-Pooling | Person 1 | P3b carpool offers, campus graph, detour matching, savings | Done — PR #4 open (stacked on #3) |
 | D · Digital Wellbeing | Person 1 | P5 browser-side library (`packages/wellbeing-core`) and backend: daily totals, consent, pause, see my data, export, delete | Done — PR open (stacked on P4) |
@@ -25,7 +25,7 @@ Master plan (scope, architecture, rubric): the "UniVerse — Implementation Plan
 | P3b | Rides: driver offers, campus graph, detour matching, savings (Opus 5.5 / high) | Opus 5.5 / high | Done (report: `docs/sessions/P3b.md`) |
 | P4 | Module A backend: profiles, prep tracker, mentor ranking, mentorship requests, resource repository with search | Opus 5.5 / high | Done (report: `docs/sessions/P4.md`) |
 | P5 | Module D: privacy logic library (sanitise, categorise, metrics) and API for opt-in daily totals, consent, export and delete | Opus 5.5 / high | Done (report: `docs/sessions/P5.md`) |
-| P6 | Cross-module links, seed data, test scenarios, demo storyline run through the API | Sonnet 5.5 / medium | Not started |
+| P6 | Cross-module links, seed data, test scenarios, demo storyline run through the API | Opus 5.5 / high | Done (report: `docs/sessions/P6.md`) |
 | P7 | Independent read-only audit of Platform, A, B, D | Opus 5.5 / xhigh | Not started |
 | P8 | Fix audit findings | Sonnet 5.5 / high | Not started |
 | P9 | README, architecture, algorithms, docs | Sonnet 5.5 / medium | Not started |
@@ -35,6 +35,18 @@ Master plan (scope, architecture, rubric): the "UniVerse — Implementation Plan
 Checkpoints with Person 2: merge to `main` at Hour 5 and Hour 7. Feature freeze at Hour 9.
 
 ## Decisions (newest first)
+
+- 2026-10-30 (P6) — **Cross-module interface (binding): `platform.modules.get(id)`.** A module definition may declare `publicApi`: read-only async functions whose input/output schemas live in `packages/contracts/src/<module>/public.ts` and are listed in `publicApiRegistry` (`packages/contracts/src/publicApi.ts`); a module must implement exactly its registry entry (checked at load). The platform keeps a per-platform registry filled by `loadModules` (`installModules`), so `get` resolves at call time (hub is built before rides and wellbeing) and returns `undefined` for a module that is not installed. Every call parses the input (a bad input is the caller's bug: plain 500), runs with a 500 ms `AbortSignal`, parses the output, and turns any failure or timeout into 503 `MODULE_UNAVAILABLE` (logged). Every input carries `actor: { id, role }` (extra fields such as a full `PublicUser` are stripped); the provider decides what the actor may see and never returns rows of its tables. Exposed: rides `findStop`, `searchStops`, `upcomingForUser`; hub `sessionsForUser`, `weeklyGoal`; wellbeing `studyMinutesThisWeek`.
+- 2026-10-30 (P6) — **Week items** (`weekItems` in each definition, U1's contract): rides from `upcomingForUser` (confirmed seats and pooled groups solid; requested seats, searching requests and forming groups dashed; driven offers "Driving from X · n of m seats"); hub student sessions ("Mentor session, <mentor> · accepted"), the Saturday all-day "Prep goal ends, N left" (students with tracked topics), mentor "N mentorship requests · waiting" at now, "Session with <student> · confirmed", pending requests that name a slot "· tentative" (dashed); wellbeing (owner) "Tracking paused" at `paused_since` and "Weekly summary" Sunday 09:00 when on or paused. Hrefs: `/hub/prep`, `/hub/mentors`, `/hub/requests`, `/rides/offers/<id>`, `/rides/groups/<id>`, `/rides/matches?requestId=<id>`, `/wellbeing`.
+- 2026-10-30 (P6) — **Ride link and `arriveBy`:** accepted sessions whose slot stop a car can reach (`findStop(...).drivable`) get `rideLink: { href: '/rides?to=<stopId>&date=YYYY-MM-DD&arriveBy=HH:MM' }` (IST, 15 minutes before the session; `RIDE_LEAD_MINUTES` in `hub/integration.ts`), else `rideLink: null`. `POST /api/rides/requests` takes `arriveBy` instead of `pickupTime` (exactly one): pickup = arriveBy − the shortest-path driving time between the two stops, floored to the minute. Pooled matching, joins and fares are unchanged.
+- 2026-10-30 (P6) — **Slots validate their stop** through `rides.findStop`: unknown stop, or no rides module, is 422 `STOP_NOT_FOUND` (secure default: a stop that can't be checked is refused; slots without a stop are unaffected).
+- 2026-10-30 (P6) — **Focus minutes in the hub:** `GET /api/hub/prep` and the student dashboard summary include `focusStudyMinutesThisWeek` only when `wellbeing.studyMinutesThisWeek` returns a number (actor = user, sharing on, study counted); a failure or missing module just omits it. Nothing else from wellbeing reaches the hub; mentors never see it.
+- 2026-10-30 (P6) — **Carpool matches list the request's own bookings** (additive): `GET /api/rides/offers/matches` also accepts a `matched` request and returns the offers it already requested or joined first, with `booking: { id, status }` (null on the others), from the booking's stored plan figures, so U2 can draw the design's JOINED / REQUESTED cards. Before, those offers were left out and a matched request was 400.
+- 2026-10-30 (P6) — **Route-guard metadata:** `requireRole(...)` returns a `RoleGuard` carrying `roles`; `anyRole` (= every role) marks routes any signed-in user may call (auth me/logout/change-password, activity, modules, dashboard, files); `mountModules` returns the module guards for `app.locals.mounted`. `apps/api/src/platform/routeTable.ts` reads the guards (outer ∩ router-level `use` ∩ route) → `docs/ROLES.md` (`npm run docs:roles`). `test/route-guards.test.ts` fails on a route without `requireAuth` (except `POST /api/auth/login` and `/api/health/*`), without role metadata, or a stale `ROLES.md`.
+- 2026-10-30 (P6) — **Seeding:** `seedAfter` on definitions (hub after rides: its Monday slot names the SPIT Main Gate stop found with `rides.searchStops`) and one `seedModules()` used by the seed, `demo:reset` and tests; `prisma/seed/run.ts` = platform → modules → `story.ts`. The story seed sends the admin announcement and dates Aarav's inbox; it only re-dates or deletes rows this seed run created, so re-running changes nothing.
+- 2026-10-30 (P6) — **`npm run demo:reset`** (`prisma/seed/demo-reset.ts`, `reset.ts`): refuses unless the host is `localhost`/`127.0.0.1` and (`NODE_ENV=development` + `universe`) or (`NODE_ENV=test` + `universe_test`); prints the rows it would delete; needs `--yes`. Deletes every `Hub*`/`Rides*`/`Wb*` table (children first, one transaction; a test checks the list covers every such Prisma model) and `activity_events`; soft-deletes module files (the hourly sweep removes the bytes); never touches users, sessions, the login throttle or `audit_log`; then runs the seed.
+- 2026-10-30 (P6) — **New activity type `platform.user_created`** (to every active admin when an admin creates an account, with a `message`): the design's admin inbox has it; every other inbox line the design and the problem statement need already existed.
+- 2026-10-30 (P6) — **Hub sessions query** is one query per side (as student, as mentor) instead of an `OR`, so each seeks its index (`EXPLAIN` in the P6 report).
 
 - 2026-10-30 (P5) — **Privacy architecture (binding):** raw browsing events, domains, rules and focus-session detail never leave the browser. They are processed by `packages/wellbeing-core` (dependency-free TypeScript, `@universe/source` export condition, Vite alias in `apps/web`, Vitest alias in `apps/api`). The server stores only `wb_settings` (tracking, counted categories, retention, hub-share flag) and `wb_daily_totals` (minutes per user, day, category), plus `wb_weekly_summaries` markers. Only the owner (student or mentor) reaches any of it; admins, drivers and invigilators get 403 on every route, including through admin tools.
 - 2026-10-30 (P5) — **No wellbeing audit entries and no wellbeing values in logs.** The platform request logger (`apps/api/src/app.ts`) logs `/api/wellbeing/*` requests as `req: { id, method }`, `res: { statusCode }` and the matched `route` pattern (added when the response finishes, because pino-http serialises `req` before routing): no path parameters, query string or headers. The module's routes replace any unexpected error with a message-free one before the platform logs it (`scrub()` in `routes.ts`). Tests capture every log line and check.
@@ -189,7 +201,7 @@ Ported from `routepool2-react-` @ `0c57429` into `apps/api/src/modules/rides/` (
 - **Tables:** `rides_offers` (plan as JSON, plus the plan totals, peak onboard and costs) and `rides_offer_bookings` (unique offer + passenger; planned pickup, in-vehicle metres, cost share, solo fare).
 - **Migrations:** `20261029191650_p3b_rides_offers` and `20261029192926_p3b_file_reference_indexes`.
 - **Dashboard:** the rider summary's `upcomingRide` is now `{ rideType: 'pool' | 'carpool', id, … }`, totals cover both ride types, and there is a new `carpool: { seatsFilled, costRecoveredPaise } | null`.
-- **Seed:** `mentor@` (car, 3 seats) and `student2@` (bike, women-only offer) are approved carpool drivers. Each first seed creates two open offers (Borivali → SPIT at about now + 75 min, auto-accept; Goregaon → SPIT at about now + 50 min, women-only) and one completed ride yesterday with `student@` aboard (Malad → Andheri, share ₹41.21, saved ₹213.13).
+- **Seed (superseded in P6, see "Integration after P6"):** `mentor@` (car, 3 seats) and `student2@` (bike, women-only offer) are approved carpool drivers. Each first seed creates two open offers (Borivali → SPIT at about now + 75 min, auto-accept; Goregaon → SPIT at about now + 50 min, women-only) and one completed ride yesterday with `student@` aboard (Malad → Andheri, share ₹41.21, saved ₹213.13).
 
 ## Module A (hub) after P4 — what U2 and P6 must know
 
@@ -215,7 +227,20 @@ Ported from `routepool2-react-` @ `0c57429` into `apps/api/src/modules/rides/` (
 - **Seed numbers:** the API computes from the stored rows, so the screen shows today **3 h 32 m**, average **4 h 24 m** and **20 % under** (the design's chart says 3.7 h and "16 % under", which don't match its own 3 h 32 m). Series: 252, 300, 282, 234, 264, 252, 212 → 4.2 h, 5.0 h, 4.7 h, 3.9 h, 4.4 h, 4.2 h, 3.5 h.
 - **For P6:** wire `studyMinutesThisWeek` into the hub through the platform (e.g. a module capability), never by importing wellbeing from hub.
 
+## Integration after P6 — what U2, P7 and Person 2 must know
+
+- **Week strip** (`GET /api/dashboard/week`): providers are registered (see the P6 decision for titles, statuses and hrefs). The mentor's "N mentorship requests" item is placed at the current time; U2 may render its time as "now" (the design does). Dashed = `confirmed: false`.
+- **Ride link:** `MentorshipRequest.rideLink` (`{ href } | null`) → the Rides screen opens Find a ride with `to`, `date` and `arriveBy` filled; submit `POST /api/rides/requests { pickupNodeId, dropNodeId, arriveBy: '<date>T<arriveBy>:00+05:30' }`.
+- **Matches:** each `OfferMatch` has `booking` (`null` | `{ id, status: 'requested' | 'accepted' }`): accepted → "JOINED · YOU ARE IN THIS CAR", requested → "REQUESTED · WAITING FOR DRIVER" (cancel with `POST /api/rides/bookings/:id/cancel`), null → "Request to join".
+- **Focus sharing:** the hub prep screen and dashboard card show `focusStudyMinutesThisWeek` only when present; the toggle is `PUT /api/wellbeing/settings { shareStudyWithHub }` on the Wellbeing screen.
+- **Web cards:** `apps/web/src/modules/hub/module.ts` and `wellbeing/module.ts` now have `dashboardCard` (design copy per role) and `activityText` (hub requests; the weekly summary). The visual fixtures still send hub/wellbeing `{ status: 'not_built' }` and provisional hub activity types, so the placeholder card and fallback text are what the baselines show; U2 should switch the fixtures to the real contracts and update the baselines then.
+- **Visual tests after the U1 merge:** `npm run test:visual` 214 of 214 passed (route-mocked, no database); no screen failed, so nothing is listed for U2.
+- **Demo data** (`docs/TEST-SCENARIOS.md` "Demo data at a glance"): Diya drives a 3-seat car (women-only off); Sneha is the women-only rider; Kabir and Ishita are approved carpool drivers; `aditya.rane@universe.test` is the inactive account. Neha's 08:30 from Malad is the **day after tomorrow** (not tomorrow), so Ishita, who drives her own ride tomorrow, is never in two cars on one morning. Aarav's seat request on it shows in his week as a dashed "requested" item.
+- **Storyline:** `apps/api/test/storyline.test.ts` is the live demo script; it re-books Neha's Monday slot (cancel, then request it) because the seed already has that session accepted and one live request per student and mentor is a database rule.
+
 ## Requests for the other owner
+
+- 2026-10-30 (P6, for Person 2): please review the P6 pull request (stacked on P5; it contains the merges of `main` and U1). Shared areas it changes, all authorised for this phase: `apps/api/src/platform/` (`publicApi` + `platform.modules`, `seedAfter`/`seedModules`, `RoleGuard`/`anyRole` on platform routes, `routeTable.ts`, module guards on `app.locals.mounted`, `platform.user_created` on account creation), `packages/contracts/` (`actor.ts`, `publicApi.ts`, `rides|hub|wellbeing/public.ts`, `arriveBy`, `OfferMatch.booking`, `rideLink`, `focusStudyMinutesThisWeek`, `platform.user_created`), `prisma/seed/` (`run.ts`, `story.ts`, `reset.ts`, `demo-reset.ts`, inactive account, welcome text), root `package.json` (`demo:reset`, `docs:roles`), `apps/web/src/modules/{hub,wellbeing}/module.ts`. **For your modules:** expose read-only functions to others with `publicApi` (add your schemas to `publicApiRegistry`), call others with `platform.modules.get(id)` inside handlers (never import another module), add `weekItems` for the week strip, and `seedAfter` if your seed needs another module's data. `npm run docs:roles` then lists your routes; the guard test needs every route behind `requireAuth` with role metadata (your module's `roles` already count). When you add `observatory`/`exam`, add your steps to the storyline's marked hook (`it.todo` in `apps/api/test/storyline.test.ts`).
 
 - 2026-10-30 (P5, for Person 2): please review the P5 pull request (stacked on P4). Shared areas it changes, all authorised for this phase except the one-line `wbSettings` back-relation in `platform.prisma` (Prisma requires it, as in P4): `packages/contracts/` (`wellbeing/index.ts`, `activity/wellbeing.ts`, real `dashboard/wellbeing.ts`, registry lines); `apps/api/src/platform/scheduler.ts` + `platform.schedule` + `server.ts` start/stop (**use `platform.schedule` for your own periodic jobs**); the request logger in `apps/api/src/app.ts`; the new workspace `packages/wellbeing-core` (root `package.json` workspaces and build, web dependency and Vite alias).
 
@@ -330,8 +355,24 @@ Then run `npm run api:docs` and commit `docs/api/openapi.json`. `npm test` fails
 
 **7. Tests.** Use `apps/api/test/helpers.ts`: `login(email)` and `as(session).get/post/patch/delete(url)` (cookie and CSRF header set). Create the app with your module: `createApp({ modules: await loadModules() })` (optionally `loadModules({ platform: createPlatform({ ...overrides }) })`). Rides tests (`apps/api/test/rides/`) show concurrency tests, SSE checks and query counting.
 
+**8. Cross-module calls.** Never import another module. To offer read-only data, add `packages/contracts/src/<id>/public.ts` (Zod input with `actor: Actor` and output per function) and one entry in `publicApiRegistry` (`packages/contracts/src/publicApi.ts`), then implement it in your definition:
+```ts
+const publicApi: PublicApiImpl<'exam'> = {
+  openFlagCount: async ({ actor }, signal) => (actor.role === 'admin' ? count() : null),
+};
+return { ...definition, publicApi };
+```
+To call another module, resolve it inside the handler (not in your factory) and handle it being absent or failing:
+```ts
+const stop = await platform.modules.get('rides')?.findStop({ actor: user, stopId }); // undefined: not installed
+```
+Calls are validated both ways, limited to 500 ms and fail with 503 `MODULE_UNAVAILABLE`; catch it where the data is optional. Available today: rides `findStop`, `searchStops`, `upcomingForUser`; hub `sessionsForUser`, `weeklyGoal`; wellbeing `studyMinutesThisWeek`.
+
+**9. Week strip and seeds.** `weekItems(user, { from, to }, signal)` returns your dated items (contract `WeekProviderItem`; see the P6 decision for the copy style). If your seed needs another module's data, set `seedAfter: ['rides']`; `npm run demo:reset -- --yes` re-runs every seed from now (add your tables to `MODULE_TABLES` in `prisma/seed/reset.ts`).
+
 ## Audit findings for P8
 
+- LOW (found in P6, root config, not fixed: outside P6's authorised scope) — `prisma.config.ts:25` fails `tsc -p tsconfig.json` (the root project that covers the seed files) under `exactOptionalPropertyTypes`: `shadowDatabaseUrl: string | undefined`. No gate runs that project, so it never showed. Fix: `...(shadow && { shadowDatabaseUrl: shadow })`, and add `tsc -p tsconfig.json` to `npm run typecheck` so `prisma/seed/` is checked too.
 - HIGH (found in P5, platform, not fixed: outside P5's authorised scope) — **Timestamps are shifted by the database session time zone.** Both local databases have `TimeZone = Asia/Kolkata` (Homebrew default from the Mac). The Prisma 7 pg adapter writes a JS `Date` as its UTC wall-clock time without an offset (PostgreSQL then reads it as IST) and reads `timestamptz` back the same way. So values written and read through Prisma round-trip, but anything compared with SQL `now()`/`CURRENT_TIMESTAMP` or filled by a database default is off by 5 h 30 m: e.g. a probe stored `paused_since` intended as 19:00Z as 13:30Z, and `SELECT ${d.toISOString()}::timestamptz` came back 5 h 30 m late. Affects every `@default(now())` read back, and any SQL `now()` comparison against Prisma-written times (hub slots/requests, sessions, rides). Fix at the root: `ALTER DATABASE universe SET timezone TO 'UTC'` (and `universe_test`, `universe_shadow`, README setup step), or pass `options: '-c TimeZone=UTC'` to the pool in `apps/api/src/platform/db.ts`. Then re-check seeds and tests. Wellbeing avoids database-clock values it reads back (`ensure()` sets `updated_at` from JS; a test checks).
 
 From the independent P1–P2 verification in P3a (the one high finding, the login-lockout race, was fixed in P3a):
@@ -344,6 +385,18 @@ From the independent P1–P2 verification in P3a (the one high finding, the logi
 - LOW — `docs/sessions/P1.md` §9 still says a 429 lockout appears only for existing accounts (fixed in P2).
 
 ## Open questions
+
+- decided: Neha's 08:30 from Malad is the day after tomorrow, not tomorrow, so Ishita (eligible driver for Aarav tomorrow, and accepted on Neha's ride) is never in two cars on one morning (P6, unattended).
+- decided: the hidden-by-time match is Neha's kept Borivali → SPIT offer moved to tomorrow 07:55 (15 minutes early); the design's "pickup 08:25" can't be hidden by time because the matcher's SQL window already drops departures after 08:20 (P6, unattended).
+- decided: Diya's ride starts at Dahisar 08:02 (pickup at Borivali 08:10) with Rahul aboard, so the design's "1 of 3 seats left" is real (P6, unattended).
+- decided: the storyline re-books Neha's seeded Monday session (cancel, request the same slot) because a second live request to the same mentor is refused by a unique index (P6, unattended).
+- decided: a slot stop that can't be checked (rides missing) is refused with 422 `STOP_NOT_FOUND` rather than stored unchecked (P6, unattended).
+- decided: ride links only for stops a car can reach (`drivable`); campus walk-only stops (Library, Canteen…) get none (P6, unattended).
+- decided: the inactive demo account is Aditya Rane (`aditya.rane@universe.test`), kept out of `DEMO_ACCOUNTS` so the sign-in test still signs every demo account in (P6, unattended).
+- decided: `demo:reset` deletes every module table including reference data (stops, topics, subjects) and soft-deletes module files; the seed recreates everything. It was run on `universe` at the end of P6 to leave the demo database matching the new seed (P6, unattended).
+- decided: the story seed deletes this run's side-effect events in Aarav's inbox (e.g. the completed ride's acceptance) so his inbox is exactly the design's five lines (P6, unattended).
+- decided: "Paused since" is clamped to today's start, so the week strip always shows it today, even right after midnight (P6, unattended).
+- decided: added `platform.user_created` for the design's admin inbox line; observatory/exam inbox lines are Person 2's (P6, unattended).
 
 - decided: wildcard `*.x.com` also matches `x.com`; IPs and localhost count as the domain `local` (P5, unattended).
 - decided: summary totals, series and average count only categories currently counted; `average` uses previous days that have counted rows; `days` accepts 7–31 (P5, unattended).
