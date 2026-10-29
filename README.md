@@ -95,6 +95,8 @@ All use the `SEED_DEMO_PASSWORD` from `apps/api/.env`.
 | kiran.pawar@drivers.universe.test | Kiran Pawar | driver (licence expiring in ~10 days, no vehicle) |
 | ganesh.salunkhe@drivers.universe.test | Ganesh Salunkhe | driver (no documents, no vehicle) |
 
+`student@` (Aarav) also has a wellbeing week matching the design (tracking paused two hours before the seed, today 3 h 32 m, 7-day average 4 h 24 m).
+
 `student2` is the female demo rider with women-only groups on. The seed also adds two forming ride groups and one open request relative to the time you run it.
 
 The web app is a placeholder until the team's UI design arrives (phases U1–U2); every feature is reachable through the API (see `docs/api/openapi.json`).
@@ -140,5 +142,7 @@ API tests refuse to run unless `DATABASE_URL` in `apps/api/.env.test` points at 
 | Hub: profiles, placement goals, prep tracker with weekly goal, readiness and 30-day progress | Implemented (backend; screens in U2). The prep catalogue's problem counts are demo sizes |
 | Hub: mentor ranking, slots and mentorship requests | Implemented: ranking from prep weakness, interests, free slots and load; row-locked accept; activity events |
 | Hub: resource repository with search | Implemented: uploads checked from the bytes, full-text plus uploader-name search, soft delete. The six seeded files are generated title pages padded to the design's sizes |
-| Wellbeing | Not built yet (stub) |
+| Wellbeing: browsing events, sanitising, rules, focus sessions, metrics | Implemented as a browser-side library (`packages/wellbeing-core`), tested with three synthetic sample days; the UI and IndexedDB storage come in U2. There is no browser extension: events come from the sample files (import demo) |
+| Wellbeing: daily totals, consent per category, pause, see my data, export, delete | Implemented (backend; screens in U2). The server stores only one total in minutes per category per day and the settings |
+| Wellbeing: weekly summary, retention | Implemented (hourly job; notification text only, no numbers) |
 | Observatory, Exam monitoring | Person 2 (not started) |

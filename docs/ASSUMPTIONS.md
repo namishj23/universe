@@ -59,3 +59,15 @@ Constants in `apps/api/src/modules/hub/config.ts` (no environment variables).
 - **Confirmed passengers:** a pickup may move by at most 10 minutes, and a ride may be at most 1.5 × the passenger's direct distance.
 - **Trip length:** a driver's own route may take at most 180 minutes.
 - **Timing rules:** a cancellation within 15 minutes of departure is audited. A ride can be marked departed from 30 minutes before departure.
+
+## Module D · Digital Wellbeing (Person 1)
+
+- **Idle cap**: 300 s (`DEFAULT_IDLE_CAP_SECONDS`, overridable per call). A gap longer than this without an event counts as idle; time after an `idle` event is idle until the next event.
+- **Future events**: up to 24 h ahead is accepted (device clock skew); later is rejected.
+- **Time zone**: Asia/Kolkata for days and weeks (configurable in the library; the server uses IST for "today" and retention).
+- **Counted by default**: Study, Communication, Social, Entertainment; Other off (as in the design).
+- **Retention**: 90 days by default, 7–365. A row is deleted when its date is before today − retention days; uploads older than that are refused.
+- **Day cap**: 1440 minutes across all stored categories of a day.
+- **Weekly summary**: from Sunday 09:00 IST for the Sunday–Saturday week that just ended; only to users with tracking on or paused and data that week.
+- **Default rules** are a starting list of well-known sites, not a classification standard; nothing is distracting until the user marks it.
+- **Sample days** in `packages/wellbeing-core/samples/` are synthetic events, hand-checked.
