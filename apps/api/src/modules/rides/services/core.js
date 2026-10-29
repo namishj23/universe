@@ -238,14 +238,17 @@ module.exports = function core(p) {
     if (profile.suspendedAt) throw suspendedError(profile);
   }
 
-  // A rider who handed a driver their code is on that ride until it is over (pickup + busy
-  // window) or cancelled: they can't take a seat anywhere else meanwhile.
+  // A rider who handed a driver their code is on that ride until it is over (completed by the
+  // driver, or pickup + busy window) or cancelled: no seat anywhere else meanwhile.
   async function boardedBlockReason(userId, db = prisma, now = Date.now()) {
     const boarded = await db.ridesGroupMember.findFirst({
       where: {
         userId,
         boardedAt: { not: null },
-        group: { status: { not: 'cancelled' }, pickupAt: { gt: new Date(now - busyMs) } },
+        group: {
+          status: { notIn: ['cancelled', 'completed'] },
+          pickupAt: { gt: new Date(now - busyMs) },
+        },
       },
       select: { group: { select: { pickupAt: true } } },
     });

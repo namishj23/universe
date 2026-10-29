@@ -31,6 +31,8 @@ export function as(session: { app: Express; cookie: string; csrfToken: string })
     get: (url: string) => agent.get(url).set('Cookie', session.cookie),
     post: (url: string) =>
       agent.post(url).set('Cookie', session.cookie).set('X-CSRF-Token', session.csrfToken),
+    put: (url: string) =>
+      agent.put(url).set('Cookie', session.cookie).set('X-CSRF-Token', session.csrfToken),
     patch: (url: string) =>
       agent.patch(url).set('Cookie', session.cookie).set('X-CSRF-Token', session.csrfToken),
     delete: (url: string) =>

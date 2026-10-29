@@ -136,6 +136,7 @@ describe('mounting', () => {
     ['mentor@universe.test', ['hub', 'rides', 'wellbeing']],
     ['invigilator@universe.test', ['exam']],
     ['admin@universe.test', ['hub', 'rides', 'observatory', 'exam']],
+    ['ramesh.patil@drivers.universe.test', ['rides']],
   ])('GET /api/modules for %s matches the agreed table', async (email, ids) => {
     const app = createApp({ modules });
     const { cookie } = await login(email, app);
