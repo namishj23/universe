@@ -72,29 +72,31 @@ function Nav({ onNavigate }: { onNavigate?: () => void }) {
   );
 }
 
-function AccountMenu() {
+/** `inline` inside the mobile drawer: a portal would sit outside the drawer's focus trap. */
+function AccountMenu({ inline }: { inline?: boolean }) {
   const { state, logout } = useAuth();
   const [changing, setChanging] = useState(false);
   if (state.status !== 'signed-in') return null;
+  const menu = (
+    <DropdownMenu.Content className={s.menu} side="top" align="start" sideOffset={6}>
+      <DropdownMenu.Label className={s.menuLabel}>{state.user.email}</DropdownMenu.Label>
+      <DropdownMenu.Item className={s.menuItem} onSelect={() => setChanging(true)}>
+        Change password
+      </DropdownMenu.Item>
+      <DropdownMenu.Separator className={s.separator} />
+      <DropdownMenu.Item className={cx(s.menuItem, s.signOut)} onSelect={() => void logout()}>
+        Sign out
+      </DropdownMenu.Item>
+    </DropdownMenu.Content>
+  );
   return (
     <>
       <DropdownMenu.Root>
-        <DropdownMenu.Trigger className={s.account} aria-label={`Account: ${state.user.name}`}>
+        <DropdownMenu.Trigger className={s.account}>
           <span className={s.accountName}>{state.user.name}</span>
           <span className={s.accountLine}>{state.user.role} · account ▾</span>
         </DropdownMenu.Trigger>
-        <DropdownMenu.Portal>
-          <DropdownMenu.Content className={s.menu} side="top" align="start" sideOffset={6}>
-            <DropdownMenu.Label className={s.menuLabel}>{state.user.email}</DropdownMenu.Label>
-            <DropdownMenu.Item className={s.menuItem} onSelect={() => setChanging(true)}>
-              Change password
-            </DropdownMenu.Item>
-            <DropdownMenu.Separator className={s.separator} />
-            <DropdownMenu.Item className={cx(s.menuItem, s.signOut)} onSelect={() => void logout()}>
-              Sign out
-            </DropdownMenu.Item>
-          </DropdownMenu.Content>
-        </DropdownMenu.Portal>
+        {inline ? menu : <DropdownMenu.Portal>{menu}</DropdownMenu.Portal>}
       </DropdownMenu.Root>
       <ChangePasswordModal open={changing} onOpenChange={setChanging} />
     </>
@@ -114,7 +116,7 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
         <button type="button" className={s.theme} onClick={toggle}>
           Theme<span className={s.themeLabel}>{theme === 'dark' ? 'DARK' : 'LIGHT'}</span>
         </button>
-        <AccountMenu />
+        <AccountMenu inline={Boolean(onNavigate)} />
       </div>
     </>
   );
