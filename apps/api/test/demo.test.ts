@@ -158,9 +158,9 @@ describe('the rest of the cast', () => {
   it('Neha’s 08:30 from Malad: Ishita accepted, Kabir and Aarav requesting', async () => {
     const s = await signIn('mentor@universe.test');
     const res = await s.http.get('/api/rides/offers/mine').expect(200);
-    const malad = (res.body as { items: rides.OfferView[] }).items.find(
-      (o) => o.origin.name === 'Malad',
-    );
+    const malad = (res.body as { items: unknown[] }).items
+      .map((o) => rides.OfferView.parse(o))
+      .find((o) => o.origin.name === 'Malad');
     expect(malad?.bookings.map((b) => [b.passengerFirstName, b.status]).sort()).toEqual([
       ['Aarav', 'requested'],
       ['Ishita', 'accepted'],
