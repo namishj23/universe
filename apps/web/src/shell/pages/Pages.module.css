@@ -1,0 +1,11 @@
+/* Small layout pieces shared by the platform screens. */
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.note {
+  color: var(--muted);
+  font-size: var(--fs-12-5);
+}

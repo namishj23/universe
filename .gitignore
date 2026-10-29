@@ -23,3 +23,6 @@ __pycache__/
 
 # Vitest output
 .vitest/
+!apps/web/.env.visual
+test-results/
+playwright-report/

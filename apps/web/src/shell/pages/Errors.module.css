@@ -1,0 +1,9 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  min-height: 100vh;
+  padding: 24px 32px 48px;
+  background: var(--bg);
+  color: var(--ink);
+}
