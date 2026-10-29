@@ -4,9 +4,15 @@ import { fileURLToPath } from 'node:url';
 import { Router, type Express } from 'express';
 import { z } from 'zod';
 import type { ZodOpenApiPathsObject } from 'zod-openapi';
-import { ModuleId, Role, type ModuleInfo, type PublicUser } from '@universe/contracts';
+import {
+  ModuleId,
+  publicApiRegistry,
+  Role,
+  type ModuleInfo,
+  type PublicUser,
+} from '@universe/contracts';
 import { authOf, requireAuth, requireRole } from '../auth/guards.js';
-import { platform as sharedPlatform, type Platform } from './platform.js';
+import { installModules, platform as sharedPlatform, type Platform } from './platform.js';
 
 export type { Platform } from './platform.js';
 
@@ -58,8 +64,16 @@ export interface ModuleDefinition {
     range: { from: Date; to: Date },
     signal: AbortSignal,
   ) => Promise<unknown>;
+  /**
+   * Read-only functions other modules may call (`platform.modules.get(id)`): exactly the ones
+   * `publicApiRegistry[id]` in contracts lists. Each gets parsed input and an AbortSignal
+   * (500 ms); decide what `input.actor` may see, and never hand out rows of your tables.
+   */
+  publicApi?: Record<string, (input: never, signal: AbortSignal) => Promise<unknown>>;
   /** Demo data, run by `npm run db:seed` after the platform seed. Must be idempotent. */
   seed?: () => Promise<void>;
+  /** Modules whose seed must run before this one's (e.g. hub's slots name rides stops). */
+  seedAfter?: readonly ModuleId[];
   filePurposes?: readonly FilePurpose[];
   /** OpenAPI paths for this module's routes, relative to `/api/<id>` (e.g. `/rides/{id}`). */
   openapi?: ZodOpenApiPathsObject;
@@ -82,7 +96,9 @@ const Definition = z
     ),
     dashboardSummary: fn.optional(),
     weekItems: fn.optional(),
+    publicApi: z.record(z.string(), fn).optional(),
     seed: fn.optional(),
+    seedAfter: z.array(ModuleId).optional(),
     filePurposes: z
       .array(
         z
@@ -118,6 +134,20 @@ export function validateModules(found: { folder: string; value: unknown }[]): Mo
     if (other)
       problems.push(`${folder}: id "${id}" (base path /api/${id}) is already used by ${other}`);
     seen.set(id, folder);
+    const specs = (publicApiRegistry as Record<string, Record<string, unknown> | undefined>)[id];
+    const offered = Object.keys(parsed.data.publicApi ?? {}).sort();
+    if (offered.length > 0 && !specs)
+      problems.push(`${folder}: publicApi needs an entry in publicApiRegistry (contracts)`);
+    else if (
+      offered.length > 0 &&
+      offered.join() !==
+        Object.keys(specs ?? {})
+          .sort()
+          .join()
+    )
+      problems.push(
+        `${folder}: publicApi must implement exactly ${Object.keys(specs ?? {}).join(', ')}`,
+      );
     for (const p of parsed.data.filePurposes ?? []) {
       if (!p.id.startsWith(`${id}.`))
         problems.push(`${folder}: file purpose ${p.id} must start with "${id}."`);
@@ -176,7 +206,34 @@ export async function loadModules({
   }
   if (problems.length > 0)
     throw new Error(`Invalid module definitions:\n${problems.map((p) => `  - ${p}`).join('\n')}`);
-  return validateModules(found);
+  const modules = validateModules(found);
+  installModules(platform, modules);
+  return modules;
+}
+
+/**
+ * Runs every module's seed once, each after the modules in its `seedAfter` (then by id).
+ * Used by `npm run db:seed`, `npm run demo:reset` and tests.
+ */
+export async function seedModules(
+  modules: readonly ModuleDefinition[],
+  onSeeded: (id: ModuleId) => void = () => {},
+): Promise<void> {
+  const byId = new Map(modules.map((m) => [m.id, m]));
+  const done = new Set<string>();
+  const visit = async (m: ModuleDefinition, path: readonly string[]): Promise<void> => {
+    if (done.has(m.id)) return;
+    if (path.includes(m.id)) throw new Error(`seedAfter cycle: ${[...path, m.id].join(' → ')}`);
+    for (const dep of m.seedAfter ?? []) {
+      const before = byId.get(dep);
+      if (before) await visit(before, [...path, m.id]);
+    }
+    done.add(m.id);
+    if (!m.seed) return;
+    await m.seed();
+    onSeeded(m.id);
+  };
+  for (const m of [...modules].sort((a, b) => a.id.localeCompare(b.id))) await visit(m, []);
 }
 
 /** The modules a role may use, in navigation order. */

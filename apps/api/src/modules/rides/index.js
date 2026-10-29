@@ -9,6 +9,7 @@ const admin = require('./services/admin');
 const history = require('./services/history');
 const offers = require('./services/offers');
 const stats = require('./services/stats');
+const publicApi = require('./services/public');
 const routes = require('./routes');
 const seed = require('./seed');
 
@@ -58,6 +59,42 @@ function openapi(table, ErrorBody) {
   return paths;
 }
 
+// The dashboard's week strip: the user's own rides from publicApi.upcomingForUser.
+const tripTitle = (r) =>
+  r.to.area === 'campus' && r.from.area !== 'campus'
+    ? 'Ride to SPIT'
+    : r.from.area === 'campus' && r.to.area !== 'campus'
+      ? 'Return ride'
+      : `Ride to ${r.to.name}`;
+const STATUS = {
+  confirmed: { label: 'confirmed', tone: 'ok' },
+  requested: { label: 'requested', tone: 'warn' },
+  searching: { label: 'searching', tone: 'warn' },
+  forming: { label: 'forming', tone: 'warn' },
+};
+function weekItem(r) {
+  if (r.kind === 'offer')
+    return {
+      at: r.at.toISOString(),
+      title: `Driving from ${r.from.name}`,
+      status: { label: `${r.seats.taken} of ${r.seats.total} seats`, tone: 'ok' },
+      confirmed: true,
+      href: `/rides/offers/${r.id}`,
+    };
+  return {
+    at: r.at.toISOString(),
+    title: tripTitle(r),
+    status: STATUS[r.status],
+    confirmed: r.status === 'confirmed',
+    href:
+      r.kind === 'booking'
+        ? `/rides/offers/${r.offerId}`
+        : r.kind === 'group'
+          ? `/rides/groups/${r.id}`
+          : `/rides/matches?requestId=${r.id}`,
+  };
+}
+
 // Which of `ids` a rides table still references in any of `fields` (one query).
 async function referenced(model, ids, fields) {
   const rows = await model.findMany({
@@ -81,6 +118,7 @@ module.exports = (platform) => {
     stats: stats(c, s),
   });
   const { router, table } = routes(platform, s);
+  const api = publicApi(c);
 
   return {
     id: 'rides',
@@ -92,6 +130,9 @@ module.exports = (platform) => {
       user.role === 'driver'
         ? s.drivers.dashboardSummary(user.id)
         : s.history.riderSummary(user.id),
+    weekItems: async (user, range) =>
+      (await api.upcomingForUser({ actor: user, ...range })).slice(0, 50).map(weekItem),
+    publicApi: api,
     seed: () => seed(platform, c, s),
     filePurposes: [
       {

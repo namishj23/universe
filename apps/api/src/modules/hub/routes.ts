@@ -12,6 +12,7 @@ import type { Platform } from '../../platform/modules/index.js';
 import { config } from './config.js';
 import type { dashboardService } from './dashboard.js';
 import { idempotencyStore, validIdempotencyKey } from './idempotency.js';
+import type { Integration } from './integration.js';
 import type { MentorService } from './mentors.js';
 import type { PrepService } from './prep.js';
 import type { profileService } from './profiles.js';
@@ -25,6 +26,7 @@ export interface Services {
   requests: ReturnType<typeof requestService>;
   resources: ReturnType<typeof resourceService>;
   dashboard: ReturnType<typeof dashboardService>;
+  links: Integration;
 }
 
 type Who = 'any' | 'student' | 'mentor' | 'party' | 'admin';
@@ -58,6 +60,7 @@ const ERROR_TEXT: Record<number, string> = {
   403: 'Wrong role (drivers and invigilators never reach the hub), CSRF, or not a mentor',
   404: 'Not found (also for records you are not a party to)',
   409: 'Conflict (state changed, slot taken, capacity, duplicate)',
+  422: 'The location stop is not on the campus ride map (STOP_NOT_FOUND)',
   429: 'Too many requests',
 };
 
@@ -119,7 +122,14 @@ export function routes(p: Platform, s: Services) {
       summary:
         'Prep dashboard: tracked topics by track, catalogue, DSA totals, readiness, weekly goal and pace, 30-day series',
       response: hub.PrepView,
-      handler: async (req) => (noQuery(req), s.prep.get(user(req).id)),
+      handler: async (req) => {
+        noQuery(req);
+        const [view, shared] = await Promise.all([
+          s.prep.get(user(req).id),
+          s.links.focus(user(req)),
+        ]);
+        return { ...view, ...shared };
+      },
     },
     {
       method: 'put',
@@ -205,7 +215,7 @@ export function routes(p: Platform, s: Services) {
       body: hub.CreateSlotRequest,
       response: hub.MySlot,
       status: 201,
-      errors: [409],
+      errors: [409, 422],
       handler: (req) => s.requests.createSlot(user(req), req.body),
     },
     {

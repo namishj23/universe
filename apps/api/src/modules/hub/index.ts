@@ -4,6 +4,7 @@
 import type { Role } from '@universe/contracts';
 import type { ModuleFactory } from '../../platform/modules/index.js';
 import { dashboardService } from './dashboard.js';
+import { integration } from './integration.js';
 import { mentorService } from './mentors.js';
 import { prepService } from './prep.js';
 import { profileService } from './profiles.js';
@@ -17,13 +18,15 @@ const ROLES: readonly Role[] = ['student', 'mentor', 'admin'];
 const hub: ModuleFactory = (platform) => {
   const prep = prepService(platform);
   const mentors = mentorService(platform, prep);
+  const links = integration(platform, prep);
   const services = {
     prep,
     mentors,
     profiles: profileService(platform, prep),
-    requests: requestService(platform, prep),
+    requests: requestService(platform, prep, links),
     resources: resourceService(platform),
-    dashboard: dashboardService(platform, prep, mentors),
+    dashboard: dashboardService(platform, prep, mentors, links),
+    links,
   };
   const { router, openapi } = routes(platform, services);
   const resourceRefs = (fileIds: readonly string[], liveOnly: boolean) =>
@@ -39,7 +42,11 @@ const hub: ModuleFactory = (platform) => {
     roles: ROLES,
     router,
     dashboardSummary: (user) => services.dashboard(user),
+    weekItems: (user, range) => links.weekItems(user, range),
+    publicApi: links.publicApi,
     seed: () => seedHub(platform),
+    // Slots name rides stops: the stops must exist first.
+    seedAfter: ['rides'],
     filePurposes: [
       {
         id: 'hub.resource',

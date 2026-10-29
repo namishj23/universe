@@ -12,6 +12,8 @@ export const HubStudentSummary = z
     newResources: z.object({ count: Count, topSubject: z.string().nullable() }),
     goal: z.object({ done: Count, target: z.number().int().min(1).max(200) }),
     status: z.enum(['on_track', 'behind']),
+    /** Only when the student shares focus study minutes from Wellbeing (absent otherwise). */
+    focusStudyMinutesThisWeek: Count.optional(),
   })
   .strict();
 

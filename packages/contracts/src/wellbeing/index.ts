@@ -136,3 +136,6 @@ export type ExportDocument = z.infer<typeof ExportDocument>;
 
 /** Typed confirmation, so delete-everything can't fire by accident. */
 export const DeleteDataRequest = z.object({ confirm: z.literal('DELETE') }).strict();
+
+/** Read-only functions for other modules (`platform.modules.get('wellbeing')`). */
+export * as pub from './public.js';

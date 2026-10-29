@@ -62,11 +62,20 @@ export const CreateRideRequest = z
     dropNodeId: StopId.optional(),
     pickupText: z.string().trim().min(1).max(120).optional(),
     dropText: z.string().trim().min(1).max(120).optional(),
-    pickupTime: When,
+    pickupTime: When.optional(),
+    /**
+     * Instead of `pickupTime`: when you must arrive at the drop. The pickup time is this minus
+     * the shortest-path driving time between the two stops (the mentor-session ride link).
+     */
+    arriveBy: When.optional(),
   })
   .strict()
   .refine((b) => (b.pickupNodeId ?? b.pickupText) && (b.dropNodeId ?? b.dropText), {
     message: 'Pickup and drop are required',
+  })
+  .refine((b) => (b.pickupTime === undefined) !== (b.arriveBy === undefined), {
+    message: 'Give either pickupTime or arriveBy',
+    path: ['pickupTime'],
   });
 
 export const MatchesQuery = z
@@ -655,3 +664,6 @@ export const pages = {
 };
 
 export * from './offers.js';
+
+/** Read-only functions for other modules (`platform.modules.get('rides')`). */
+export * as pub from './public.js';

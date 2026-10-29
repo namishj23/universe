@@ -3,6 +3,7 @@ import { istDate, istDateStart, weekOf, type HubDashboardSummary } from '@univer
 import type { z } from 'zod';
 import type { Platform } from '../../platform/modules/index.js';
 import { config } from './config.js';
+import type { Integration } from './integration.js';
 import type { MentorService } from './mentors.js';
 import type { PrepService } from './prep.js';
 import type { User } from './shared.js';
@@ -15,13 +16,19 @@ export function termStart(now: Date): Date {
   return istDateStart(`${year}-${month <= 6 ? '01' : '07'}-01`);
 }
 
-export function dashboardService(p: Platform, prep: PrepService, mentors: MentorService) {
+export function dashboardService(
+  p: Platform,
+  prep: PrepService,
+  mentors: MentorService,
+  links: Integration,
+) {
   const db = p.prisma;
 
   async function student(user: User): Promise<Summary> {
     const since = new Date(Date.now() - config.newResourceDays * 86_400_000);
-    const [view, subjects] = await Promise.all([
+    const [view, shared, subjects] = await Promise.all([
       prep.get(user.id),
+      links.focus(user),
       db.$queryRaw<{ subject: string; n: number }[]>`
         SELECT subject, count(*)::int AS n FROM hub_resources
         WHERE deleted_at IS NULL AND created_at >= ${since}
@@ -36,6 +43,7 @@ export function dashboardService(p: Platform, prep: PrepService, mentors: Mentor
       },
       goal: { done: view.week.done, target: view.week.target },
       status: view.week.status,
+      ...shared,
     };
   }
 
