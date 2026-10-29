@@ -8,7 +8,8 @@
     "build": "tsc -p tsconfig.build.json",
     "start": "NODE_ENV=${NODE_ENV:-production} node --env-file-if-exists=.env dist/server.js",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "api:docs": "tsx --conditions=@universe/source --env-file-if-exists=.env scripts/write-openapi.ts"
   },
   "dependencies": {
     "@prisma/adapter-pg": "7.10.1",

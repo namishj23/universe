@@ -5,3 +5,4 @@ apps/api/src/generated
 prisma/schema/migrations
 package-lock.json
 *.md
+docs/api/openapi.json
