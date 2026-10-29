@@ -428,6 +428,12 @@ From the independent P1–P2 verification in P3a (the one high finding, the logi
 
 ## Session log (newest first)
 
+- 2026-10-30 03:05–04:00 — P6 Integration: one platform, demo data, test scenarios (Person 1, Opus 5.5 / high, unattended).
+  - Merged `main` (no change) and U1 (shell, week endpoint, visual harness) after green gates.
+  - `platform.modules.get(id)` cross-module `publicApi` (rides stops and own rides, hub sessions and goal, wellbeing opt-in study minutes), week providers for hub, rides and wellbeing, ride link to mentor sessions with `arriveBy`, matches listing your own bookings, `platform.user_created`.
+  - Route-guard metadata → `docs/ROLES.md` (`npm run docs:roles`) with a guard test; one consistent demo story seed and `npm run demo:reset`; storyline test with live SSE; `docs/TEST-SCENARIOS.md`, `docs/COVERAGE.md`.
+  - 328 API (+1 todo) + 86 library + 52 web tests; visual 214/214; storyline 3/3.
+  - Branch `p1/p6-integration`, PR stacked on P5. Full report: `docs/sessions/P6.md`. Next: P7.
 - 2026-10-30 02:33–03:10 — P5 Module D: wellbeing core library and backend (Person 1, Opus 5.5 / high, unattended).
   - `packages/wellbeing-core`: sanitiser, rules, focus sessions, metrics, daily totals; three hand-checked sample days; 86 tests incl. fast-check properties.
   - 3 `wb_` tables (1 migration), contracts, 10 owner-only routes, hourly retention + weekly summary job via the new `platform.schedule`, wellbeing-safe request logging, dashboard summary, seed matching the design.
