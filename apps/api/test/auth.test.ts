@@ -103,6 +103,27 @@ describe('POST /api/auth/login', () => {
     expect(user.lastLoginAt).not.toBeNull();
   });
 
+  it('checks at most five passwords when wrong ones arrive all at once', async () => {
+    // One app per request, each with its own in-memory IP limiter, so only the lockout can stop the burst.
+    const email = 'invigilator@universe.test';
+    const statuses = await Promise.all(
+      Array.from({ length: 20 }, () =>
+        request(createApp())
+          .post('/api/auth/login')
+          .send({ email, password: 'wrong-password' })
+          .then((r) => r.status),
+      ),
+    );
+    expect(statuses.filter((s) => s === 401).length).toBeLessThanOrEqual(5);
+    expect(statuses.filter((s) => s !== 401 && s !== 429)).toEqual([]);
+    // Locked now: even the right password is refused.
+    await request(createApp())
+      .post('/api/auth/login')
+      .send({ email, password: PASSWORD })
+      .expect(429);
+    await prisma.loginThrottle.deleteMany({ where: { keyHash: emailHmac(email) } });
+  });
+
   it('rate-limits to 10 requests per minute per IP', async () => {
     const app = createApp();
     // A different email each time, so the per-email lockout (5 failures) never applies.
