@@ -8,7 +8,7 @@ Master plan (scope, architecture, rubric): the "UniVerse — Implementation Plan
 
 | Area | Owner | Phase now | Status |
 | --- | --- | --- | --- |
-| Platform | Person 1 | P1 Platform core | Not started |
+| Platform | Person 1 | P1 Platform core | Done — PR open to `main` (needs Person 2 review) |
 | A · Student Hub | Person 1 | — | Not started |
 | B · Ride-Pooling | Person 1 | — | Existing code, not moved in |
 | D · Digital Wellbeing | Person 1 | — | Not started |
@@ -19,7 +19,7 @@ Master plan (scope, architecture, rubric): the "UniVerse — Implementation Plan
 
 | Phase | Hours | What | Model / effort | Status |
 | --- | --- | --- | --- | --- |
-| P1 | 1–2.5 | Platform core: monorepo, PostgreSQL + PostGIS, contracts, auth and sessions, roles, activity feed with live stream, minimal login page | Opus 5.5 / high | Not started |
+| P1 | 1–2.5 | Platform core: monorepo, PostgreSQL + PostGIS, contracts, auth and sessions, roles, activity feed with live stream, minimal login page | Opus 5.5 / high | Done (report: `docs/sessions/P1.md`) |
 | P2 | 2.5–3.5 | App shell: layout, navigation by role, unified dashboard, notification bell, design system | Sonnet 5.5 / high | Not started |
 | P3 | 3.5–4.5 | Move Module B in: Prisma schema onto shared database and users, mount routers, replace emailed-code login with platform session, remove mock DB, activity events | Opus 5.5 / high | Not started |
 | P4 | 4.5–6.5 | Module A: profiles, placement prep tracker, mentor ranking, mentorship requests, resource repository | Opus 5.5 / high | Not started |
@@ -33,6 +33,25 @@ Checkpoints with Person 2: merge to `main` at Hour 5 and Hour 7. Feature freeze 
 
 ## Decisions (newest first)
 
+- 2026-10-29 (P1) — **API is ESM** (`"type": "module"`, TS `module`/`moduleResolution: nodenext`, `verbatimModuleSyntax`). Prisma 7 ships ESM-only and its `prisma-client` generator recommends ESM. **How Module B mounts unchanged in P3:** copy its `.js` files to `apps/api/src/modules/rides/` with a nested `package.json` containing `{"type":"commonjs"}`; the ESM app default-imports the router (`import ridesRouter from './modules/rides/routes/index.js'` binds to `module.exports`); its CJS code can `require()` ESM platform modules (Node ≥22.12 `require(esm)`). Verified in P1 with a throwaway probe (ESM app → CJS router → `require()` of an ESM middleware): 200, no warnings on Node 24. Rule: **no top-level `await` anywhere in `apps/api/src`** (it breaks `require(esm)`). P3 must also copy that folder into `dist/` in `apps/api`'s build script (tsc does not emit `.js` sources; `allowJs` is off).
+- 2026-10-29 (P1) — Node engines `>=22.12 <23 || >=24 <25`; `.nvmrc` = 24. TypeScript pinned `~6.0.3` (typescript-eslint 8 supports `<6.1`; TS 7 is out but unsupported by the linter). Prisma pinned `7.10.1` (npm's `latest` tag points at an 8.0 RC).
+- 2026-10-29 (P1) — TS flags: `strict`, `noUncheckedIndexedAccess`, **`exactOptionalPropertyTypes` on** (did not fight Prisma 7 or Zod 4), `noImplicitOverride`, `noFallthroughCasesInSwitch` (`tsconfig.base.json`).
+- 2026-10-29 (P1) — `@universe/contracts` is consumed from source everywhere except `npm start`: export condition `@universe/source` → `src/index.ts` (tsconfig `customConditions`, `tsx --conditions`), Vite/Vitest alias to the same file; `default` → `dist/` (built first by `npm run build`).
+- 2026-10-29 (P1) — Zod 4 (`^4.6`). Module B uses Zod 3: in P3, if any of its schemas break, change its imports to `require('zod/v3')` (shipped inside Zod 4) rather than rewriting.
+- 2026-10-29 (P1) — No dotenv: the API uses `node --env-file-if-exists=.env`; `prisma.config.ts` and Vitest use `process.loadEnvFile()`. `ENV_FILE=apps/api/.env.test` points Prisma commands at the test database.
+- 2026-10-29 (P1) — **PostGIS lives in schema `extensions`**, not `public`, with `ALTER DATABASE … SET search_path = "$user", public, extensions` on both databases. Reasons: Prisma 7 `migrate reset` drops `public` (which would remove PostGIS from `universe_test`, and only a superuser can re-create it), and PostGIS's `spatial_ref_sys` table in `public` shows up as schema drift. Unqualified `geography(...)`/`ST_*` still resolve through the search path, so Module B's `$queryRaw` works unchanged. P3: a migration that uses `geography` needs the extension in Prisma's shadow database too; plan to set `shadowDatabaseUrl` to a pre-made `universe_shadow` with the same `extensions` schema.
+- 2026-10-29 (P1) — Argon2id via `argon2` 0.45 with the OWASP Password Storage Cheat Sheet minimum: m=19456 KiB (19 MiB), t=2, p=1 (`apps/api/src/platform/auth/password.ts`).
+- 2026-10-29 (P1) — **Transaction-safe emit** (`apps/api/src/platform/activity/service.ts`): `transaction(async (tx, emit) => { …module writes with tx…; await emit({...}) })` wraps `prisma.$transaction`; `emit` validates against the contracts registry and inserts with `createManyAndReturn` (1,000 rows per INSERT) using `tx`, and queues the rows; they are pushed to SSE streams only after `$transaction` resolves, and discarded if it throws. `emit(input)` alone is shorthand for a one-event transaction. `recordActivity(db, input)` inserts without pushing (seed only). A failed push after commit is logged, never thrown (the data is already committed).
+- 2026-10-29 (P1) — Timestamps are `timestamptz(3)` (millisecond precision) so JS `Date` cursors round-trip exactly; microsecond columns would break `(created_at, id)` keyset paging. Feed cursor = base64url of `ISO|uuid`. The keyset `WHERE` adds a redundant `created_at <= cursor` so PostgreSQL seeks the feed index instead of filtering from the newest row.
+- 2026-10-29 (P1) — Partial index `activity_events_unread_idx (recipient_id) WHERE read_at IS NULL` is declared in the schema with Prisma's `partialIndexes` preview feature (no hand-written SQL, so no drift).
+- 2026-10-29 (P1) — Login is exempt from the CSRF **token** check (there is no session to bind a token to yet, and a stale cookie has no token in memory). It still requires `Content-Type: application/json` (415 otherwise), passes the Origin allow-list check, and the cookie is SameSite=Lax.
+- 2026-10-29 (P1) — CSRF token = `HMAC-SHA256(CSRF_SECRET, session.id)`, base64url, returned in the body of `/api/auth/login` and `/api/auth/me`, kept only in memory on the web.
+- 2026-10-29 (P1) — Single-instance limits, marked with `ponytail:` comments: the login rate limiter uses express-rate-limit's in-memory store, and the SSE broker is an in-process map. Running more than one API instance needs a shared rate-limit store (Redis) and PostgreSQL `LISTEN/NOTIFY` or Redis pub/sub for the broker.
+- 2026-10-29 (P1) — Tests: `apps/api/test/global-setup.ts` runs `prisma migrate deploy` on `universe_test` (refuses any database not named `*_test`); `test/setup.ts` truncates every table except `_prisma_migrations` before each file; files run one at a time. Not `migrate reset`: Prisma 7 blocks `migrate reset` from AI agents without the user's typed consent, and truncation gives the same clean state faster. `npm run db:test:reset` still exists for humans.
+- 2026-10-29 (P1) — `WEB_ORIGINS` includes `http://127.0.0.1:4000` so a judge can run two signed-in users in one Chrome (`localhost` and `127.0.0.1` keep separate cookies).
+- 2026-10-29 (P1) — Prettier formats code only (`*.md` ignored), so hand-written docs are never rewritten.
+- 2026-10-29 (P1) — Helmet's CSP `upgrade-insecure-requests` is only on when `COOKIE_SECURE=true`; otherwise it would break the plain-http `npm start` demo.
+- 2026-10-29 (P1) — The temporary web screens live in `apps/web/src/platform/` (`api.ts`, `auth.tsx`, `LoginPage.tsx`, `FeedPage.tsx`) and `apps/web/src/App.tsx`. P2 moves the layout into `apps/web/src/shell/` and can keep `api.ts` and `auth.tsx`.
 - 2026-10-29 — Repo lives at `~/Desktop/mini project hackathon` with a new private GitHub repo. Paths contain spaces: always quote them in scripts.
 - 2026-10-29 — No Docker. PostgreSQL + PostGIS installed with Homebrew on each laptop. README gives the Homebrew setup steps for judges.
 - 2026-10-29 — One real PostgreSQL database for every module. Module B's in-memory mock DB (`USE_MOCK_DB`) is removed in P3.
@@ -55,13 +74,14 @@ Source: `~/Documents/Mini project (React)/routepool2-react-/` (not a git repo).
 
 ## Requests for the other owner
 
-(none yet)
+- 2026-10-29 (P1, for Person 2): please review and approve the P1 pull request: it creates every shared area (`packages/contracts/`, `apps/api/src/platform/`, root `package.json`, `prisma/schema/base.prisma`, `prisma/schema/platform.prisma`, `prisma/seed/index.ts`). To send activity events from C or E: add `packages/contracts/src/activity/observatory.ts` / `exam.ts` (types named `observatory.*` / `exam.*`), spread them into `activityRegistry` in `packages/contracts/src/activity/index.ts` (shared, so via PR), then call `transaction()` or `emit()` from `apps/api/src/platform/activity/service.ts`.
 
 ## Open questions
 
-- GitHub usernames of both people (for CODEOWNERS).
-- Which laptop runs the demo, and does it have PostgreSQL + PostGIS installed?
+- GitHub usernames of both people (for CODEOWNERS): `.github/CODEOWNERS` has placeholders `@PERSON1_GITHUB` and `@PERSON2_GITHUB`. The repo is `github.com/namishj23/universe` (private), so Person 1 is probably `namishj23`: confirm.
+- Which laptop runs the demo? Person 1's Mac already has PostgreSQL 18.6 + PostGIS 3.6.4 (Homebrew) with `universe` and `universe_test` set up.
+- `npm run db:test:reset` has not been run in P1 (Prisma 7 blocks `migrate reset` from AI agents unless the user consents). Run it once by hand to confirm it works.
 
 ## Session log (newest first)
 
-(no sessions yet)
+- 2026-10-29 20:30–21:10 — P1 Platform core (Person 1, Opus 5.5 / high). Monorepo, DB setup, contracts, auth/sessions/CSRF/roles, transaction-safe activity feed with SSE, seed, minimal web, 33 tests, README setup. Branch `p1/p1-platform-core`, PR to `main`. Full report: `docs/sessions/P1.md`. Next: P2 app shell.
