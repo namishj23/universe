@@ -453,3 +453,20 @@ describe('Wellbeing → Student Hub (opt-in)', () => {
 it('every route still needs sign-in', async () => {
   await request(createApp({ modules })).get('/api/dashboard/week').expect(401);
 });
+
+describe('common notifications', () => {
+  it('tells every admin when an admin creates an account (the design’s admin inbox)', async () => {
+    const admin = await signIn('admin@universe.test');
+    await admin.http
+      .post('/api/admin/users')
+      .send({ name: 'Nikhil Rao', email: `nikhil.${Date.now()}@universe.test`, role: 'student' })
+      .expect(201);
+    const feed = (await admin.http.get('/api/activity?limit=5').expect(200)).body as {
+      items: { type: string; payload: { message?: string } }[];
+    };
+    expect(feed.items[0]).toMatchObject({
+      type: 'platform.user_created',
+      payload: { message: 'New account: Nikhil Rao (student).' },
+    });
+  });
+});

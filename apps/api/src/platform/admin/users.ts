@@ -12,6 +12,7 @@ import {
 } from '@universe/contracts';
 import type { User } from '../../generated/prisma/client.js';
 import { closeUserStreams } from '../activity/broker.js';
+import { transaction } from '../activity/service.js';
 import { audit } from '../audit/index.js';
 import { authOf, requireAuth, requireRole } from '../auth/guards.js';
 import { hashPassword } from '../auth/password.js';
@@ -80,9 +81,24 @@ adminUserRoutes.post(
     const temporaryPassword = newTemporaryPassword();
     const passwordHash = await hashPassword(temporaryPassword);
     // A duplicate email fails on the unique index (P2002 → 409 CONFLICT).
-    const user = await prisma.$transaction(async (tx) => {
+    const user = await transaction(async (tx, emit) => {
       const created = await tx.user.create({
         data: { ...input, passwordHash, mustChangePassword: true },
+      });
+      const admins = await tx.user.findMany({
+        where: { role: 'admin', isActive: true },
+        select: { id: true },
+      });
+      await emit({
+        recipients: admins.map((a) => a.id),
+        actorId: admin.id,
+        module: 'platform',
+        type: 'platform.user_created',
+        payload: {
+          message: `New account: ${created.name} (${created.role}).`,
+          userName: created.name,
+          role: created.role,
+        },
       });
       await audit.record(tx, {
         actorId: admin.id,
