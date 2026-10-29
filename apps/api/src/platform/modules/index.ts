@@ -14,7 +14,7 @@ import {
 import { anyRole, authOf, requireAuth, requireRole } from '../auth/guards.js';
 import { installModules, platform as sharedPlatform, type Platform } from './platform.js';
 
-export type { Platform } from './platform.js';
+export type { Platform, PublicApiImpl } from './platform.js';
 
 /** A stored file as a purpose's `authorizeRead` sees it. */
 export interface StoredFile {

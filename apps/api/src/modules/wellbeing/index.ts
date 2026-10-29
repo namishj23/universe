@@ -1,8 +1,8 @@
 // Module D · Privacy-Aware Digital Wellbeing (Person 1). Personal data: only the owner sees it
 // (students and mentors; admins never). Raw browsing data stays in the browser
 // (`@universe/wellbeing-core`); the server keeps daily category totals and settings only.
-import { weekOf, type PublicApiImpl, type WeekProviderItem } from '@universe/contracts';
-import type { ModuleFactory } from '../../platform/modules/index.js';
+import { weekOf, type WeekProviderItem } from '@universe/contracts';
+import type { ModuleFactory, PublicApiImpl } from '../../platform/modules/index.js';
 import { JOB_EVERY_MS, JOB_NAME, runOnce } from './jobs.js';
 import { routes } from './routes.js';
 import { seedWellbeing } from './seed.js';

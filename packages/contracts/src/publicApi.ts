@@ -8,7 +8,7 @@ import * as wellbeing from './wellbeing/public.js';
 // `publicApi` must implement exactly its entry here; the platform validates every call's input
 // and output against these schemas (`platform.modules.get(id)`).
 
-interface Spec {
+export interface PublicApiSpec {
   input: z.ZodType;
   output: z.ZodType;
 }
@@ -29,24 +29,15 @@ export const publicApiRegistry = {
       output: wellbeing.StudyMinutesOutput,
     },
   },
-} as const satisfies Partial<Record<ModuleId, Record<string, Spec>>>;
+} as const satisfies Partial<Record<ModuleId, Record<string, PublicApiSpec>>>;
 
 export type PublicApiId = keyof typeof publicApiRegistry;
-type Specs<M extends PublicApiId> = (typeof publicApiRegistry)[M];
+export type PublicApiSpecs<M extends PublicApiId> = (typeof publicApiRegistry)[M];
+type Specs<M extends PublicApiId> = PublicApiSpecs<M>;
 
 /** What a caller gets from `platform.modules.get(id)`. */
 export type PublicApi<M extends PublicApiId> = {
-  readonly [F in keyof Specs<M>]: Specs<M>[F] extends Spec
+  readonly [F in keyof Specs<M>]: Specs<M>[F] extends PublicApiSpec
     ? (input: z.input<Specs<M>[F]['input']>) => Promise<z.output<Specs<M>[F]['output']>>
-    : never;
-};
-
-/** What a module implements: parsed input in, its answer out (parsed again by the platform). */
-export type PublicApiImpl<M extends PublicApiId> = {
-  readonly [F in keyof Specs<M>]: Specs<M>[F] extends Spec
-    ? (
-        input: z.output<Specs<M>[F]['input']>,
-        signal: AbortSignal,
-      ) => Promise<z.input<Specs<M>[F]['output']>>
     : never;
 };

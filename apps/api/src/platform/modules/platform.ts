@@ -1,7 +1,13 @@
 import type { Logger } from 'pino';
-import type { ZodType } from 'zod';
+import type { input as ZodInput, output as ZodOutput, ZodType } from 'zod';
 import * as contracts from '@universe/contracts';
-import { publicApiRegistry, type PublicApi, type PublicApiId } from '@universe/contracts';
+import {
+  publicApiRegistry,
+  type PublicApi,
+  type PublicApiId,
+  type PublicApiSpec,
+  type PublicApiSpecs,
+} from '@universe/contracts';
 import { env } from '../../config/env.js';
 import { pushEvent } from '../activity/broker.js';
 import { emit, transaction } from '../activity/service.js';
@@ -62,6 +68,16 @@ export interface Platform {
    */
   readonly modules: { get<M extends PublicApiId>(id: M): PublicApi<M> | undefined };
 }
+
+/** What a module implements: parsed input in, its answer out (parsed again by the platform). */
+export type PublicApiImpl<M extends PublicApiId> = {
+  readonly [F in keyof PublicApiSpecs<M>]: PublicApiSpecs<M>[F] extends PublicApiSpec
+    ? (
+        input: ZodOutput<PublicApiSpecs<M>[F]['input']>,
+        signal: AbortSignal,
+      ) => Promise<ZodInput<PublicApiSpecs<M>[F]['output']>>
+    : never;
+};
 
 type Impl = (input: unknown, signal: AbortSignal) => Promise<unknown>;
 const installers = new WeakMap<Platform, (modules: readonly ModuleDefinition[]) => void>();

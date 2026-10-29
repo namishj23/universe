@@ -357,6 +357,7 @@ Then run `npm run api:docs` and commit `docs/api/openapi.json`. `npm test` fails
 
 **8. Cross-module calls.** Never import another module. To offer read-only data, add `packages/contracts/src/<id>/public.ts` (Zod input with `actor: Actor` and output per function) and one entry in `publicApiRegistry` (`packages/contracts/src/publicApi.ts`), then implement it in your definition:
 ```ts
+import type { PublicApiImpl } from '../../platform/modules/index.js';
 const publicApi: PublicApiImpl<'exam'> = {
   openFlagCount: async ({ actor }, signal) => (actor.role === 'admin' ? count() : null),
 };

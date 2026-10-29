@@ -1,14 +1,8 @@
 // Everything the hub shares with, or asks of, other modules, all through the platform:
 // its publicApi (sessions, weekly goal), the dashboard's week items, the ride link to a mentor
 // session (rides), the stop check for slots (rides) and the opt-in focus minutes (wellbeing).
-import {
-  istDate,
-  weekOf,
-  type PublicApiImpl,
-  type PublicUser,
-  type WeekProviderItem,
-} from '@universe/contracts';
-import type { Platform } from '../../platform/modules/index.js';
+import { istDate, weekOf, type PublicUser, type WeekProviderItem } from '@universe/contracts';
+import type { Platform, PublicApiImpl } from '../../platform/modules/index.js';
 import type { PrepService } from './prep.js';
 import { errors, isMentor, type Db, type User } from './shared.js';
 
