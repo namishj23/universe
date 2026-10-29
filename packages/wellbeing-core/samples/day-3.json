@@ -1,0 +1,112 @@
+{
+  "name": "Day 3 · late night across midnight",
+  "description": "Thursday 29 Oct 2026 23:30 to Friday 00:40 IST with a pause at 00:05-00:10. Exercises the midnight split, the largest-remainder rounding, a site with no rule (Other, not counted by default), about:, credentials with a port, a timestamp more than 24 hours ahead, and activity during a pause that runs past the resume.",
+  "timeZone": "Asia/Kolkata",
+  "now": "2026-10-30T00:40:00+05:30",
+  "idleCapSeconds": 300,
+  "session": {
+    "startedAt": "2026-10-29T23:30:00+05:30",
+    "endedAt": "2026-10-30T00:40:00+05:30",
+    "pauses": [{ "from": "2026-10-30T00:05:00+05:30", "to": "2026-10-30T00:10:00+05:30" }]
+  },
+  "rules": [
+    { "pattern": "*.github.com", "category": "study", "distracting": false },
+    { "pattern": "*.discord.com", "category": "communication", "distracting": false },
+    { "pattern": "*.youtube.com", "category": "entertainment", "distracting": true }
+  ],
+  "events": [
+    {
+      "at": "2026-10-29T23:30:00+05:30",
+      "kind": "visit",
+      "url": "https://github.com/universe/app/pull/12/files?w=1"
+    },
+    {
+      "at": "2026-10-29T23:33:40+05:30",
+      "kind": "visit",
+      "url": "https://discord.com/channels/123/456"
+    },
+    {
+      "at": "2026-10-29T23:35:10+05:30",
+      "kind": "visit",
+      "url": "https://aarav:hunter2@github.com:443/universe/app"
+    },
+    { "at": "2026-10-29T23:45:00+05:30", "kind": "visit", "url": "about:blank" },
+    {
+      "at": "2026-10-29T23:58:30+05:30",
+      "kind": "visit",
+      "url": "https://m.youtube.com/watch?v=abc"
+    },
+    {
+      "at": "2026-10-30T00:02:15+05:30",
+      "kind": "visit",
+      "url": "https://github.com/universe/app/issues?q=is%3Aopen"
+    },
+    {
+      "at": "2026-10-30T00:06:00+05:30",
+      "kind": "visit",
+      "url": "https://www.youtube.com/watch?v=def"
+    },
+    { "at": "2026-10-30T00:12:00+05:30", "kind": "active" },
+    {
+      "at": "2026-10-30T00:12:30+05:30",
+      "kind": "visit",
+      "url": "https://discord.com/channels/123/789"
+    },
+    {
+      "at": "2026-10-30T00:14:50+05:30",
+      "kind": "visit",
+      "url": "https://open.spotify.com/track/1?si=x"
+    },
+    { "at": "2026-10-30T00:30:00+05:30", "kind": "idle" },
+    { "at": "2026-10-31T12:00:00+05:30", "kind": "visit", "url": "https://github.com/" },
+    { "at": "2026-10-30T00:41:00+05:30", "kind": "visit", "url": "https://github.com/" }
+  ],
+  "expected": {
+    "rejected": [
+      { "index": 3, "reason": "unsupported_scheme" },
+      { "index": 11, "reason": "future_timestamp" }
+    ],
+    "metrics": {
+      "sessionSeconds": 4200,
+      "pausedSeconds": 300,
+      "activeSeconds": 1530,
+      "idleSeconds": 2370,
+      "switches": 6,
+      "countedEvents": 9,
+      "distractingSeconds": 225,
+      "categorySeconds": {
+        "study": 685,
+        "communication": 230,
+        "social": 0,
+        "entertainment": 225,
+        "other": 300
+      },
+      "domains": [
+        { "domain": "github.com", "category": "study", "distracting": false, "seconds": 685 },
+        { "domain": "open.spotify.com", "category": "other", "distracting": false, "seconds": 300 },
+        {
+          "domain": "discord.com",
+          "category": "communication",
+          "distracting": false,
+          "seconds": 230
+        },
+        {
+          "domain": "m.youtube.com",
+          "category": "entertainment",
+          "distracting": true,
+          "seconds": 225
+        }
+      ]
+    },
+    "daily": [
+      { "date": "2026-10-29", "category": "study", "minutes": 9 },
+      { "date": "2026-10-29", "category": "communication", "minutes": 2 },
+      { "date": "2026-10-29", "category": "social", "minutes": 0 },
+      { "date": "2026-10-29", "category": "entertainment", "minutes": 1 },
+      { "date": "2026-10-30", "category": "study", "minutes": 3 },
+      { "date": "2026-10-30", "category": "communication", "minutes": 2 },
+      { "date": "2026-10-30", "category": "social", "minutes": 0 },
+      { "date": "2026-10-30", "category": "entertainment", "minutes": 2 }
+    ]
+  }
+}

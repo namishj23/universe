@@ -1,0 +1,119 @@
+{
+  "name": "Day 1 · morning study session",
+  "description": "Tuesday 27 Oct 2026, 09:00-10:30 IST with a 10-minute pause. Exercises credentials, ports, paths, queries and fragments in URLs, an extra field (title) that is dropped, a browser-internal URL and a bad timestamp, events before the start, during the pause and after the stop, an idle event, and a focus event after a pause that has no domain to resume.",
+  "timeZone": "Asia/Kolkata",
+  "now": "2026-10-27T10:30:00+05:30",
+  "idleCapSeconds": 300,
+  "session": {
+    "startedAt": "2026-10-27T09:00:00+05:30",
+    "endedAt": "2026-10-27T10:30:00+05:30",
+    "pauses": [{ "from": "2026-10-27T09:40:00+05:30", "to": "2026-10-27T09:50:00+05:30" }]
+  },
+  "rules": [
+    { "pattern": "*.geeksforgeeks.org", "category": "study", "distracting": false },
+    { "pattern": "docs.google.com", "category": "study", "distracting": false },
+    { "pattern": "web.whatsapp.com", "category": "communication", "distracting": false },
+    { "pattern": "*.instagram.com", "category": "social", "distracting": true },
+    { "pattern": "*.youtube.com", "category": "entertainment", "distracting": true }
+  ],
+  "events": [
+    {
+      "at": "2026-10-27T08:58:00+05:30",
+      "kind": "visit",
+      "url": "https://www.geeksforgeeks.org/dsa/binary-search/?ref=home"
+    },
+    {
+      "at": "2026-10-27T09:00:00+05:30",
+      "kind": "visit",
+      "url": "https://alice:secret@docs.google.com:443/document/d/abc/edit#heading=h.1",
+      "title": "Thesis draft (private)"
+    },
+    {
+      "at": "2026-10-27T09:12:00+05:30",
+      "kind": "visit",
+      "url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ&t=42s"
+    },
+    {
+      "at": "2026-10-27T09:15:00+05:30",
+      "kind": "visit",
+      "url": "https://docs.google.com/document/d/abc/edit"
+    },
+    { "at": "2026-10-27T09:30:00+05:30", "kind": "blur" },
+    { "at": "2026-10-27T09:33:00+05:30", "kind": "focus" },
+    { "at": "2026-10-27T09:38:00+05:30", "kind": "visit", "url": "https://web.whatsapp.com/" },
+    {
+      "at": "2026-10-27T09:45:00+05:30",
+      "kind": "visit",
+      "url": "https://www.instagram.com/explore/"
+    },
+    { "at": "2026-10-27T09:52:00+05:30", "kind": "focus" },
+    {
+      "at": "2026-10-27T09:53:00+05:30",
+      "kind": "visit",
+      "url": "https://www.geeksforgeeks.org/dsa/two-pointers/"
+    },
+    { "at": "2026-10-27T10:10:00+05:30", "kind": "idle" },
+    { "at": "2026-10-27T10:20:00+05:30", "kind": "active" },
+    { "at": "2026-10-27T10:24:00+05:30", "kind": "visit", "url": "chrome://settings/passwords" },
+    { "at": "yesterday morning", "kind": "visit", "url": "https://example.com/" },
+    {
+      "at": "2026-10-27T10:26:00+05:30",
+      "kind": "visit",
+      "url": "https://www.youtube.com/shorts/xyz"
+    },
+    {
+      "at": "2026-10-27T10:35:00+05:30",
+      "kind": "visit",
+      "url": "https://www.youtube.com/watch?v=abc"
+    }
+  ],
+  "expected": {
+    "rejected": [
+      { "index": 12, "reason": "unsupported_scheme" },
+      { "index": 13, "reason": "bad_timestamp" }
+    ],
+    "metrics": {
+      "sessionSeconds": 5400,
+      "pausedSeconds": 600,
+      "activeSeconds": 2280,
+      "idleSeconds": 2520,
+      "switches": 5,
+      "countedEvents": 11,
+      "distractingSeconds": 420,
+      "categorySeconds": {
+        "study": 1500,
+        "communication": 120,
+        "social": 0,
+        "entertainment": 420,
+        "other": 0
+      },
+      "domains": [
+        { "domain": "docs.google.com", "category": "study", "distracting": false, "seconds": 900 },
+        {
+          "domain": "geeksforgeeks.org",
+          "category": "study",
+          "distracting": false,
+          "seconds": 600
+        },
+        {
+          "domain": "youtube.com",
+          "category": "entertainment",
+          "distracting": true,
+          "seconds": 420
+        },
+        {
+          "domain": "web.whatsapp.com",
+          "category": "communication",
+          "distracting": false,
+          "seconds": 120
+        }
+      ]
+    },
+    "daily": [
+      { "date": "2026-10-27", "category": "study", "minutes": 25 },
+      { "date": "2026-10-27", "category": "communication", "minutes": 2 },
+      { "date": "2026-10-27", "category": "social", "minutes": 0 },
+      { "date": "2026-10-27", "category": "entertainment", "minutes": 7 }
+    ]
+  }
+}

@@ -15,6 +15,9 @@ export default defineConfig({
       '@universe/contracts': fileURLToPath(
         new URL('../../packages/contracts/src/index.ts', import.meta.url),
       ),
+      '@universe/wellbeing-core': fileURLToPath(
+        new URL('../../packages/wellbeing-core/src/index.ts', import.meta.url),
+      ),
     },
   },
   test: {

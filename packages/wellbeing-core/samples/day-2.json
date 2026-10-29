@@ -1,0 +1,110 @@
+{
+  "name": "Day 2 · evening practice with distractions",
+  "description": "Wednesday 28 Oct 2026, 19:00-20:00 IST, no pause. Exercises an internationalised domain (punycode), localhost and a private IP (both stored as 'local'), a bare domain field in capitals, file:, javascript:, a visit without a URL and an unknown kind, plus seconds-level gaps.",
+  "timeZone": "Asia/Kolkata",
+  "now": "2026-10-28T20:00:00+05:30",
+  "idleCapSeconds": 300,
+  "session": {
+    "startedAt": "2026-10-28T19:00:00+05:30",
+    "endedAt": "2026-10-28T20:00:00+05:30",
+    "pauses": []
+  },
+  "rules": [
+    { "pattern": "*.leetcode.com", "category": "study", "distracting": false },
+    { "pattern": "*.wikipedia.org", "category": "study", "distracting": false },
+    { "pattern": "local", "category": "study", "distracting": false },
+    { "pattern": "*.उदाहरण.भारत", "category": "study", "distracting": false },
+    { "pattern": "*.instagram.com", "category": "social", "distracting": true },
+    { "pattern": "*.reddit.com", "category": "social", "distracting": true },
+    { "pattern": "*.netflix.com", "category": "entertainment", "distracting": false }
+  ],
+  "events": [
+    {
+      "at": "2026-10-28T19:00:00+05:30",
+      "kind": "visit",
+      "url": "https://leetcode.com/problems/two-sum/?envType=study-plan"
+    },
+    {
+      "at": "2026-10-28T19:04:30+05:30",
+      "kind": "visit",
+      "url": "https://en.wikipedia.org/wiki/Hash_table#Collision_resolution"
+    },
+    {
+      "at": "2026-10-28T19:06:00+05:30",
+      "kind": "visit",
+      "url": "http://localhost:5173/practice?token=abc123"
+    },
+    {
+      "at": "2026-10-28T19:10:00+05:30",
+      "kind": "visit",
+      "url": "https://www.instagram.com/p/xyz/?igshid=123"
+    },
+    { "at": "2026-10-28T19:12:20+05:30", "kind": "focus", "domain": "WWW.Reddit.com" },
+    { "at": "2026-10-28T19:13:00+05:30", "kind": "visit", "url": "https://उदाहरण.भारत/पाठ?id=7" },
+    { "at": "2026-10-28T19:20:00+05:30", "kind": "visit", "url": "http://192.168.1.20:8080/admin" },
+    {
+      "at": "2026-10-28T19:24:00+05:30",
+      "kind": "visit",
+      "url": "https://www.netflix.com/watch/8123?trackId=1"
+    },
+    { "at": "2026-10-28T19:30:00+05:30", "kind": "visit", "url": "file:///Users/aarav/notes.pdf" },
+    { "at": "2026-10-28T19:31:00+05:30", "kind": "visit", "url": "javascript:alert(1)" },
+    { "at": "2026-10-28T19:32:00+05:30", "kind": "visit" },
+    { "at": "2026-10-28T19:33:00+05:30", "kind": "scroll", "url": "https://leetcode.com/" },
+    {
+      "at": "2026-10-28T19:50:00+05:30",
+      "kind": "visit",
+      "url": "https://leetcode.com/problems/3sum/"
+    },
+    { "at": "2026-10-28T19:58:00+05:30", "kind": "blur" }
+  ],
+  "expected": {
+    "rejected": [
+      { "index": 8, "reason": "unsupported_scheme" },
+      { "index": 9, "reason": "unsupported_scheme" },
+      { "index": 10, "reason": "missing_domain" },
+      { "index": 11, "reason": "bad_kind" }
+    ],
+    "metrics": {
+      "sessionSeconds": 3600,
+      "pausedSeconds": 0,
+      "activeSeconds": 2040,
+      "idleSeconds": 1560,
+      "switches": 8,
+      "countedEvents": 10,
+      "distractingSeconds": 180,
+      "categorySeconds": {
+        "study": 1440,
+        "communication": 0,
+        "social": 180,
+        "entertainment": 300,
+        "other": 0
+      },
+      "domains": [
+        { "domain": "leetcode.com", "category": "study", "distracting": false, "seconds": 570 },
+        { "domain": "local", "category": "study", "distracting": false, "seconds": 480 },
+        {
+          "domain": "netflix.com",
+          "category": "entertainment",
+          "distracting": false,
+          "seconds": 300
+        },
+        {
+          "domain": "xn--p1b6ci4b4b3a.xn--h2brj9c",
+          "category": "study",
+          "distracting": false,
+          "seconds": 300
+        },
+        { "domain": "instagram.com", "category": "social", "distracting": true, "seconds": 140 },
+        { "domain": "en.wikipedia.org", "category": "study", "distracting": false, "seconds": 90 },
+        { "domain": "reddit.com", "category": "social", "distracting": true, "seconds": 40 }
+      ]
+    },
+    "daily": [
+      { "date": "2026-10-28", "category": "study", "minutes": 24 },
+      { "date": "2026-10-28", "category": "communication", "minutes": 0 },
+      { "date": "2026-10-28", "category": "social", "minutes": 3 },
+      { "date": "2026-10-28", "category": "entertainment", "minutes": 5 }
+    ]
+  }
+}
