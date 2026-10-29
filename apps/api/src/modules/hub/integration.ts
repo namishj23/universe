@@ -64,18 +64,21 @@ export function integration(p: Platform, prep: PrepService) {
     mentor: { select: { user: { select: { name: true } } } },
   } as const;
 
-  /** Accepted sessions the user is a party to, starting in [from, to). */
-  const acceptedSessions = (x: Db, userId: string, from: Date, to: Date) =>
-    x.hubMentorshipRequest.findMany({
-      where: {
-        status: 'accepted',
-        OR: [{ studentId: userId }, { mentorId: userId }],
-        slot: { startsAt: { gte: from, lt: to } },
-      },
-      include: sessionInclude,
-      orderBy: { slot: { startsAt: 'asc' } },
-      take: 100,
-    });
+  /**
+   * Accepted sessions the user is a party to, starting in [from, to), soonest first. Two
+   * queries (as student, as mentor) so each side seeks its own index instead of an OR scan.
+   */
+  async function acceptedSessions(x: Db, userId: string, from: Date, to: Date) {
+    const side = (party: 'studentId' | 'mentorId') =>
+      x.hubMentorshipRequest.findMany({
+        where: { status: 'accepted', [party]: userId, slot: { startsAt: { gte: from, lt: to } } },
+        include: sessionInclude,
+        take: 100,
+      });
+    const rows = (await Promise.all([side('studentId'), side('mentorId')])).flat();
+    const start = (r: (typeof rows)[number]) => r.slot?.startsAt.getTime() ?? 0;
+    return rows.sort((a, b) => start(a) - start(b)).slice(0, 100);
+  }
 
   const publicApi: PublicApiImpl<'hub'> = {
     async sessionsForUser({ actor, from, to }) {
