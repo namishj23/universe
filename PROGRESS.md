@@ -29,12 +29,37 @@ Master plan (scope, architecture, rubric): the "UniVerse — Implementation Plan
 | P7 | Independent read-only audit of Platform, A, B, D | Opus 5.5 / xhigh | Not started |
 | P8 | Fix audit findings | Sonnet 5.5 / high | Not started |
 | P9 | README, architecture, algorithms, docs | Sonnet 5.5 / medium | Not started |
-| U1 | Frontend shell from the team's UI design | Sonnet 5.5 / high | Waiting for UI |
+| U1 | Frontend shell and platform screens from the team's UI design (Opus 5.5 / high) | Opus 5.5 / high | Done (report: `docs/sessions/U1.md`) — branch `p1/u1-shell`, PR open |
 | U2 | Frontend screens for A, B, D from the team's UI design | Sonnet 5.5 / high | Waiting for UI |
 
 Checkpoints with Person 2: merge to `main` at Hour 5 and Hour 7. Feature freeze at Hour 9.
 
 ## Decisions (newest first)
+
+- 2026-10-30 (U1) — **Exact replication of the Claude Design handoff** (`docs/design/`).
+  - `tools/design-compare/` (Playwright + pixelmatch) renders the prototype and the route-mocked build at Thu 29 Oct 2026 22:14 IST and measures each screen × role × theme × state × viewport.
+  - `npm run test:visual` locks the build in with 204 committed baselines (macOS Chromium) plus axe in Chromium.
+  - Stylelint allows raw colours, fonts and sizes only in `apps/web/src/shell/theme/tokens.css`.
+  - Rules in `docs/design/DESIGN-SYSTEM.md`; the CLAUDE.md rule is added.
+- 2026-10-30 (U1) — **390px cannot match the prototype:** it has no media queries. The build follows the README's rule for under 1024px (top bar + Menu drawer, stacked layouts, the week strip and tables scroll inside their cards). Comparisons at 390 are reported as expected differences (user approved).
+- 2026-10-30 (U1) — **Data layer:** TanStack Query 5 on `platform/api.ts` (`api()` gained a `headers` option). Retries only network errors and 5xx, 2 retries; every query passes its `signal`; the cache is cleared on sign-out. `auth.tsx` carries `mustChangePassword` and `passwordChanged()`; `RequireAuth` redirects every route to `/change-password` while it is true.
+- 2026-10-30 (U1) — **Live activity:** `ActivityProvider` (`apps/web/src/shell/activity/`) holds one `EventSource` per tab inside the signed-in shell.
+  - Events are de-duplicated by id and written into the feed query cache; the unread count comes from the stream's `unread-count`, adjusted at once by optimistic reads.
+  - `subscribe(name, fn)` delivers ephemeral events such as `rides.chat`.
+  - After 3 errors in a row, or a refused stream: one `/api/auth/me` (401 signs out once through the API client), otherwise a 1 s → 30 s backoff.
+- 2026-10-30 (U1) — **Components:** `apps/web/src/shell/ui/`: Button, Field/Input/Select/Textarea/Hint/FormError, Chips, Segmented, TabLinks, Table/Row/LoadMore, PageHeader/HeaderMeta/CodeTile/StatusDot, Loading/Empty/ErrorBox, Modal/Drawer (Radix `radix-ui` 1.8), Toast. Radix's Dialog returns focus only to its own Trigger, so `Overlay.tsx` returns focus to the opener itself.
+- 2026-10-30 (U1) — **Theme storage:** `data-theme` on `<html>` from `prefers-color-scheme`, overridden by the sidebar toggle in `localStorage` `uv-theme` (try/catch). Fonts are self-hosted with `@fontsource`.
+- 2026-10-30 (U1) — **Demo flag:** `VITE_DEMO_MODE=true` (the committed `apps/web/.env.visual` sets it for the harness) lists the four demo accounts on the login screen; a click fills the email only. Login errors: 400/401 show "Email or password is incorrect.", 429 shows the server's message, network/5xx show "Couldn't reach UniVerse. Try again."
+- 2026-10-30 (U1) — **Week endpoint contract** (`packages/contracts/src/dashboard/week.ts`):
+  - Request: `GET /api/dashboard/week?from=YYYY-MM-DD`, header `X-Timezone` (IANA name, default Asia/Kolkata).
+  - Response: `{ from, timeZone, days[7]: { date, items: { module, time: 'HH:MM' | allDay: true, title, status?: { label, tone: ok|warn|neutral }, confirmed, href }[] }, modules: { id, status: ok|error|timeout }[] }`. `status` is an object because the design colours it apart from `confirmed` ("waiting" is amber but solid).
+  - Provider: `ModuleDefinition.weekItems(user, { from, to }, signal)` returns `{ at (ISO with offset), allDay?, title, status?, confirmed, href (internal path) }[]` (max 50). The platform adds `module`, places items on their local day, formats times, sorts (all day, time, module order, title) and drops items outside `[from, to)`. Each provider has a 1.5 s timeout; a bad output makes that module `error`.
+  - No module providers yet (P6).
+- 2026-10-30 (U1) — **Audit `actionPrefix`** query (`auth` matches `auth.*`) for the admin screen's chips: `startsWith` → `LIKE 'auth.%'`, served from `audit_log_list_idx` with a filter (en_US collation can't range-seek LIKE).
+- 2026-10-30 (U1) — **Web module discovery by folder:** `apps/web/src/modules/<id>/module.ts` (eager, small: `activityText`, `dashboardCard`) and `Page.tsx` (lazy, its own chunk) via `import.meta.glob`. A listed module without a folder shows "Coming in the next build"; a module the role isn't listed for is 403. Code letters, eyebrows and titles per id are design facts in `shell/modules.ts` (`AREA`).
+- 2026-10-30 (U1) — **Inbox wording:** a module's `activityText` wins. Lower-case text follows the actor's name ("accepted you on…"); a capitalised sentence stands alone. Without it, the payload's `message`, else the humanised type. Text is always rendered as text. Rides has wording for all its activity types.
+- 2026-10-30 (U1) — **Admin extras not drawn by the design:** clicking a user's name opens "Manage user" (change role, reset password showing the temporary password once, same modal style). `driver` is in the role filter and the New user role list. The admin's announcement card stays visible when the inbox is empty.
+- 2026-10-30 (U1) — **Ports for a second copy:** `apps/web/vite.config.ts` reads `WEB_PORT` / `API_PORT` from `apps/web/.env.local` (defaults 5173 / 4000); this copy uses 5273 / 4100.
 
 - 2026-10-30 (P3b) — **Scope (user decision mid-session): RoutePool's ported backend is not reworked.** Only what RoutePool never had was written (carpool drivers, offers, bookings, detour matching, offer costs, stats, the 22-stop graph). Pooled-auto matching, joins and fares are P3a's port unchanged. So the "one auto on one line" rule still applies to pooled autos, and riders whose routes share a stretch then split are matched by the carpool matcher only. Offer matches use RoutePool's `MatchCard` field names (`score`, `routeSimilarity`, `seatsLeft`, `pickupNode`, `womenOnly`), so its components can be reused in U2.
 - 2026-10-30 (P3b) — **Graph source:** `apps/api/scripts/rides-graph.mjs` → `apps/api/src/modules/rides/data/graph.json` (committed, Prettier-ignored).
@@ -146,6 +171,38 @@ Ported from `routepool2-react-` @ `0c57429` into `apps/api/src/modules/rides/` (
 
 ## Requests for the other owner
 
+- 2026-10-30 (U1, for Person 2): please review the U1 pull request. Shared areas it changes:
+  - `packages/contracts/` — `dashboard/week.ts` and `AuditQuery.actionPrefix`;
+  - `apps/api/src/platform/` — the week route in `dashboard.ts`, `weekItems` in `modules/index.ts`, `actionPrefix` in `audit/index.ts`, OpenAPI;
+  - `apps/web/src/shell/` — new;
+  - root `package.json` — `test:visual`, `design:compare`; `typecheck` and `lint` now include the harness and Stylelint.
+  - Your screens: see "How to add your module's screens" below. Please confirm the prototype's assumption that Observatory is visible to everyone.
+- 2026-10-30 (U1, for the design team): three places in the design are under WCAG 4.5:1 contrast. The build keeps them exact and the Chromium axe check excludes only them:
+  - `--faint` text for the login demo note;
+  - "Nothing yet" in the week strip;
+  - inactive user rows at 65% opacity.
+  Suggest `--muted` for both texts and 80% opacity, or confirm as is.
+
+## How to add your module's screens (Person 2 and U2)
+
+Full guide: `docs/design/DESIGN-SYSTEM.md` sections 8–9.
+- **Folder:** `apps/web/src/modules/<id>/`. `Page.tsx` default-exports the screen; it is lazily loaded at `/<id>/*` and shown only to roles `GET /api/modules` lists (others get 403). `module.ts` default-exports `{ activityText?, dashboardCard? }`.
+- **Dashboard card:** `dashboardCard(summaryData, user) => { big, text, status?, tone? } | null` from your `dashboardSummaryRegistry` schema; `null` shows the placeholder.
+- **Week items:** backend `weekItems(user, { from, to }, signal)` in your module definition (contract above).
+- **Shared components and states:** `PageHeader` with `AREA.<id>` eyebrow/title and `module="<id>"`, then `Loading`, `Empty`, `ErrorBox`, `Table`, `Chips`, `Modal`, `Drawer`, `useToast`. Live data: `useActivity().subscribe('<id>.<event>', fn)`.
+- **Checks:** add your screens to `tools/design-compare/` (`matrix.ts`, `prototype.ts` driving, fixtures validated with your contracts), then `npm run design:compare` and `npm run test:visual -- --update-snapshots`.
+
+## README vs OpenAPI differences found in U1
+
+- Announcements are `POST /api/activity/announcements` (README: `/api/admin/announcements`).
+- Rides is also visible to role `driver` (README table: student, mentor, admin).
+- The README's "last seen" is the API's `lastLoginAt`.
+- Audit actions are `admin.user_password_reset` and `admin.user_updated` (prototype: `admin.password_reset`, `admin.user_deactivated`). Targets are `targetType` + `targetId` (ids, not names).
+- `ActivityEvent` has `type` + `payload`, no display text; wording comes from each module's `activityText`.
+- The audit prefix chips needed a new `actionPrefix` query (added).
+- The README says the dashboard uses `GET /api/activity?limit=3`; the build shares the inbox's feed query (`limit=20`) and takes three, one request for both screens.
+- `Role` has `driver`; the prototype's role filter and New user list do not (the build adds it).
+
 - 2026-10-30 (P3b, for Person 2): please review PR #4. It is **stacked on #3, so merge #3 first**. Shared areas it changes:
   - `apps/api/src/platform/` — `FilePurpose.inUse` hook in `modules/index.ts`; 409 `FILE_IN_USE` on delete and the sweep skipping claimed files in `files/index.ts`; `server.ts` passes modules to the sweep;
   - `packages/contracts/` — new `rides/offers.ts`, rides activity and audit entries, and the rides dashboard summary shape.
@@ -242,6 +299,20 @@ From the independent P1–P2 verification in P3a (the one high finding, the logi
 - P2: is 200 MB per user enough for exam clips (Person 2)? `STORAGE_QUOTA_MB` is one setting for everyone.
 
 ## Session log (newest first)
+
+- 2026-10-30 ~01:40–03:05 — U1 Frontend shell and platform screens from the design (Person 1, Opus 5.5 / high).
+  - Built from the Claude Design handoff: tokens and type scale; Radix-based components; TanStack Query; one-EventSource `ActivityProvider`.
+  - Shell from `/api/modules`, with a top bar below 1024px.
+  - Screens:
+    - sign-in (demo flag), forced and voluntary password change;
+    - dashboard "Your week", inbox, admin users and audit log;
+    - 403, 404, "Something went wrong" and "new version".
+  - Folder-discovered lazy module pages.
+  - Backend: `GET /api/dashboard/week` with `weekItems` providers, and audit `actionPrefix`.
+  - Design-compare harness: 168 cases; 78 of the 84 at 1440 are under 0.5%, and the rest are data the API doesn't have yet.
+  - 204 visual baselines plus Chromium axe; Stylelint token guard; `DESIGN-SYSTEM.md`.
+  - Tests: 189 API + 49 web.
+  - Branch `p1/u1-shell`. Full report: `docs/sessions/U1.md`. Next: U2 (and P6 adds week providers).
 
 - 2026-10-30 00:40–01:20 — P3b Rides: carpool offers, campus graph, detour matching, savings, backend only (Person 1, Opus 5.5 / high).
   - Files-in-use hook: 409 on delete, and the sweep skips claimed files.
