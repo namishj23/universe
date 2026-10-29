@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { Role } from '../role.js';
+import { hubActivity } from './hub.js';
 import { platformActivity } from './platform.js';
 import { ridesActivity } from './rides.js';
 
@@ -21,6 +22,7 @@ export type ActivityModule = z.infer<typeof ActivityModule>;
 export const activityRegistry = {
   ...platformActivity,
   ...ridesActivity,
+  ...hubActivity,
 } as const;
 
 export type ActivityType = keyof typeof activityRegistry;
