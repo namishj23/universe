@@ -27,5 +27,11 @@ export default tseslint.config(
     files: ['**/*.js'],
     extends: [tseslint.configs.disableTypeChecked],
   },
+  {
+    // Module B (rides) stays CommonJS JavaScript; it reaches the platform only through its factory.
+    files: ['apps/api/src/modules/rides/**/*.js'],
+    languageOptions: { sourceType: 'commonjs', globals: { ...globals.node } },
+    rules: { '@typescript-eslint/no-require-imports': 'off' },
+  },
   prettier,
 );

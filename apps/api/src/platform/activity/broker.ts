@@ -34,6 +34,18 @@ export function sendToUser(userId: string, event: string, data: unknown, id?: st
   for (const stream of streams.get(userId) ?? []) stream.send(event, data, id);
 }
 
+/** `<module>.<name>`: never `activity` or `unread-count`, which the platform owns. */
+const EPHEMERAL_EVENT = /^[a-z]+\.[a-z_]+$/;
+
+/**
+ * Pushes a named event that is not stored (for example `rides.chat`) to these users' open
+ * streams. Offline users miss it, so it must only duplicate data they can fetch again.
+ */
+export function pushEvent(userIds: Iterable<string>, name: string, data: unknown): void {
+  if (!EPHEMERAL_EVENT.test(name)) throw new Error(`Invalid event name: ${name}`);
+  for (const id of new Set(userIds)) sendToUser(id, name, data);
+}
+
 export const sendActivity = (userId: string, event: ActivityEvent) =>
   sendToUser(userId, 'activity', event, event.id);
 

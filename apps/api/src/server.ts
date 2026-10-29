@@ -6,6 +6,7 @@ import { prisma } from './platform/db.js';
 import { startFileSweep } from './platform/files/index.js';
 import { logger } from './platform/logger.js';
 import { loadModules, type ModuleDefinition } from './platform/modules/index.js';
+import { platform } from './platform/modules/platform.js';
 
 function start(modules: ModuleDefinition[]) {
   const server = createApp({ modules }).listen(env.PORT, () => {
@@ -33,7 +34,8 @@ function start(modules: ModuleDefinition[]) {
 }
 
 // No top-level await (it would break require(esm) for CommonJS modules such as rides).
-loadModules().then(start, (err: unknown) => {
+// One platform instance, built here and handed to every module's factory.
+loadModules({ platform: platform() }).then(start, (err: unknown) => {
   logger.fatal({ err }, 'could not load modules');
   process.exit(1);
 });

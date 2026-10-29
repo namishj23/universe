@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { Role } from '../role.js';
 import { platformActivity } from './platform.js';
+import { ridesActivity } from './rides.js';
 
 export const ActivityModule = z.enum([
   'platform',
@@ -19,6 +20,7 @@ export type ActivityModule = z.infer<typeof ActivityModule>;
  */
 export const activityRegistry = {
   ...platformActivity,
+  ...ridesActivity,
 } as const;
 
 export type ActivityType = keyof typeof activityRegistry;

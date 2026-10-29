@@ -6,6 +6,9 @@ import { z } from 'zod';
 import type { ZodOpenApiPathsObject } from 'zod-openapi';
 import { ModuleId, Role, type ModuleInfo, type PublicUser } from '@universe/contracts';
 import { authOf, requireAuth, requireRole } from '../auth/guards.js';
+import { platform as sharedPlatform, type Platform } from './platform.js';
+
+export type { Platform } from './platform.js';
 
 /** A stored file as a purpose's `authorizeRead` sees it. */
 export interface StoredFile {
@@ -26,9 +29,10 @@ export interface FilePurpose {
 }
 
 /**
- * What `apps/api/src/modules/<id>/index.(ts|js)` exports as its default export
- * (CommonJS: `module.exports = definition`). The platform mounts `router` at `/api/<id>`
- * behind `requireAuth` and a check that the user's role is in `roles`.
+ * What a module's factory returns. `apps/api/src/modules/<id>/index.(ts|js)` default-exports
+ * `(platform: Platform) => ModuleDefinition` (CommonJS: `module.exports = (platform) => ...`).
+ * The platform mounts `router` at `/api/<id>` behind `requireAuth` and a check that the user's
+ * role is in `roles`.
  */
 export interface ModuleDefinition {
   id: ModuleId;
@@ -113,26 +117,48 @@ export function validateModules(found: { folder: string; value: unknown }[]): Mo
 // Same relative path from src/platform/modules (dev, tests) and dist/platform/modules (built).
 const MODULES_DIR = new URL('../../modules/', import.meta.url);
 
+/** The default export of a module folder. */
+export type ModuleFactory = (platform: Platform) => ModuleDefinition;
+
+export interface LoadOptions {
+  dir?: URL;
+  /** Defaults to the one shared instance; tests may pass their own. */
+  platform?: Platform;
+}
+
 /**
  * Imports every `modules/<folder>/index.ts` (source) or `index.js` (built, or a CommonJS
- * module such as rides) and validates the definitions. Called once at startup.
+ * module such as rides), calls its factory with the platform and validates the definitions.
+ * Called once at startup.
  */
-export async function loadModules(dir: URL = MODULES_DIR): Promise<ModuleDefinition[]> {
+export async function loadModules({
+  dir = MODULES_DIR,
+  platform = sharedPlatform(),
+}: LoadOptions = {}): Promise<ModuleDefinition[]> {
   if (!existsSync(dir)) return [];
   const folders = (await readdir(dir, { withFileTypes: true }))
     .filter((d) => d.isDirectory())
     .map((d) => d.name)
     .sort();
   const found: { folder: string; value: unknown }[] = [];
+  const problems: string[] = [];
   for (const folder of folders) {
     const entry = ['index.ts', 'index.js']
       .map((name) => fileURLToPath(new URL(`${folder}/${name}`, dir)))
       .find((path) => existsSync(path));
-    if (!entry)
-      throw new Error(`Invalid module definitions:\n  - ${folder}: no index.ts or index.js`);
+    if (!entry) {
+      problems.push(`${folder}: no index.ts or index.js`);
+      continue;
+    }
     const mod = (await import(entry)) as { default?: unknown };
-    found.push({ folder, value: mod.default });
+    if (typeof mod.default !== 'function') {
+      problems.push(`${folder}: must default-export a factory (platform) => definition`);
+      continue;
+    }
+    found.push({ folder, value: (mod.default as ModuleFactory)(platform) });
   }
+  if (problems.length > 0)
+    throw new Error(`Invalid module definitions:\n${problems.map((p) => `  - ${p}`).join('\n')}`);
   return validateModules(found);
 }
 

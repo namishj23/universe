@@ -14,7 +14,7 @@ import {
   setSessionCookie,
   toPublicUser,
 } from './sessions.js';
-import { clearFailures, emailHmac, isLocked, recordFailure } from './throttle.js';
+import { clearFailures, emailHmac, recordFailure, reserveAttempt } from './throttle.js';
 
 const tooManyAttempts = () =>
   new ApiError(429, 'TOO_MANY_ATTEMPTS', 'Too many sign-in attempts. Try again later.');
@@ -64,11 +64,11 @@ export function authRoutes(): Router {
       // Known and unknown emails take the same path: same queries, one hash verification,
       // the same failure counting and lockout, and the same responses.
       const keyHash = emailHmac(email);
-      const [user, locked] = await Promise.all([
+      const [user, allowed] = await Promise.all([
         prisma.user.findUnique({ where: { email } }),
-        isLocked(keyHash),
+        reserveAttempt(keyHash),
       ]);
-      if (locked) throw tooManyAttempts();
+      if (!allowed) throw tooManyAttempts();
       const passwordOk = await verifyPassword(
         user?.passwordHash ?? (await getDummyHash()),
         password,

@@ -1,0 +1,37 @@
+{
+  "generatedAt": "2026-09-30T06:40:45.997Z",
+  "source": "osrm+nominatim",
+  "coordinates": {
+    "SPIT Campus (Gate 2)": {
+      "lat": 19.1231413,
+      "lng": 72.8360659
+    },
+    "Azad Nagar": {
+      "lat": 19.1283153,
+      "lng": 72.8400381
+    },
+    "Andheri": {
+      "lat": 19.1196976,
+      "lng": 72.8464205
+    },
+    "Marol Naka": {
+      "lat": 19.1081008,
+      "lng": 72.87963
+    },
+    "Saki Naka": {
+      "lat": 19.108206,
+      "lng": 72.8828404
+    },
+    "Ghatkopar": {
+      "lat": 19.0856928,
+      "lng": 72.9083668
+    }
+  },
+  "distances": {
+    "SPIT Campus (Gate 2)|Azad Nagar": 1.04,
+    "Azad Nagar|Andheri": 2.08,
+    "Andheri|Marol Naka": 4.68,
+    "Marol Naka|Saki Naka": 0.68,
+    "Saki Naka|Ghatkopar": 4.05
+  }
+}

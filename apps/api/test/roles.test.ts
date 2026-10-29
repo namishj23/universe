@@ -2,7 +2,7 @@ import request from 'supertest';
 import { beforeAll, describe, expect, it } from 'vitest';
 import { ApiErrorBody } from '@universe/contracts';
 import { createApp } from '../src/app.js';
-import { login, seed } from './helpers.js';
+import { DEMO_ACCOUNTS, login, seed } from './helpers.js';
 
 beforeAll(seed);
 
@@ -31,9 +31,14 @@ describe('role guard', () => {
         .set('X-CSRF-Token', csrfToken)
         .send(body)
         .expect(200);
-    expect((await send({ message: 'Hello everyone' })).body).toEqual({ recipients: 5 });
+    expect((await send({ message: 'Hello everyone' })).body).toEqual({
+      recipients: DEMO_ACCOUNTS.length,
+    });
     expect((await send({ message: 'Hello students', roles: ['student'] })).body).toEqual({
       recipients: 2,
+    });
+    expect((await send({ message: 'Hello drivers', roles: ['driver'] })).body).toEqual({
+      recipients: 9,
     });
     await request(app)
       .post('/api/activity/announcements')

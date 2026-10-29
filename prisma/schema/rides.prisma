@@ -1,0 +1,360 @@
+// Module B · Rides (Person 1). Every table is prefixed rides_. People are platform users:
+// rides_profiles holds what rides keeps per user (one row per user who used rides), and every
+// other reference to a person points at it, so the platform User model only carries two
+// back-relations. Money is integer paise, distance integer metres. Enum-like text columns
+// have CHECK constraints in the migration SQL. File ids point at platform `files` without a
+// foreign key: the platform's file sweep hard-deletes files 24 h after a soft delete, and a
+// missing file must only make its download 404, never block the sweep.
+
+model RidesProfile {
+  userId           String    @id @map("user_id") @db.Uuid
+  riderCode        String    @unique @map("rider_code") // 6 digits, crypto.randomInt, never rotates
+  gender           String? // 'female' | 'male' | 'non_binary' | null; only ever shown to its owner
+  womenOnlyGroups  Boolean   @default(false) @map("women_only_groups")
+  driverPreference String    @default("any") @map("driver_preference") // 'any' | 'female'
+  suspendedAt      DateTime? @map("suspended_at") @db.Timestamptz(3)
+  suspendedReason  String?   @map("suspended_reason")
+  createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  user               User                     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  requests           RidesRequest[]
+  memberships        RidesGroupMember[]
+  chatMessages       RidesChatMessage[]
+  feedback           RidesVehicleFeedback[]
+  reportsFiled       RidesSafetyReport[]      @relation("ReportReporter")
+  reportsAbout       RidesSafetyReport[]      @relation("ReportAbout")
+  reportsResolved    RidesSafetyReport[]      @relation("ReportResolver")
+  notices            RidesNotice[]
+  inspectionsFiled   RidesVehicleInspection[] @relation("InspectionSubmitter")
+  inspectionsChecked RidesVehicleInspection[] @relation("InspectionReviewer")
+  documentsChecked   RidesDriverDocument[]
+
+  @@index([createdAt(sort: Desc), userId(sort: Desc)])
+  @@map("rides_profiles")
+}
+
+/// Stops. `geom` is PostGIS geography, read and written only with tagged-template $queryRaw.
+model RidesNode {
+  id        String                                @id @db.Uuid
+  name      String                                @unique
+  shortName String                                @map("short_name")
+  area      String // 'campus' | 'city'
+  aliases   String[]
+  geom      Unsupported("geography(Point, 4326)")
+  createdAt DateTime                              @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  edgesAsA       RidesRouteEdge[]   @relation("EdgeNodeA")
+  edgesAsB       RidesRouteEdge[]   @relation("EdgeNodeB")
+  groups         RidesGroup[]
+  requestsPickup RidesRequest[]     @relation("RequestPickup")
+  requestsDrop   RidesRequest[]     @relation("RequestDrop")
+  memberDrops    RidesGroupMember[]
+
+  @@index([geom], type: Gist)
+  @@map("rides_nodes")
+}
+
+model RidesRouteEdge {
+  id        String @id @default(uuid()) @db.Uuid
+  nodeAId   String @map("node_a_id") @db.Uuid
+  nodeBId   String @map("node_b_id") @db.Uuid
+  distanceM Int    @map("distance_m")
+
+  nodeA RidesNode @relation("EdgeNodeA", fields: [nodeAId], references: [id], onDelete: Cascade)
+  nodeB RidesNode @relation("EdgeNodeB", fields: [nodeBId], references: [id], onDelete: Cascade)
+
+  @@unique([nodeAId, nodeBId])
+  @@index([nodeBId])
+  @@map("rides_route_edges")
+}
+
+model RidesRequest {
+  id            String   @id @default(uuid()) @db.Uuid
+  userId        String   @map("user_id") @db.Uuid
+  pickupNodeId  String   @map("pickup_node_id") @db.Uuid
+  dropNodeId    String   @map("drop_node_id") @db.Uuid
+  /// The rider's pickup time; the matching window is pickup ± the buffer.
+  pickupAt      DateTime @map("pickup_at") @db.Timestamptz(3)
+  status        String   @default("open") // open | matched | completed | cancelled
+  distanceM     Int      @map("distance_m")
+  soloFarePaise Int      @map("solo_fare_paise")
+  groupId       String?  @map("group_id") @db.Uuid
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  user       RidesProfile      @relation(fields: [userId], references: [userId], onDelete: Cascade)
+  pickupNode RidesNode         @relation("RequestPickup", fields: [pickupNodeId], references: [id])
+  dropNode   RidesNode         @relation("RequestDrop", fields: [dropNodeId], references: [id])
+  group      RidesGroup?       @relation(fields: [groupId], references: [id], onDelete: SetNull)
+  member     RidesGroupMember?
+
+  @@index([userId, status])
+  @@index([pickupNodeId, status, pickupAt])
+  @@index([dropNodeId])
+  @@index([groupId])
+  @@index([status, pickupAt])
+  @@map("rides_requests")
+}
+
+model RidesGroup {
+  id                    String    @id @default(uuid()) @db.Uuid
+  pickupNodeId          String    @map("pickup_node_id") @db.Uuid
+  /// The latest member's pickup time (Module B stored this minus the buffer).
+  pickupAt              DateTime  @map("pickup_at") @db.Timestamptz(3)
+  totalFarePaise        Int       @default(0) @map("total_fare_paise")
+  status                String    @default("forming") // forming | confirmed | completed | cancelled
+  kind                  String    @default("auto") // auto (pooled auto) | transit (public transport)
+  womenOnly             Boolean   @default(false) @map("women_only")
+  meetingPoint          String?   @map("meeting_point")
+  transitMode           String?   @map("transit_mode")
+  /// The assigned auto. One vehicle can't hold two live assignments: see the exclusion
+  /// constraint rides_groups_vehicle_busy in the migration.
+  vehicleId             String?   @map("vehicle_id") @db.Uuid
+  driverAssignedAt      DateTime? @map("driver_assigned_at") @db.Timestamptz(3)
+  etaMinutes            Int?      @map("eta_minutes")
+  driverFemaleRequested Boolean   @default(false) @map("driver_female_requested")
+  driverAcceptedAt      DateTime? @map("driver_accepted_at") @db.Timestamptz(3)
+  createdAt             DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  pickupNode   RidesNode              @relation(fields: [pickupNodeId], references: [id])
+  vehicle      RidesVehicle?          @relation(fields: [vehicleId], references: [id])
+  members      RidesGroupMember[]
+  requests     RidesRequest[]
+  chatMessages RidesChatMessage[]
+  feedback     RidesVehicleFeedback[]
+  reports      RidesSafetyReport[]
+  trips        RidesDriverTrip[]
+
+  @@index([status, pickupAt, id])
+  @@index([pickupNodeId, status])
+  @@index([vehicleId])
+  @@index([pickupAt, id])
+  @@map("rides_groups")
+}
+
+model RidesGroupMember {
+  id             String    @id @default(uuid()) @db.Uuid
+  groupId        String    @map("group_id") @db.Uuid
+  userId         String    @map("user_id") @db.Uuid
+  requestId      String    @unique @map("request_id") @db.Uuid
+  dropNodeId     String    @map("drop_node_id") @db.Uuid
+  fareSharePaise Int       @default(0) @map("fare_share_paise")
+  /// Set when the driver (or the rider) confirmed the rider code: the ride has started for them.
+  boardedAt      DateTime? @map("boarded_at") @db.Timestamptz(3)
+  paidAt         DateTime? @map("paid_at") @db.Timestamptz(3)
+  paymentMethod  String?   @map("payment_method")
+  /// This member waived their "female driver" preference for this ride.
+  allowAnyDriver Boolean   @default(false) @map("allow_any_driver")
+  joinedAt       DateTime  @default(now()) @map("joined_at") @db.Timestamptz(3)
+
+  group    RidesGroup   @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  user     RidesProfile @relation(fields: [userId], references: [userId], onDelete: Cascade)
+  request  RidesRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  dropNode RidesNode    @relation(fields: [dropNodeId], references: [id])
+
+  @@unique([groupId, userId])
+  @@index([userId, joinedAt])
+  @@index([dropNodeId])
+  @@map("rides_group_members")
+}
+
+model RidesChatMessage {
+  id        String   @id @default(uuid()) @db.Uuid
+  groupId   String   @map("group_id") @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  message   String
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  group RidesGroup   @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  user  RidesProfile @relation(fields: [userId], references: [userId], onDelete: Cascade)
+
+  @@index([groupId, createdAt(sort: Desc), id(sort: Desc)])
+  @@index([userId])
+  @@map("rides_chat_messages")
+}
+
+model RidesVehicle {
+  id                 String   @id @default(uuid()) @db.Uuid
+  plateNumber        String   @unique @map("plate_number")
+  registrationNumber String   @map("registration_number")
+  model              String
+  colour             String?
+  seats              Int      @default(3)
+  permitExpiresAt    DateTime @map("permit_expires_at") @db.Timestamptz(3)
+  insuranceExpiresAt DateTime @map("insurance_expires_at") @db.Timestamptz(3)
+  pucExpiresAt       DateTime @map("puc_expires_at") @db.Timestamptz(3)
+  fitnessExpiresAt   DateTime @map("fitness_expires_at") @db.Timestamptz(3)
+  documentsStatus    String   @default("approved") @map("documents_status") // approved | pending | rejected
+  status             String   @default("active") // active | suspended
+  flaggedReason      String?  @map("flagged_reason")
+  lastServiceAt      DateTime @map("last_service_at") @db.Timestamptz(3)
+  lastServiceM       Int      @default(0) @map("last_service_m")
+  drivenM            Int      @default(0) @map("driven_m")
+  createdAt          DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  driver      RidesDriver?
+  groups      RidesGroup[]
+  inspections RidesVehicleInspection[]
+  feedback    RidesVehicleFeedback[]
+  reports     RidesSafetyReport[]
+  trips       RidesDriverTrip[]
+
+  @@index([createdAt, id])
+  @@map("rides_vehicles")
+}
+
+model RidesVehicleInspection {
+  id            String    @id @default(uuid()) @db.Uuid
+  vehicleId     String    @map("vehicle_id") @db.Uuid
+  /// Platform file ids (purpose rides.inspection_photo), checked on submit.
+  tyresFileId   String    @map("tyres_file_id") @db.Uuid
+  lightsFileId  String    @map("lights_file_id") @db.Uuid
+  seatsFileId   String    @map("seats_file_id") @db.Uuid
+  meterFileId   String    @map("meter_file_id") @db.Uuid
+  submittedById String    @map("submitted_by_id") @db.Uuid
+  submittedAt   DateTime  @default(now()) @map("submitted_at") @db.Timestamptz(3)
+  status        String    @default("pending") // pending | approved | rejected
+  reviewedById  String?   @map("reviewed_by_id") @db.Uuid
+  reviewedAt    DateTime? @map("reviewed_at") @db.Timestamptz(3)
+  note          String?
+
+  vehicle     RidesVehicle  @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  submittedBy RidesProfile  @relation("InspectionSubmitter", fields: [submittedById], references: [userId])
+  reviewedBy  RidesProfile? @relation("InspectionReviewer", fields: [reviewedById], references: [userId])
+
+  @@index([vehicleId, submittedAt(sort: Desc)])
+  @@index([status, submittedAt])
+  @@index([submittedById])
+  @@index([reviewedById])
+  @@map("rides_vehicle_inspections")
+}
+
+model RidesVehicleFeedback {
+  id          String   @id @default(uuid()) @db.Uuid
+  vehicleId   String   @map("vehicle_id") @db.Uuid
+  groupId     String   @map("group_id") @db.Uuid
+  userId      String   @map("user_id") @db.Uuid
+  cleanliness Int // 1..5
+  condition   Int // 1..5
+  tags        String[]
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  vehicle RidesVehicle @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  group   RidesGroup   @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  user    RidesProfile @relation(fields: [userId], references: [userId], onDelete: Cascade)
+
+  @@unique([groupId, userId])
+  @@index([vehicleId, createdAt])
+  @@index([userId])
+  @@map("rides_vehicle_feedback")
+}
+
+model RidesSafetyReport {
+  id             String    @id @default(uuid()) @db.Uuid
+  reporterId     String    @map("reporter_id") @db.Uuid
+  groupId        String    @map("group_id") @db.Uuid
+  aboutUserId    String?   @map("about_user_id") @db.Uuid
+  aboutVehicleId String?   @map("about_vehicle_id") @db.Uuid
+  category       String
+  message        String
+  status         String    @default("open") // open | resolved | dismissed
+  resolution     String?
+  resolvedById   String?   @map("resolved_by_id") @db.Uuid
+  resolvedAt     DateTime? @map("resolved_at") @db.Timestamptz(3)
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  reporter     RidesProfile  @relation("ReportReporter", fields: [reporterId], references: [userId], onDelete: Cascade)
+  group        RidesGroup    @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  aboutUser    RidesProfile? @relation("ReportAbout", fields: [aboutUserId], references: [userId], onDelete: SetNull)
+  aboutVehicle RidesVehicle? @relation(fields: [aboutVehicleId], references: [id], onDelete: SetNull)
+  resolvedBy   RidesProfile? @relation("ReportResolver", fields: [resolvedById], references: [userId], onDelete: SetNull)
+
+  @@index([createdAt(sort: Desc), id(sort: Desc)])
+  @@index([reporterId])
+  @@index([groupId])
+  @@index([aboutUserId])
+  @@index([aboutVehicleId])
+  @@index([resolvedById])
+  @@map("rides_safety_reports")
+}
+
+model RidesNotice {
+  id          String    @id @default(uuid()) @db.Uuid
+  message     String
+  level       String    @default("info") // info | warning
+  createdById String    @map("created_by_id") @db.Uuid
+  expiresAt   DateTime? @map("expires_at") @db.Timestamptz(3)
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  createdBy RidesProfile @relation(fields: [createdById], references: [userId])
+
+  @@index([createdAt(sort: Desc), id(sort: Desc)])
+  @@index([createdById])
+  @@map("rides_notices")
+}
+
+/// A driver is a platform user with role `driver`. `kind` is 'auto' (a roster auto driver);
+/// P3b adds 'carpool' (students or mentors offering rides), whose vehicle may be null.
+model RidesDriver {
+  userId       String   @id @map("user_id") @db.Uuid
+  kind         String   @default("auto")
+  vehicleId    String?  @unique @map("vehicle_id") @db.Uuid
+  driverCode   String   @unique @map("driver_code") // RP-DRV-XXXXXX, generated once
+  gender       String? // used only for the female-driver rules
+  online       Boolean  @default(false)
+  ratingTenths Int?     @map("rating_tenths") // 48 = 4.8 stars
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  user      User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  vehicle   RidesVehicle?         @relation(fields: [vehicleId], references: [id], onDelete: SetNull)
+  documents RidesDriverDocument[]
+  trips     RidesDriverTrip[]
+
+  @@index([online])
+  @@index([createdAt, userId])
+  @@map("rides_drivers")
+}
+
+model RidesDriverDocument {
+  id           String    @id @default(uuid()) @db.Uuid
+  driverId     String    @map("driver_id") @db.Uuid
+  type         String // licence | inspection_certificate
+  /// Platform file id (purpose rides.driver_document), owned by the driver.
+  fileId       String    @map("file_id") @db.Uuid
+  status       String    @default("pending") // pending | verified | rejected
+  uploadedAt   DateTime  @default(now()) @map("uploaded_at") @db.Timestamptz(3)
+  reviewedById String?   @map("reviewed_by_id") @db.Uuid
+  reviewedAt   DateTime? @map("reviewed_at") @db.Timestamptz(3)
+  note         String?
+
+  driver     RidesDriver   @relation(fields: [driverId], references: [userId], onDelete: Cascade)
+  reviewedBy RidesProfile? @relation(fields: [reviewedById], references: [userId], onDelete: SetNull)
+
+  @@index([driverId, uploadedAt(sort: Desc)])
+  @@index([status])
+  @@index([reviewedById])
+  @@map("rides_driver_documents")
+}
+
+/// One row per (group, driver) once the driver answered an offer; each step stamps its time.
+model RidesDriverTrip {
+  id          String    @id @default(uuid()) @db.Uuid
+  groupId     String    @map("group_id") @db.Uuid
+  driverId    String    @map("driver_id") @db.Uuid
+  vehicleId   String?   @map("vehicle_id") @db.Uuid
+  status      String // declined | accepted | heading | started | completed
+  declinedAt  DateTime? @map("declined_at") @db.Timestamptz(3)
+  acceptedAt  DateTime? @map("accepted_at") @db.Timestamptz(3)
+  headingAt   DateTime? @map("heading_at") @db.Timestamptz(3)
+  startedAt   DateTime? @map("started_at") @db.Timestamptz(3)
+  completedAt DateTime? @map("completed_at") @db.Timestamptz(3)
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  group   RidesGroup    @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  driver  RidesDriver   @relation(fields: [driverId], references: [userId], onDelete: Cascade)
+  vehicle RidesVehicle? @relation(fields: [vehicleId], references: [id], onDelete: SetNull)
+
+  @@unique([groupId, driverId])
+  @@index([driverId, status])
+  @@index([vehicleId])
+  @@map("rides_driver_trips")
+}

@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { platformAudit } from './platform.js';
+import { ridesAudit } from './rides.js';
 
 /**
  * Every audit action and its metadata schema. Each module owner adds
@@ -7,6 +8,7 @@ import { platformAudit } from './platform.js';
  */
 export const auditRegistry = {
   ...platformAudit,
+  ...ridesAudit,
 } as const;
 
 export type AuditAction = keyof typeof auditRegistry;
