@@ -1,0 +1,36 @@
+import type { Role } from '@universe/contracts';
+import { recordActivity } from '../../apps/api/src/platform/activity/service.js';
+import { hashPassword } from '../../apps/api/src/platform/auth/password.js';
+import type { Db } from '../../apps/api/src/platform/db.js';
+
+// The .test domain is reserved (RFC 2606), so these can never be real addresses.
+export const DEMO_ACCOUNTS: readonly { email: string; name: string; role: Role }[] = [
+  { email: 'student@universe.test', name: 'Aarav Mehta', role: 'student' },
+  { email: 'student2@universe.test', name: 'Diya Kulkarni', role: 'student' },
+  { email: 'mentor@universe.test', name: 'Prof. Neha Iyer', role: 'mentor' },
+  { email: 'invigilator@universe.test', name: 'Rohan Desai', role: 'invigilator' },
+  { email: 'admin@universe.test', name: 'Admin Office', role: 'admin' },
+];
+
+/** Idempotent: upserts by email and adds one welcome announcement to an account that has none. */
+export async function seedPlatform(db: Db, password: string): Promise<void> {
+  for (const account of DEMO_ACCOUNTS) {
+    const passwordHash = await hashPassword(password);
+    const user = await db.user.upsert({
+      where: { email: account.email },
+      create: { ...account, passwordHash },
+      update: { ...account, passwordHash, isActive: true, failedLoginCount: 0, lockedUntil: null },
+    });
+    const announcements = await db.activityEvent.count({
+      where: { recipientId: user.id, type: 'platform.announcement' },
+    });
+    if (announcements === 0) {
+      await recordActivity(db, {
+        recipients: user.id,
+        module: 'platform',
+        type: 'platform.announcement',
+        payload: { message: `Welcome to UniVerse, ${account.name}! Your activity appears here.` },
+      });
+    }
+  }
+}

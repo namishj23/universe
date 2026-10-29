@@ -1,0 +1,40 @@
+import type { ActivityEvent } from '@universe/contracts';
+
+export interface Stream {
+  send(event: string, data: unknown, id?: string): void;
+  close(): void;
+}
+
+export const MAX_STREAMS_PER_USER = 5;
+
+// ponytail: in-process only; a multi-instance deployment needs PostgreSQL LISTEN/NOTIFY or Redis pub/sub.
+const streams = new Map<string, Set<Stream>>();
+
+/** Registers a stream; when the user already has the maximum, the oldest is closed. */
+export function addStream(userId: string, stream: Stream): void {
+  let set = streams.get(userId);
+  if (!set) streams.set(userId, (set = new Set()));
+  if (set.size >= MAX_STREAMS_PER_USER) set.values().next().value?.close();
+  set.add(stream);
+}
+
+export function removeStream(userId: string, stream: Stream): void {
+  const set = streams.get(userId);
+  if (!set) return;
+  set.delete(stream);
+  if (set.size === 0) streams.delete(userId);
+}
+
+export const connectedUserIds = (userIds: Iterable<string>) =>
+  [...new Set(userIds)].filter((id) => streams.has(id));
+
+export function sendToUser(userId: string, event: string, data: unknown, id?: string): void {
+  for (const stream of streams.get(userId) ?? []) stream.send(event, data, id);
+}
+
+export const sendActivity = (userId: string, event: ActivityEvent) =>
+  sendToUser(userId, 'activity', event, event.id);
+
+export function closeAllStreams(): void {
+  for (const set of [...streams.values()]) for (const stream of [...set]) stream.close();
+}

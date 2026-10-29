@@ -1,0 +1,78 @@
+// Platform: users, sessions and the cross-module activity feed (Person 1, shared area).
+// Timestamps use timestamptz(3): millisecond precision matches JavaScript Date,
+// so (created_at, id) paging cursors round-trip exactly.
+
+enum Role {
+  student
+  mentor
+  invigilator
+  admin
+
+  @@map("role")
+}
+
+enum ActivityModule {
+  platform
+  hub
+  rides
+  wellbeing
+  observatory
+  exam
+
+  @@map("activity_module")
+}
+
+model User {
+  id               String    @id @default(uuid()) @db.Uuid
+  email            String    @unique // always stored lowercased
+  name             String
+  passwordHash     String    @map("password_hash")
+  role             Role
+  isActive         Boolean   @default(true) @map("is_active")
+  failedLoginCount Int       @default(0) @map("failed_login_count")
+  lockedUntil      DateTime? @map("locked_until") @db.Timestamptz(3)
+  lastLoginAt      DateTime? @map("last_login_at") @db.Timestamptz(3)
+  createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt        DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  sessions         Session[]
+  activityReceived ActivityEvent[] @relation("ActivityRecipient")
+  activitySent     ActivityEvent[] @relation("ActivityActor")
+
+  @@index([role])
+  @@map("users")
+}
+
+model Session {
+  id         String   @id @default(uuid()) @db.Uuid
+  userId     String   @map("user_id") @db.Uuid
+  tokenHash  String   @unique @map("token_hash") // SHA-256 of the cookie token, hex
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  lastSeenAt DateTime @default(now()) @map("last_seen_at") @db.Timestamptz(3)
+  expiresAt  DateTime @map("expires_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("sessions")
+}
+
+model ActivityEvent {
+  id          String         @id @default(uuid()) @db.Uuid
+  recipientId String         @map("recipient_id") @db.Uuid
+  actorId     String?        @map("actor_id") @db.Uuid
+  module      ActivityModule
+  type        String
+  payload     Json           @db.JsonB
+  readAt      DateTime?      @map("read_at") @db.Timestamptz(3)
+  createdAt   DateTime       @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  recipient User  @relation("ActivityRecipient", fields: [recipientId], references: [id], onDelete: Cascade)
+  actor     User? @relation("ActivityActor", fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([recipientId, createdAt(sort: Desc), id(sort: Desc)], map: "activity_events_feed_idx")
+  @@index([recipientId], map: "activity_events_unread_idx", where: { readAt: null })
+  @@index([actorId])
+  @@map("activity_events")
+}

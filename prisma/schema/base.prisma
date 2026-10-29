@@ -1,0 +1,13 @@
+// Generator and datasource only. Each owner area has its own .prisma file in this folder.
+
+generator client {
+  provider            = "prisma-client"
+  output              = "../../apps/api/src/generated/prisma"
+  moduleFormat        = "esm"
+  importFileExtension = "js"
+  previewFeatures     = ["partialIndexes"]
+}
+
+datasource db {
+  provider = "postgresql"
+}

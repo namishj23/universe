@@ -1,0 +1,40 @@
+{
+  "name": "universe",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "packages/contracts",
+    "apps/api",
+    "apps/web"
+  ],
+  "engines": {
+    "node": ">=22.12 <23 || >=24 <25"
+  },
+  "scripts": {
+    "postinstall": "prisma generate",
+    "dev": "concurrently -k -n api,web -c blue,green \"npm run dev -w @universe/api\" \"npm run dev -w @universe/web\"",
+    "build": "npm run build -w @universe/contracts && npm run build -w @universe/api && npm run build -w @universe/web",
+    "start": "npm start -w @universe/api",
+    "typecheck": "npm run typecheck --workspaces",
+    "lint": "eslint . && prettier --check .",
+    "format": "prettier --write .",
+    "test": "npm test --workspaces",
+    "db:migrate": "prisma migrate dev",
+    "db:deploy": "prisma migrate deploy",
+    "db:seed": "prisma db seed",
+    "db:test:reset": "ENV_FILE=apps/api/.env.test prisma migrate reset --force"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@types/node": "^24.0.0",
+    "concurrently": "^10.0.6",
+    "eslint": "^10.13.0",
+    "eslint-config-prettier": "^10.1.8",
+    "globals": "^17.13.0",
+    "prettier": "^3.9.10",
+    "prisma": "7.10.1",
+    "tsx": "^4.23.15",
+    "typescript": "~6.0.3",
+    "typescript-eslint": "^8.72.1"
+  }
+}
