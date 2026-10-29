@@ -69,7 +69,7 @@ export function rolesMarkdown(
   const row = (cells: string[]) => `| ${cells.join(' | ')} |`;
   const head = [
     row(['Method', 'Path', 'Sign-in', ...ROLES]),
-    row(Array(3 + ROLES.length).fill('---')),
+    row(Array<string>(3 + ROLES.length).fill('---')),
   ];
   const section = (title: string, list: RouteGuard[]) => [
     `### ${title}`,
@@ -96,7 +96,7 @@ export function rolesMarkdown(
     '## Modules',
     '',
     row(['Module', 'Base path', ...ROLES]),
-    row(Array(2 + ROLES.length).fill('---')),
+    row(Array<string>(2 + ROLES.length).fill('---')),
     ...modules.map((m) => row([m.label, `\`/api/${m.id}\``, ...tick(m.roles)])),
     '',
     '## Routes',
