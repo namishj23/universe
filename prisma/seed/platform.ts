@@ -11,6 +11,23 @@ export const DEMO_ACCOUNTS: readonly { email: string; name: string; role: Role }
   { email: 'mentor@universe.test', name: 'Prof. Neha Iyer', role: 'mentor' },
   { email: 'invigilator@universe.test', name: 'Rohan Desai', role: 'invigilator' },
   { email: 'admin@universe.test', name: 'Admin Office', role: 'admin' },
+  // Drivers: the rides roster (apps/api/src/modules/rides/data/roster.js, same names) plus two
+  // accounts that show the document states. The rides seed links each to its vehicle.
+  ...[
+    'Ramesh Patil',
+    'Sunil Yadav',
+    'Anil Gaikwad',
+    'Mahesh Shinde',
+    'Vijay Kadam',
+    'Sunita Jadhav',
+    'Priya More',
+    'Kiran Pawar',
+    'Ganesh Salunkhe',
+  ].map((name) => ({
+    email: `${name.toLowerCase().replace(/\s+/g, '.')}@drivers.universe.test`,
+    name,
+    role: 'driver' as const,
+  })),
 ];
 
 /**
