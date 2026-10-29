@@ -479,6 +479,81 @@
         }
       }
     },
+    "/api/dashboard/week": {
+      "get": {
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "tags": [
+          "platform"
+        ],
+        "summary": "Seven days of dated items from every visible module (the week strip)",
+        "description": "Days start at `from` (default: today) in the `X-Timezone` zone (default Asia/Kolkata). Each module with a provider is listed in `modules` as `ok`, `error` or `timeout` (1.5 s); one module failing never fails the response. Items: all-day first, then by time.",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "from",
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-timezone",
+            "schema": {
+              "description": "IANA time zone, e.g. Asia/Kolkata",
+              "type": "string"
+            },
+            "description": "IANA time zone, e.g. Asia/Kolkata"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WeekResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation failed or bad input",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden (role, CSRF, or PASSWORD_CHANGE_REQUIRED)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/activity": {
       "get": {
         "security": [
@@ -1387,6 +1462,15 @@
               "type": "string",
               "minLength": 1,
               "maxLength": 100
+            }
+          },
+          {
+            "in": "query",
+            "name": "actionPrefix",
+            "schema": {
+              "type": "string",
+              "maxLength": 30,
+              "pattern": "^[a-z]+$"
             }
           },
           {
@@ -10261,6 +10345,207 @@
           "status"
         ],
         "additionalProperties": false
+      },
+      "WeekResponse": {
+        "type": "object",
+        "properties": {
+          "from": {
+            "type": "string",
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+          },
+          "timeZone": {
+            "type": "string"
+          },
+          "days": {
+            "minItems": 7,
+            "maxItems": 7,
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "date": {
+                  "type": "string",
+                  "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                },
+                "items": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/WeekItem"
+                  }
+                }
+              },
+              "required": [
+                "date",
+                "items"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "modules": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "enum": [
+                    "hub",
+                    "rides",
+                    "wellbeing",
+                    "observatory",
+                    "exam"
+                  ]
+                },
+                "status": {
+                  "type": "string",
+                  "enum": [
+                    "ok",
+                    "error",
+                    "timeout"
+                  ]
+                }
+              },
+              "required": [
+                "id",
+                "status"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
+          "from",
+          "timeZone",
+          "days",
+          "modules"
+        ],
+        "additionalProperties": false
+      },
+      "WeekItem": {
+        "anyOf": [
+          {
+            "type": "object",
+            "properties": {
+              "module": {
+                "type": "string",
+                "enum": [
+                  "hub",
+                  "rides",
+                  "wellbeing",
+                  "observatory",
+                  "exam"
+                ]
+              },
+              "title": {
+                "type": "string"
+              },
+              "status": {
+                "type": "object",
+                "properties": {
+                  "label": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 40
+                  },
+                  "tone": {
+                    "type": "string",
+                    "enum": [
+                      "ok",
+                      "warn",
+                      "neutral"
+                    ]
+                  }
+                },
+                "required": [
+                  "label",
+                  "tone"
+                ],
+                "additionalProperties": false
+              },
+              "confirmed": {
+                "type": "boolean"
+              },
+              "href": {
+                "type": "string",
+                "maxLength": 300,
+                "pattern": "^\\/(?!\\/)[^\\\\]*$"
+              },
+              "time": {
+                "type": "string",
+                "pattern": "^\\d{2}:\\d{2}$"
+              }
+            },
+            "required": [
+              "module",
+              "title",
+              "confirmed",
+              "href",
+              "time"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "module": {
+                "type": "string",
+                "enum": [
+                  "hub",
+                  "rides",
+                  "wellbeing",
+                  "observatory",
+                  "exam"
+                ]
+              },
+              "title": {
+                "type": "string"
+              },
+              "status": {
+                "type": "object",
+                "properties": {
+                  "label": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 40
+                  },
+                  "tone": {
+                    "type": "string",
+                    "enum": [
+                      "ok",
+                      "warn",
+                      "neutral"
+                    ]
+                  }
+                },
+                "required": [
+                  "label",
+                  "tone"
+                ],
+                "additionalProperties": false
+              },
+              "confirmed": {
+                "type": "boolean"
+              },
+              "href": {
+                "type": "string",
+                "maxLength": 300,
+                "pattern": "^\\/(?!\\/)[^\\\\]*$"
+              },
+              "allDay": {
+                "type": "boolean",
+                "const": true
+              }
+            },
+            "required": [
+              "module",
+              "title",
+              "confirmed",
+              "href",
+              "allDay"
+            ],
+            "additionalProperties": false
+          }
+        ]
       },
       "AdminUser": {
         "type": "object",
