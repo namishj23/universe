@@ -51,9 +51,14 @@ export function wellbeingService(p: Platform) {
   const fail = (status: number, code: string, message: string) =>
     new p.http.ApiError(status, code, message);
 
-  /** Settings are created on first use with the defaults (tracking off). */
+  /**
+   * Settings are created on first use with the defaults (tracking off). `updated_at` comes from
+   * the JS clock, not the database's: the pg adapter reads timestamps in the session time zone,
+   * so a database-clock value would come back shifted when that zone is not UTC (PROGRESS.md).
+   */
   const ensure = (x: Db, userId: string) =>
-    x.$executeRaw`INSERT INTO wb_settings (user_id) VALUES (${userId}::uuid) ON CONFLICT (user_id) DO NOTHING`;
+    x.$executeRaw`INSERT INTO wb_settings (user_id, updated_at) VALUES (${userId}::uuid, ${new Date()})
+      ON CONFLICT (user_id) DO NOTHING`;
 
   async function settingsRow(userId: string) {
     await ensure(db, userId);

@@ -32,21 +32,27 @@ const webDist = fileURLToPath(new URL('../../web/dist/', import.meta.url));
 
 // Wellbeing requests are logged as method + route pattern only: dates and categories in the
 // path, the query string, params and headers never reach a log (Express matches paths
-// case-insensitively, so the test is too).
+// case-insensitively, so the test is too). pino-http serialises `req` when the request
+// arrives, before routing, so the matched pattern is added when the response finishes.
 const WELLBEING = /^\/api\/wellbeing(?:[/?#]|$)/i;
 const isWellbeing = (req: Request) => WELLBEING.test(req.originalUrl);
-const requestLogSerializers = {
-  req(req: SerializedRequest) {
-    const raw = req.raw as Request;
-    if (!isWellbeing(raw)) return req;
-    const route = raw.route as { path?: unknown } | undefined;
-    const pattern = typeof route?.path === 'string' ? route.path : '/*';
-    return { id: req.id, method: req.method, url: `/api/wellbeing${pattern}` };
-  },
-  res(res: SerializedResponse) {
+const routeOf = (req: Request) => {
+  const route = req.route as { path?: unknown } | undefined;
+  return `/api/wellbeing${typeof route?.path === 'string' ? route.path : '/*'}`;
+};
+const withRoute = (req: Request, val: object) =>
+  isWellbeing(req) ? { ...val, route: routeOf(req) } : val;
+const requestLogOptions = {
+  serializers: {
+    req: (req: SerializedRequest) =>
+      isWellbeing(req.raw as Request) ? { id: req.id, method: req.method } : req,
     // Node keeps the request on the response; in Express it is the same object as `req`.
-    return isWellbeing(res.raw.req as Request) ? { statusCode: res.statusCode } : res;
+    res: (res: SerializedResponse) =>
+      isWellbeing(res.raw.req as Request) ? { statusCode: res.statusCode } : res,
   },
+  customSuccessObject: (req: Request, _res: unknown, val: object) => withRoute(req, val),
+  customErrorObject: (req: Request, _res: unknown, _err: unknown, val: object) =>
+    withRoute(req, val),
 };
 
 export interface AppOptions {
@@ -66,7 +72,7 @@ export function createApp({ modules = [] }: AppOptions = {}): Express {
   app.set('trust proxy', env.TRUST_PROXY);
 
   app.use(requestId);
-  app.use(pinoHttp({ logger, genReqId: (req) => req.id, serializers: requestLogSerializers }));
+  app.use(pinoHttp({ logger, genReqId: (req) => req.id, ...requestLogOptions }));
   app.use(
     helmet({
       // Upgrading to https would break the plain-http localhost demo; only on when served over HTTPS.

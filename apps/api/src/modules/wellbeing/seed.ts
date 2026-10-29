@@ -34,11 +34,19 @@ export async function seedWellbeing(p: Platform, now: Date = new Date()): Promis
     ...Object.entries(TODAY).map(([category, minutes]) => ({ date: today, category, minutes })),
   ];
   await p.prisma.$transaction(async (tx) => {
-    await tx.$executeRaw`
-      INSERT INTO wb_settings (user_id, tracking, paused_since, updated_at)
-      VALUES (${user.id}::uuid, 'paused', ${pausedSince}, now())
-      ON CONFLICT (user_id) DO UPDATE SET tracking = 'paused', paused_since = EXCLUDED.paused_since,
-        categories = DEFAULT, retention_days = DEFAULT, share_study_with_hub = DEFAULT, updated_at = now()`;
+    // Typed write: a JS Date passed to raw SQL here was read in the session time zone.
+    const settings = {
+      tracking: 'paused',
+      pausedSince,
+      categories: ['study', 'communication', 'social', 'entertainment'],
+      retentionDays: 90,
+      shareStudyWithHub: false,
+    };
+    await tx.wbSettings.upsert({
+      where: { userId: user.id },
+      create: { userId: user.id, ...settings },
+      update: settings,
+    });
     await tx.$executeRaw`
       INSERT INTO wb_daily_totals (user_id, date, category, minutes, updated_at)
       SELECT ${user.id}::uuid, d, c, m, now()
