@@ -41,6 +41,8 @@ activityRoutes.get(
       where: {
         recipientId: user.id,
         ...(after && {
+          // The redundant bound lets PostgreSQL seek the feed index instead of filtering from the top.
+          createdAt: { lte: after.createdAt },
           OR: [
             { createdAt: { lt: after.createdAt } },
             { createdAt: after.createdAt, id: { lt: after.id } },
@@ -183,6 +185,7 @@ activityRoutes.get(
         const missed = await prisma.activityEvent.findMany({
           where: {
             recipientId: user.id,
+            createdAt: { gte: anchor.createdAt },
             OR: [
               { createdAt: { gt: anchor.createdAt } },
               { createdAt: anchor.createdAt, id: { gt: anchor.id } },

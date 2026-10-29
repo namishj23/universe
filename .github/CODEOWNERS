@@ -1,0 +1,35 @@
+# Replace the placeholders with real GitHub usernames (see PROGRESS.md "Open questions").
+# Later lines win, so shared areas come last.
+
+# Default: both owners review anything not listed below
+*                                    @PERSON1_GITHUB @PERSON2_GITHUB
+
+# Person 1: Platform, A (hub), B (rides), D (wellbeing)
+/apps/api/src/modules/hub/           @PERSON1_GITHUB
+/apps/api/src/modules/rides/         @PERSON1_GITHUB
+/apps/api/src/modules/wellbeing/     @PERSON1_GITHUB
+/apps/web/src/modules/hub/           @PERSON1_GITHUB
+/apps/web/src/modules/rides/         @PERSON1_GITHUB
+/apps/web/src/modules/wellbeing/     @PERSON1_GITHUB
+/prisma/schema/hub.prisma            @PERSON1_GITHUB
+/prisma/schema/rides.prisma          @PERSON1_GITHUB
+/prisma/schema/wellbeing.prisma      @PERSON1_GITHUB
+
+# Person 2: C (observatory), E (exam), vision service, load simulator
+/apps/api/src/modules/observatory/   @PERSON2_GITHUB
+/apps/api/src/modules/exam/          @PERSON2_GITHUB
+/apps/web/src/modules/observatory/   @PERSON2_GITHUB
+/apps/web/src/modules/exam/          @PERSON2_GITHUB
+/prisma/schema/observatory.prisma    @PERSON2_GITHUB
+/prisma/schema/exam.prisma           @PERSON2_GITHUB
+/services/vision/                    @PERSON2_GITHUB
+/tools/loadsim/                      @PERSON2_GITHUB
+
+# Shared areas: changes need the other person's approval
+/packages/contracts/                 @PERSON1_GITHUB @PERSON2_GITHUB
+/apps/api/src/platform/              @PERSON1_GITHUB @PERSON2_GITHUB
+/apps/web/src/shell/                 @PERSON1_GITHUB @PERSON2_GITHUB
+/package.json                        @PERSON1_GITHUB @PERSON2_GITHUB
+/prisma/schema/base.prisma           @PERSON1_GITHUB @PERSON2_GITHUB
+/prisma/schema/platform.prisma       @PERSON1_GITHUB @PERSON2_GITHUB
+/prisma/seed/index.ts                @PERSON1_GITHUB @PERSON2_GITHUB
