@@ -56,7 +56,9 @@ export async function recordActivity<T extends ActivityType>(
     throw new Error(`Activity type ${input.type} does not belong to module ${input.module}`);
   const payload = schema.parse(input.payload);
 
-  const recipients = [...new Set(typeof input.recipients === 'string' ? [input.recipients] : input.recipients)];
+  const recipients = [
+    ...new Set(typeof input.recipients === 'string' ? [input.recipients] : input.recipients),
+  ];
   const recorded: RecordedActivity[] = [];
   for (let i = 0; i < recipients.length; i += CHUNK) {
     const rows = await db.activityEvent.createManyAndReturn({
@@ -69,7 +71,8 @@ export async function recordActivity<T extends ActivityType>(
       })),
       include: actorSelect,
     });
-    for (const row of rows) recorded.push({ recipientId: row.recipientId, event: toActivityEvent(row) });
+    for (const row of rows)
+      recorded.push({ recipientId: row.recipientId, event: toActivityEvent(row) });
   }
   return recorded;
 }

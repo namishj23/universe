@@ -76,7 +76,10 @@ export function authRoutes(): Router {
       });
 
       setSessionCookie(res, token);
-      const body: SessionResponse = { user: toPublicUser(user), csrfToken: csrfTokenFor(session.id) };
+      const body: SessionResponse = {
+        user: toPublicUser(user),
+        csrfToken: csrfTokenFor(session.id),
+      };
       res.json(body);
     }),
   );

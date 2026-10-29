@@ -20,7 +20,8 @@ const REPLAY_LIMIT = 100;
 const newestFirst = [{ createdAt: 'desc' }, { id: 'desc' }] as const;
 
 const Cursor = z.tuple([z.iso.datetime(), z.uuid()]);
-const encodeCursor = (e: ActivityEvent) => Buffer.from(`${e.createdAt}|${e.id}`).toString('base64url');
+const encodeCursor = (e: ActivityEvent) =>
+  Buffer.from(`${e.createdAt}|${e.id}`).toString('base64url');
 function decodeCursor(cursor: string) {
   const [createdAt, id] = Cursor.parse(Buffer.from(cursor, 'base64url').toString().split('|'));
   return { createdAt: new Date(createdAt), id };
@@ -134,7 +135,7 @@ activityRoutes.get(
     const { user, sessionId } = authOf(req);
     const lastEventId = z.uuid().safeParse(req.get('last-event-id'));
 
-    res.status(200).set({
+    res.writeHead(200, {
       'Content-Type': 'text/event-stream',
       'Cache-Control': 'no-cache, no-transform',
       Connection: 'keep-alive',
@@ -150,7 +151,9 @@ activityRoutes.get(
       send(event, data, id) {
         if (closed) return;
         if (event === 'activity' && id) lastId = id;
-        res.write(`${lastId ? `id: ${lastId}\n` : ''}event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
+        res.write(
+          `${lastId ? `id: ${lastId}\n` : ''}event: ${event}\ndata: ${JSON.stringify(data)}\n\n`,
+        );
       },
       close() {
         if (closed) return;
@@ -199,7 +202,9 @@ activityRoutes.get(
       });
       lastId = newest?.id;
     }
-    const count = await prisma.activityEvent.count({ where: { recipientId: user.id, readAt: null } });
+    const count = await prisma.activityEvent.count({
+      where: { recipientId: user.id, readAt: null },
+    });
     stream.send('unread-count', { count } satisfies UnreadCount);
   }),
 );

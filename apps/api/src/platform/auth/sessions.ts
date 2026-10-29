@@ -42,8 +42,10 @@ export const toPublicUser = (u: Pick<User, 'id' | 'email' | 'name' | 'role'>): P
   role: u.role,
 });
 
-const isLive = (s: { expiresAt: Date; lastSeenAt: Date; user: { isActive: boolean } }, now: number) =>
-  s.expiresAt.getTime() > now && s.lastSeenAt.getTime() > now - IDLE_MS && s.user.isActive;
+const isLive = (
+  s: { expiresAt: Date; lastSeenAt: Date; user: { isActive: boolean } },
+  now: number,
+) => s.expiresAt.getTime() > now && s.lastSeenAt.getTime() > now - IDLE_MS && s.user.isActive;
 
 export async function createSession(userId: string, db: Db = prisma) {
   const token = randomBytes(32).toString('base64url');

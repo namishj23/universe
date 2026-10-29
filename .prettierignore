@@ -4,3 +4,4 @@ coverage
 apps/api/src/generated
 prisma/schema/migrations
 package-lock.json
+*.md

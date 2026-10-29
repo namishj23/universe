@@ -67,7 +67,7 @@ export function errorHandler(err: unknown, req: Request, res: Response, next: Ne
     error: {
       code: apiError.code,
       message: apiError.message,
-      requestId: String(req.id),
+      requestId: typeof req.id === 'string' ? req.id : 'unknown',
       ...(apiError.details === undefined ? {} : { details: apiError.details }),
     },
   };

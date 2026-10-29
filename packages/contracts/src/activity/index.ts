@@ -2,7 +2,14 @@ import { z } from 'zod';
 import { Role } from '../role.js';
 import { platformActivity } from './platform.js';
 
-export const ActivityModule = z.enum(['platform', 'hub', 'rides', 'wellbeing', 'observatory', 'exam']);
+export const ActivityModule = z.enum([
+  'platform',
+  'hub',
+  'rides',
+  'wellbeing',
+  'observatory',
+  'exam',
+]);
 export type ActivityModule = z.infer<typeof ActivityModule>;
 
 /**
