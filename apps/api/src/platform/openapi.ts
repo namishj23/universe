@@ -27,6 +27,8 @@ import {
   SessionResponse,
   UnreadCount,
   UpdateUserRequest,
+  WeekQuery,
+  WeekResponse,
 } from '@universe/contracts';
 import { basePath, type ModuleDefinition } from './modules/index.js';
 
@@ -136,6 +138,24 @@ const platformPaths: ZodOpenApiPathsObject = {
       description:
         "Each module entry is `ok` (with `data` matching that module's summary schema), `error` or `timeout` (1.5 s). One module failing never fails the response.",
       responses: { '200': json(DashboardResponse) },
+    }),
+  },
+  '/api/dashboard/week': {
+    get: read({
+      tags: ['platform'],
+      summary: 'Seven days of dated items from every visible module (the week strip)',
+      description:
+        'Days start at `from` (default: today) in the `X-Timezone` zone (default Asia/Kolkata). Each module with a provider is listed in `modules` as `ok`, `error` or `timeout` (1.5 s); one module failing never fails the response. Items: all-day first, then by time.',
+      requestParams: {
+        query: WeekQuery,
+        header: z.object({
+          'x-timezone': z
+            .string()
+            .optional()
+            .meta({ description: 'IANA time zone, e.g. Asia/Kolkata' }),
+        }),
+      },
+      responses: { '200': json(WeekResponse) },
     }),
   },
 

@@ -48,6 +48,16 @@ export interface ModuleDefinition {
   router: Router;
   /** Data for `GET /api/dashboard`; must match `dashboardSummaryRegistry[id]` in contracts. */
   dashboardSummary?: (user: PublicUser, signal: AbortSignal) => Promise<unknown>;
+  /**
+   * Dated items for the dashboard's week strip (`GET /api/dashboard/week`): the user's items
+   * in `[from, to)`, matching `WeekProviderOutput` in contracts. Same 1.5 s budget as the
+   * summary; respect `signal`.
+   */
+  weekItems?: (
+    user: PublicUser,
+    range: { from: Date; to: Date },
+    signal: AbortSignal,
+  ) => Promise<unknown>;
   /** Demo data, run by `npm run db:seed` after the platform seed. Must be idempotent. */
   seed?: () => Promise<void>;
   filePurposes?: readonly FilePurpose[];
@@ -71,6 +81,7 @@ const Definition = z
       'must be an Express Router',
     ),
     dashboardSummary: fn.optional(),
+    weekItems: fn.optional(),
     seed: fn.optional(),
     filePurposes: z
       .array(
