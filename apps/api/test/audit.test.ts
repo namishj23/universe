@@ -118,6 +118,12 @@ describe('GET /api/admin/audit', () => {
     expect(logins.items.every((e) => e.action === 'auth.login')).toBe(true);
     expect(logins.items[0]?.actor).toEqual({ id: admin.user.id, name: 'Admin Office' });
 
+    const auth = await list({ actionPrefix: 'auth', limit: '100' });
+    expect(auth.items.length).toBeGreaterThan(0);
+    expect(auth.items.every((e) => e.action.startsWith('auth.'))).toBe(true);
+    expect(auth.items.length).toBe(all.items.filter((e) => e.action.startsWith('auth.')).length);
+    await as(admin).get('/api/admin/audit?actionPrefix=auth.%25').expect(400);
+
     const byActor = await list({ actorId: admin.user.id });
     expect(byActor.items.every((e) => e.actor?.id === admin.user.id)).toBe(true);
     expect((await list({ targetType: 'user', targetId: admin.user.id })).items.length).toBe(
