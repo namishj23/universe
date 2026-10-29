@@ -43,6 +43,7 @@ model User {
   ridesProfile     RidesProfile?
   ridesDriver      RidesDriver?
   hubProfile       HubProfile?
+  wbSettings       WbSettings?
 
   @@index([role])
   @@index([createdAt(sort: Desc), id(sort: Desc)], map: "users_list_idx")

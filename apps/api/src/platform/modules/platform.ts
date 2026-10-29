@@ -10,6 +10,7 @@ import { saveFile } from '../files/index.js';
 import { ApiError, asyncHandler } from '../http.js';
 import { logger } from '../logger.js';
 import { decodeCursor, encodeCursor, newestFirst, olderThan, toPage } from '../paging.js';
+import { schedule } from '../scheduler.js';
 
 /**
  * Everything a module may use from the platform, handed to its factory
@@ -41,6 +42,12 @@ export interface Platform {
   readonly config: { readonly nodeEnv: typeof env.NODE_ENV; readonly isProduction: boolean };
   /** A child logger tagged with the module id (one per module, cached). */
   logger(moduleId: string): Logger;
+  /**
+   * Runs `fn(now)` every `everyMs` once the server starts (and once at start); the platform
+   * stops the timers on shutdown. Name it `<module>.<job>`. Export the job's function too, so
+   * tests call it with a frozen clock instead of waiting for a timer.
+   */
+  readonly schedule: typeof schedule;
 }
 
 const loggers = new Map<string, Logger>();
@@ -58,6 +65,7 @@ export function createPlatform(overrides: Partial<Platform> = {}): Platform {
     http: Object.freeze({ ApiError, asyncHandler }),
     paging: Object.freeze({ encodeCursor, decodeCursor, olderThan, toPage, newestFirst }),
     files: Object.freeze({ save: saveFile }),
+    schedule,
     contracts,
     config: Object.freeze({ nodeEnv: env.NODE_ENV, isProduction: env.NODE_ENV === 'production' }),
     logger(moduleId: string) {
