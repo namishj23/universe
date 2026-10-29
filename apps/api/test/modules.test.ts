@@ -32,8 +32,8 @@ const valid = (id: string) => ({
 });
 
 describe('discovery', () => {
-  it('finds the hub and wellbeing folders and nothing else', async () => {
-    expect((await loadModules()).map((m) => m.id)).toEqual(['hub', 'wellbeing']);
+  it('finds the hub, rides and wellbeing folders and nothing else', async () => {
+    expect((await loadModules()).map((m) => m.id)).toEqual(['hub', 'rides', 'wellbeing']);
   });
 
   it('calls a CommonJS factory with the platform it is given', async () => {

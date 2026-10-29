@@ -10,17 +10,10 @@ const pingRouter = () => {
 };
 
 /**
- * Stand-ins for modules whose folders do not exist yet (rides arrives in P3, observatory and
- * exam belong to Person 2), with the roles from the agreed table.
+ * Stand-ins for modules whose folders do not exist yet (observatory and exam belong to
+ * Person 2), with the roles from the agreed table.
  */
 export const fixtureModules = (): ModuleDefinition[] => [
-  {
-    id: 'rides',
-    label: 'Rides',
-    order: 20,
-    roles: ['student', 'mentor', 'admin'],
-    router: pingRouter(),
-  },
   { id: 'observatory', label: 'Observatory', order: 40, roles: ['admin'], router: pingRouter() },
   {
     id: 'exam',
