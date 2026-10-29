@@ -12,7 +12,7 @@ import {
 } from '@universe/contracts';
 import type { z } from 'zod';
 import { actorSelect, toActivityEvent } from './activity/service.js';
-import { authOf, requireAuth } from './auth/guards.js';
+import { anyRole, authOf, requireAuth } from './auth/guards.js';
 import { prisma } from './db.js';
 import { asyncHandler } from './http.js';
 import { visibleModules, type ModuleDefinition } from './modules/index.js';
@@ -140,6 +140,7 @@ export function dashboardRoutes(modules: readonly ModuleDefinition[]): Router {
   router.get(
     '/',
     requireAuth,
+    anyRole,
     asyncHandler(async (req, res) => {
       const { user } = authOf(req);
       const [unreadCount, latest, entries] = await Promise.all([
@@ -170,6 +171,7 @@ export function dashboardRoutes(modules: readonly ModuleDefinition[]): Router {
   router.get(
     '/week',
     requireAuth,
+    anyRole,
     asyncHandler(async (req, res) => {
       const { user } = authOf(req);
       const query = WeekQuery.parse(req.query);

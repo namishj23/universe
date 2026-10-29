@@ -11,7 +11,7 @@ import {
 import { audit } from '../audit/index.js';
 import { prisma } from '../db.js';
 import { ApiError, asyncHandler, IdParam } from '../http.js';
-import { authOf, requireAuth, requireRole } from '../auth/guards.js';
+import { anyRole, authOf, requireAuth, requireRole } from '../auth/guards.js';
 import { isSessionLive } from '../auth/sessions.js';
 import { newestFirst, olderThan, toPage } from '../paging.js';
 import { addStream, removeStream, type Stream } from './broker.js';
@@ -21,7 +21,7 @@ const HEARTBEAT_MS = 25_000;
 const REPLAY_LIMIT = 100;
 
 export const activityRoutes = Router();
-activityRoutes.use(requireAuth);
+activityRoutes.use(requireAuth, anyRole);
 
 activityRoutes.get(
   '/',

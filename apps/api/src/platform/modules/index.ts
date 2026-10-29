@@ -1,7 +1,7 @@
 import { existsSync } from 'node:fs';
 import { readdir } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
-import { Router, type Express } from 'express';
+import { Router, type Express, type RequestHandler } from 'express';
 import { z } from 'zod';
 import type { ZodOpenApiPathsObject } from 'zod-openapi';
 import {
@@ -11,7 +11,7 @@ import {
   type ModuleInfo,
   type PublicUser,
 } from '@universe/contracts';
-import { authOf, requireAuth, requireRole } from '../auth/guards.js';
+import { anyRole, authOf, requireAuth, requireRole } from '../auth/guards.js';
 import { installModules, platform as sharedPlatform, type Platform } from './platform.js';
 
 export type { Platform } from './platform.js';
@@ -242,15 +242,25 @@ export const visibleModules = (modules: readonly ModuleDefinition[], role: Role)
 
 export const basePath = (m: Pick<ModuleDefinition, 'id'>) => `/api/${m.id}`;
 
-/** Mounts each module behind the outer guard, so a module can never forget it. */
-export function mountModules(app: Express, modules: readonly ModuleDefinition[]): void {
-  for (const m of modules) app.use(basePath(m), requireAuth, requireRole(...m.roles), m.router);
+/**
+ * Mounts each module behind the outer guard, so a module can never forget it. Returns the
+ * guards per base path for the route table (`docs/ROLES.md`).
+ */
+export function mountModules(
+  app: Express,
+  modules: readonly ModuleDefinition[],
+): { prefix: string; router: Router; guards: RequestHandler[] }[] {
+  return modules.map((m) => {
+    const guards = [requireAuth, requireRole(...m.roles)];
+    app.use(basePath(m), ...guards, m.router);
+    return { prefix: basePath(m), router: m.router, guards };
+  });
 }
 
 /** `GET /api/modules`: what the UI's navigation shows for the signed-in role. */
 export function moduleListRoutes(modules: readonly ModuleDefinition[]): Router {
   const router = Router();
-  router.get('/', requireAuth, (req, res) => {
+  router.get('/', requireAuth, anyRole, (req, res) => {
     const body: ModuleInfo[] = visibleModules(modules, authOf(req).user.role).map((m) => ({
       id: m.id,
       label: m.label,

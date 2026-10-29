@@ -1,6 +1,6 @@
 import { timingSafeEqual } from 'node:crypto';
 import type { Request, RequestHandler } from 'express';
-import type { Role } from '@universe/contracts';
+import { Role } from '@universe/contracts';
 import { env } from '../../config/env.js';
 import { ApiError } from '../http.js';
 import { csrfTokenFor } from './sessions.js';
@@ -16,13 +16,21 @@ export const requireAuth: RequestHandler = (req, _res, next) => {
   next();
 };
 
-export const requireRole =
-  (...roles: Role[]): RequestHandler =>
-  (req, _res, next) => {
-    if (!roles.includes(authOf(req).user.role))
-      throw new ApiError(403, 'FORBIDDEN', 'You do not have access to this action');
-    next();
-  };
+/** A role check that carries its roles, so `docs/ROLES.md` and the guard test can read them. */
+export type RoleGuard = RequestHandler & { readonly roles: readonly Role[] };
+
+export const requireRole = (...roles: Role[]): RoleGuard =>
+  Object.assign(
+    ((req, _res, next) => {
+      if (!roles.includes(authOf(req).user.role))
+        throw new ApiError(403, 'FORBIDDEN', 'You do not have access to this action');
+      next();
+    }) satisfies RequestHandler,
+    { roles: Object.freeze([...roles]) },
+  );
+
+/** Every signed-in role may call the route (its role metadata, stated rather than implied). */
+export const anyRole = requireRole(...Role.options);
 
 const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
 const csrfFailed = () => new ApiError(403, 'CSRF_FAILED', 'Request could not be verified');

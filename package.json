@@ -20,6 +20,7 @@
     "lint": "eslint . && prettier --check . && npm run lint:css -w @universe/web",
     "format": "prettier --write .",
     "api:docs": "npm run api:docs -w @universe/api",
+    "docs:roles": "npm run docs:roles -w @universe/api",
     "test": "npm test --workspaces --if-present",
     "db:migrate": "prisma migrate dev",
     "db:deploy": "prisma migrate deploy",

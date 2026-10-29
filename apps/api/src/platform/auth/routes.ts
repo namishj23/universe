@@ -5,7 +5,7 @@ import { closeUserStreams } from '../activity/broker.js';
 import { audit } from '../audit/index.js';
 import { prisma } from '../db.js';
 import { ApiError, asyncHandler } from '../http.js';
-import { authOf, requireAuth } from './guards.js';
+import { anyRole, authOf, requireAuth } from './guards.js';
 import { getDummyHash, hashPassword, verifyPassword } from './password.js';
 import {
   clearSessionCookie,
@@ -116,6 +116,7 @@ export function authRoutes(): Router {
   router.post(
     '/logout',
     requireAuth,
+    anyRole,
     asyncHandler(async (req, res) => {
       const { sessionId, user } = authOf(req);
       await prisma.$transaction(async (tx) => {
@@ -134,7 +135,7 @@ export function authRoutes(): Router {
     }),
   );
 
-  router.get('/me', requireAuth, (req, res) => {
+  router.get('/me', requireAuth, anyRole, (req, res) => {
     const { user, sessionId, mustChangePassword } = authOf(req);
     const body: SessionResponse = { user, csrfToken: csrfTokenFor(sessionId), mustChangePassword };
     res.json(body);
@@ -143,6 +144,7 @@ export function authRoutes(): Router {
   router.post(
     '/change-password',
     requireAuth,
+    anyRole,
     changeLimiter,
     asyncHandler(async (req, res) => {
       const { user, sessionId } = authOf(req);
