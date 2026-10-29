@@ -25,10 +25,12 @@ psql -d postgres <<'SQL'
 CREATE ROLE universe LOGIN CREATEDB PASSWORD 'choose-a-strong-password';
 CREATE DATABASE universe OWNER universe;
 CREATE DATABASE universe_test OWNER universe;
+CREATE DATABASE universe_shadow OWNER universe;
 SQL
 
 # PostGIS lives in its own schema, so Prisma never sees its tables and resets keep it.
-for db in universe universe_test; do
+# universe_shadow is Prisma's shadow database for `prisma migrate dev` (PostGIS migrations).
+for db in universe universe_test universe_shadow; do
   psql -d "$db" <<SQL
 CREATE SCHEMA IF NOT EXISTS extensions AUTHORIZATION universe;
 CREATE EXTENSION IF NOT EXISTS postgis SCHEMA extensions;
@@ -38,7 +40,7 @@ done
 psql -d universe -c 'SELECT extensions.postgis_version();'
 ```
 
-`CREATE EXTENSION postgis` needs a superuser; on Homebrew that is your macOS user, which `psql -d postgres` connects as.
+`CREATE EXTENSION postgis` needs a superuser; on Homebrew that is your macOS user, which `psql -d postgres` connects as. The `extensions` schema must be owned by `universe` in all three databases (`AUTHORIZATION universe`): the rides migration also creates `btree_gist` there as `universe`. `prisma.config.ts` uses `universe_shadow` on the same server unless `SHADOW_DATABASE_URL` is set.
 
 ### 3. Environment files
 
@@ -87,6 +89,11 @@ All use the `SEED_DEMO_PASSWORD` from `apps/api/.env`.
 | mentor@universe.test | Prof. Neha Iyer | mentor |
 | invigilator@universe.test | Rohan Desai | invigilator |
 | admin@universe.test | Admin Office | admin |
+| priya.more@drivers.universe.test (and the other six roster drivers, `first.last@drivers.universe.test`) | Priya More | driver (auto, online, documents approved) |
+| kiran.pawar@drivers.universe.test | Kiran Pawar | driver (licence expiring in ~10 days, no vehicle) |
+| ganesh.salunkhe@drivers.universe.test | Ganesh Salunkhe | driver (no documents, no vehicle) |
+
+`student2` is the female demo rider with women-only groups on. The seed also adds two forming ride groups and one open request relative to the time you run it.
 
 The web app is a placeholder until the team's UI design arrives (phases U1–U2); every feature is reachable through the API (see `docs/api/openapi.json`).
 
@@ -114,4 +121,16 @@ API tests refuse to run unless `DATABASE_URL` in `apps/api/.env.test` points at 
 
 ## Implemented vs simulated
 
-> **Placeholder (P9):** table of every feature and whether it is real, seeded or simulated.
+| Feature | Status |
+| --- | --- |
+| Sign-in, sessions, roles (student, mentor, invigilator, driver, admin), CSRF, audit log, activity feed with live SSE, file storage | Implemented |
+| Rides: stop graph and road distances | Real coordinates and OpenStreetMap/OSRM distances for 6 stops on one line (seeded); not live routing |
+| Rides: requests, matching, groups, seat locking, leave lock, women-only groups, fares in paise | Implemented |
+| Rides: auto-rickshaw tariff (Rs 27 first 1.5 km, Rs 18/km, x1.2) | Implemented with fixed Mumbai demo rates |
+| Rides: drivers and vehicles | Seeded roster of 7 autos and 9 driver accounts; driver assignment, accept/decline, trip steps, document review implemented |
+| Rides: driver documents and inspection photos | Implemented uploads and review; the seeded documents are placeholder PDFs |
+| Rides: payment | Simulated: records that the rider finished the payment step and the method; no money moves |
+| Rides: driver ETA | Simulated: random 3–8 minutes at assignment |
+| Rides: group chat | Implemented (stored, live over SSE) |
+| Hub, Wellbeing | Not built yet (stubs) |
+| Observatory, Exam monitoring | Person 2 (not started) |
