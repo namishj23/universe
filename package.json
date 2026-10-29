@@ -16,7 +16,7 @@
     "build": "npm run build -w @universe/contracts && npm run build -w @universe/api && npm run build -w @universe/web",
     "start": "npm start -w @universe/api",
     "typecheck": "npm run typecheck --workspaces && tsc -p tools/design-compare",
-    "lint": "eslint . && prettier --check .",
+    "lint": "eslint . && prettier --check . && npm run lint:css -w @universe/web",
     "format": "prettier --write .",
     "api:docs": "npm run api:docs -w @universe/api",
     "test": "npm test --workspaces --if-present",
