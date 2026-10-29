@@ -47,7 +47,7 @@ const { STOP_NODES, STOP_EDGES } = require('../../src/modules/rides/data/stops.j
 const { tariff } = require('../../src/modules/rides/config.js') as { tariff: Tariff };
 
 const id = (name: string) => STOP_NODES.find((n) => n.name === name)?.id ?? '';
-const [SPIT, AZAD, ANDHERI, MAROL, , GHATKOPAR] = STOP_NODES.map((n) => n.id) as string[];
+const [SPIT, AZAD, ANDHERI, MAROL, , GHATKOPAR] = STOP_NODES.map((n) => n.id);
 
 describe('stop graph and Dijkstra', () => {
   it('has the six OSRM stops in a line, in metres', () => {

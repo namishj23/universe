@@ -40,6 +40,8 @@ model User {
   activitySent     ActivityEvent[] @relation("ActivityActor")
   auditEntries     AuditLog[]
   files            File[]
+  ridesProfile     RidesProfile?
+  ridesDriver      RidesDriver?
 
   @@index([role])
   @@index([createdAt(sort: Desc), id(sort: Desc)], map: "users_list_idx")
