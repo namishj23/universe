@@ -1,5 +1,6 @@
 import { createHash, randomUUID } from 'node:crypto';
 import { createWriteStream, type WriteStream } from 'node:fs';
+import { writeFile } from 'node:fs/promises';
 import { Transform, type Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 import busboy from 'busboy';
@@ -162,6 +163,47 @@ function receiveUpload(req: Request, maxBytes: number): Promise<Received> {
     });
     req.pipe(bb);
   });
+}
+
+export interface SaveFileInput {
+  ownerId: string;
+  module: string;
+  purpose: string;
+  originalName: string;
+  mimeType: string;
+  bytes: Buffer;
+}
+
+/**
+ * Stores bytes the server already holds (seeds, generated files) the same way an upload is
+ * stored. The caller vouches for `mimeType`; uploads from users go through `POST /api/files`.
+ */
+export async function saveFile(input: SaveFileInput): Promise<FileRecord> {
+  const tempPath = storage.tempPath();
+  const key = randomUUID();
+  await writeFile(tempPath, input.bytes, { flag: 'wx', mode: 0o600 });
+  try {
+    const record = await prisma.$transaction(async (tx) => {
+      const created = await tx.file.create({
+        data: {
+          ownerId: input.ownerId,
+          module: input.module,
+          purpose: input.purpose,
+          originalName: sanitizeFilename(input.originalName),
+          mimeType: input.mimeType,
+          sizeBytes: input.bytes.length,
+          sha256: createHash('sha256').update(input.bytes).digest('hex'),
+          storageKey: key,
+        },
+      });
+      await storage.commit(tempPath, key);
+      return created;
+    });
+    return toFileRecord(record);
+  } catch (err) {
+    await storage.removeTemp(tempPath);
+    throw err;
+  }
 }
 
 /** `/api/files`: uploads, downloads and deletes for every purpose the modules register. */

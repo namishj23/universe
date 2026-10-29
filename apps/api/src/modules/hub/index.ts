@@ -1,8 +1,8 @@
 import { Router } from 'express';
-import type { ModuleDefinition } from '../../platform/modules/index.js';
+import type { ModuleFactory } from '../../platform/modules/index.js';
 
 // Module A · Student Hub (Person 1). Routes arrive in P4.
-const hub: ModuleDefinition = {
+const hub: ModuleFactory = () => ({
   id: 'hub',
   label: 'Student Hub',
   order: 10,
@@ -18,6 +18,6 @@ const hub: ModuleDefinition = {
       authorizeRead: (user, file) => user.id === file.ownerId || user.role === 'admin',
     },
   ],
-};
+});
 
 export default hub;

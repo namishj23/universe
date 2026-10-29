@@ -13,6 +13,7 @@ import {
   validateModules,
   type ModuleDefinition,
 } from '../src/platform/modules/index.js';
+import { createPlatform } from '../src/platform/modules/platform.js';
 import { fixtureModules } from './fixtures.js';
 import { login, seed } from './helpers.js';
 
@@ -35,17 +36,29 @@ describe('discovery', () => {
     expect((await loadModules()).map((m) => m.id)).toEqual(['hub', 'wellbeing']);
   });
 
-  it('loads a CommonJS module folder (how rides will be added in P3)', async () => {
+  it('calls a CommonJS factory with the platform it is given', async () => {
     const dir = mkdtempSync(join(tmpdir(), 'universe-modules-'));
     mkdirSync(join(dir, 'rides'));
     writeFileSync(join(dir, 'rides', 'package.json'), '{"type":"commonjs"}');
     writeFileSync(
       join(dir, 'rides', 'index.js'),
       `const router = Object.assign(function router() {}, { use() {} });
-       module.exports = { id: 'rides', label: 'Rides', order: 20, roles: ['student'], router };`,
+       module.exports = (platform) => ({ id: 'rides', label: platform.config.nodeEnv, order: 20, roles: ['student'], router });`,
     );
-    const loaded = await loadModules(pathToFileURL(`${dir}/`));
-    expect(loaded.map((m) => m.id)).toEqual(['rides']);
+    const testPlatform = createPlatform({ config: { nodeEnv: 'test', isProduction: false } });
+    const loaded = await loadModules({ dir: pathToFileURL(`${dir}/`), platform: testPlatform });
+    expect(loaded.map((m) => [m.id, m.label])).toEqual([['rides', 'test']]);
+    expect(Object.isFrozen(testPlatform)).toBe(true);
+  });
+
+  it('refuses a module that exports a definition instead of a factory', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'universe-modules-'));
+    mkdirSync(join(dir, 'exam'));
+    writeFileSync(join(dir, 'package.json'), '{"type":"module"}');
+    writeFileSync(join(dir, 'exam', 'index.js'), `export default { id: 'exam' };`);
+    await expect(loadModules({ dir: pathToFileURL(`${dir}/`) })).rejects.toThrow(
+      /exam: must default-export a factory/,
+    );
   });
 
   it('fails at startup with a clear message for an invalid definition', async () => {
@@ -53,10 +66,10 @@ describe('discovery', () => {
     mkdirSync(join(dir, 'exam'));
     writeFileSync(
       join(dir, 'exam', 'index.js'),
-      `export default { id: 'exam', label: '', order: 1.5, roles: [], router: {} };`,
+      `export default () => ({ id: 'exam', label: '', order: 1.5, roles: [], router: {} });`,
     );
     writeFileSync(join(dir, 'package.json'), '{"type":"module"}');
-    await expect(loadModules(pathToFileURL(`${dir}/`))).rejects.toThrow(
+    await expect(loadModules({ dir: pathToFileURL(`${dir}/`) })).rejects.toThrow(
       /Invalid module definitions:[\s\S]*exam: label[\s\S]*exam: order[\s\S]*exam: roles[\s\S]*exam: router/,
     );
   });

@@ -6,6 +6,7 @@ enum Role {
   student
   mentor
   invigilator
+  driver
   admin
 
   @@map("role")
