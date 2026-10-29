@@ -41,7 +41,8 @@ function validateGraph(nodes, edges) {
   const label = (e) => `${name.get(e.nodeAId) ?? e.nodeAId} - ${name.get(e.nodeBId) ?? e.nodeBId}`;
   const seen = new Set();
   for (const e of edges) {
-    if (!name.has(e.nodeAId) || !name.has(e.nodeBId)) problems.push(`edge ${label(e)}: unknown node`);
+    if (!name.has(e.nodeAId) || !name.has(e.nodeBId))
+      problems.push(`edge ${label(e)}: unknown node`);
     if (e.nodeAId === e.nodeBId) problems.push(`edge ${label(e)}: connects a stop to itself`);
     if (!Number.isSafeInteger(e.distanceM) || e.distanceM <= 0)
       problems.push(`edge ${label(e)}: distance must be a positive whole number of metres`);
@@ -54,7 +55,8 @@ function validateGraph(nodes, edges) {
   if (nodes.length > 0) {
     const all = reachable(nodes[0].id, edges);
     const cut = nodes.filter((n) => !all.has(n.id));
-    if (cut.length) problems.push(`graph is not connected: ${cut.map((n) => n.name).join(', ')} unreachable`);
+    if (cut.length)
+      problems.push(`graph is not connected: ${cut.map((n) => n.name).join(', ')} unreachable`);
     const roads = edges.filter(drivable);
     const onRoad = [...new Set(roads.flatMap((e) => [e.nodeAId, e.nodeBId]))];
     if (onRoad.length > 0) {
@@ -70,7 +72,9 @@ function validateGraph(nodes, edges) {
 function assertValidGraph(nodes, edges, where) {
   const problems = validateGraph(nodes, edges);
   if (problems.length)
-    throw new Error(`Invalid rides stop graph (${where}):\n${problems.map((p) => `  - ${p}`).join('\n')}`);
+    throw new Error(
+      `Invalid rides stop graph (${where}):\n${problems.map((p) => `  - ${p}`).join('\n')}`,
+    );
 }
 
 module.exports = { drivable, validateGraph, assertValidGraph };

@@ -4396,7 +4396,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RidesOffer"
+                  "$ref": "#/components/schemas/RidesAck"
                 }
               }
             }
@@ -11730,6 +11730,13 @@
         ],
         "additionalProperties": false
       },
+      "RidesAck": {
+        "type": "object",
+        "propertyNames": {
+          "type": "string"
+        },
+        "additionalProperties": {}
+      },
       "RidesStatsReport": {
         "type": "object",
         "properties": {
@@ -12746,13 +12753,6 @@
           "leaveLockedReason"
         ],
         "additionalProperties": false
-      },
-      "RidesAck": {
-        "type": "object",
-        "propertyNames": {
-          "type": "string"
-        },
-        "additionalProperties": {}
       },
       "RidesDriverCard": {
         "type": "object",

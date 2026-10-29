@@ -20,3 +20,6 @@ __pycache__/
 *.pyc
 
 *.tsbuildinfo
+
+# Vitest output
+.vitest/

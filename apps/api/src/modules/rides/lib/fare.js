@@ -102,9 +102,7 @@ function splitBySegments(routeStops, people, costAt) {
 
 /** Pooled autos: the meter fare of the route, split by segment (everyone boards at 0). */
 function splitFareBySegments(routeStops, members, t) {
-  const { totalPaise, shares } = splitBySegments(routeStops, members, (m) =>
-    fareForDistance(m, t),
-  );
+  const { totalPaise, shares } = splitBySegments(routeStops, members, (m) => fareForDistance(m, t));
   return { totalFarePaise: totalPaise, shares };
 }
 

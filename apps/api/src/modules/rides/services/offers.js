@@ -194,7 +194,15 @@ module.exports = function offers(c, services) {
           await cancelInTx(tx, emit, g, o, admin.id, requestId);
         }
       }
-      await audit(tx, admin.id, 'rides.carpool_driver_reviewed', 'rides_driver', driverId, { status, note }, requestId);
+      await audit(
+        tx,
+        admin.id,
+        'rides.carpool_driver_reviewed',
+        'rides_driver',
+        driverId,
+        { status, note },
+        requestId,
+      );
       await emit({
         recipients: driverId,
         actorId: admin.id,
@@ -213,7 +221,11 @@ module.exports = function offers(c, services) {
     c.assertNotSuspended(profile);
     const d = await carpoolRecord(userId, db);
     if (!d)
-      throw c.fail(403, 'NOT_A_CARPOOL_DRIVER', 'Apply to drive (and get approved) before offering rides.');
+      throw c.fail(
+        403,
+        'NOT_A_CARPOOL_DRIVER',
+        'Apply to drive (and get approved) before offering rides.',
+      );
     if (d.status !== 'approved')
       throw c.fail(403, 'CARPOOL_NOT_APPROVED', `Your driver application is ${d.status}.`);
     const v = verificationOf(await documentsOf(userId, db));
@@ -228,7 +240,9 @@ module.exports = function offers(c, services) {
 
   function road(g, a, b) {
     if (g.walkOnly(a) || g.walkOnly(b))
-      throw c.badRequest('That stop is reachable on foot only: pick a gate, parking or a city stop.');
+      throw c.badRequest(
+        'That stop is reachable on foot only: pick a gate, parking or a city stop.',
+      );
     const path = g.sp(a, b);
     if (!path) throw c.badRequest('No road route between these stops.');
     return path;
@@ -274,7 +288,8 @@ module.exports = function offers(c, services) {
     });
 
   async function lockOffer(tx, offerId) {
-    const [row] = await tx.$queryRaw`SELECT id FROM rides_offers WHERE id = ${offerId}::uuid FOR UPDATE`;
+    const [row] =
+      await tx.$queryRaw`SELECT id FROM rides_offers WHERE id = ${offerId}::uuid FOR UPDATE`;
     return row ? tx.ridesOffer.findUniqueOrThrow({ where: { id: offerId } }) : null;
   }
 
@@ -289,7 +304,9 @@ module.exports = function offers(c, services) {
       throw c.notFound('Stop not found');
     if (input.seats > v.seats) throw c.badRequest(`Your ${v.vehicleType} has ${v.seats} seat(s).`);
     if (input.womenOnly && !isFemale(profile))
-      throw c.badRequest('Women-only rides can be offered by drivers who set their gender as female.');
+      throw c.badRequest(
+        'Women-only rides can be offered by drivers who set their gender as female.',
+      );
     const departMs = input.departAt.getTime();
     if (departMs < Date.now() - MIN) throw c.badRequest('Departure must be in the future.');
     if (!vehicleValidAt(v, departMs))
@@ -337,7 +354,13 @@ module.exports = function offers(c, services) {
   }
 
   // With accepted passengers, only changes that can't hurt them.
-  const SAFE_WITH_PASSENGERS = ['seats', 'maxDetourM', 'maxDetourS', 'costPerKmPaise', 'autoAccept'];
+  const SAFE_WITH_PASSENGERS = [
+    'seats',
+    'maxDetourM',
+    'maxDetourS',
+    'costPerKmPaise',
+    'autoAccept',
+  ];
 
   async function update(userId, offerId, body) {
     const input = R.UpdateOfferRequest.parse(body);
@@ -383,7 +406,13 @@ module.exports = function offers(c, services) {
           baseDurationS: base.durationS,
         },
       });
-      await savePlan(tx, merged, stopsOf(o), accepted.map((b) => b.id), g);
+      await savePlan(
+        tx,
+        merged,
+        stopsOf(o),
+        accepted.map((b) => b.id),
+        g,
+      );
     });
     return view(userId, offerId);
   }
@@ -409,10 +438,18 @@ module.exports = function offers(c, services) {
     });
     const minutes = minutesTo(o);
     if (minutes < O.lateCancelMinutes) {
-      await audit(tx, actorId, 'rides.offer_cancelled_late', 'rides_offer', o.id, {
-        minutesToDeparture: minutes,
-        passengers: reopen.length,
-      }, requestId);
+      await audit(
+        tx,
+        actorId,
+        'rides.offer_cancelled_late',
+        'rides_offer',
+        o.id,
+        {
+          minutesToDeparture: minutes,
+          passengers: reopen.length,
+        },
+        requestId,
+      );
     }
     if (live.length) {
       await emit({
@@ -443,7 +480,9 @@ module.exports = function offers(c, services) {
       if (!o || o.driverId !== userId) throw c.notFound('Offer not found');
       if (!['open', 'full'].includes(o.status)) throw c.conflict(`This ride is ${o.status}.`);
       if (minutesTo(o) > O.departEarlyMinutes)
-        throw c.conflict(`You can start the ride from ${O.departEarlyMinutes} minutes before departure.`);
+        throw c.conflict(
+          `You can start the ride from ${O.departEarlyMinutes} minutes before departure.`,
+        );
       const accepted = await acceptedOf(tx, o.id);
       await tx.ridesOffer.update({
         where: { id: o.id },
@@ -454,7 +493,15 @@ module.exports = function offers(c, services) {
         where: { offerId: o.id, status: 'requested' },
         data: { status: 'declined', decidedAt: new Date() },
       });
-      await audit(tx, userId, 'rides.offer_departed', 'rides_offer', o.id, { passengers: accepted.length }, requestId);
+      await audit(
+        tx,
+        userId,
+        'rides.offer_departed',
+        'rides_offer',
+        o.id,
+        { passengers: accepted.length },
+        requestId,
+      );
       if (accepted.length) {
         await emit({
           recipients: accepted.map((b) => b.passengerId),
@@ -482,14 +529,23 @@ module.exports = function offers(c, services) {
         where: { id: { in: accepted.map((b) => b.requestId) } },
         data: { status: 'completed' },
       });
-      await audit(tx, userId, 'rides.offer_completed', 'rides_offer', o.id, { passengers: accepted.length }, requestId);
+      await audit(
+        tx,
+        userId,
+        'rides.offer_completed',
+        'rides_offer',
+        o.id,
+        { passengers: accepted.length },
+        requestId,
+      );
     });
     return view(userId, offerId);
   }
 
   // ── Bookings ──────────────────────────────────────────────────────────────────────────
   const REASONS = {
-    detour: (r, o) => `Detour ${km(r.addedDetourM)} km is over this driver's ${km(o.maxDetourM)} km limit`,
+    detour: (r, o) =>
+      `Detour ${km(r.addedDetourM)} km is over this driver's ${km(o.maxDetourM)} km limit`,
     detour_time: () => 'The detour would take longer than this driver allows',
     delay: () =>
       `It would move a confirmed passenger's pickup by more than ${O.maxPickupDelayMinutes} minutes`,
@@ -509,7 +565,10 @@ module.exports = function offers(c, services) {
   });
 
   async function emitToDriver(emit, o, g, passengerId, type) {
-    const user = await prisma.user.findUniqueOrThrow({ where: { id: passengerId }, select: { name: true } });
+    const user = await prisma.user.findUniqueOrThrow({
+      where: { id: passengerId },
+      select: { name: true },
+    });
     await emit({
       recipients: o.driverId,
       actorId: passengerId,
@@ -524,7 +583,14 @@ module.exports = function offers(c, services) {
   // withdraws their other seat requests. The offer and request rows are already locked.
   async function acceptInTx(tx, emit, g, o, booking, request) {
     const accepted = await acceptedOf(tx, o.id);
-    const fit = insertPassenger(g.sp, o, stopsOf(o), directMap(accepted), passengerOf(booking.id, request, g), limits);
+    const fit = insertPassenger(
+      g.sp,
+      o,
+      stopsOf(o),
+      directMap(accepted),
+      passengerOf(booking.id, request, g),
+      limits,
+    );
     if (!fit.ok) throw c.fail(409, 'NO_SEAT', `Can't fit this passenger: ${reasonText(fit, o)}.`);
     await tx.ridesOfferBooking.update({
       where: { id: booking.id },
@@ -579,12 +645,21 @@ module.exports = function offers(c, services) {
       }
       const id = existing?.id ?? randomUUID();
       const accepted = await acceptedOf(tx, o.id);
-      const fit = insertPassenger(g.sp, o, stopsOf(o), directMap(accepted), passengerOf(id, request, g), limits);
+      const fit = insertPassenger(
+        g.sp,
+        o,
+        stopsOf(o),
+        directMap(accepted),
+        passengerOf(id, request, g),
+        limits,
+      );
       if (!fit.ok) throw c.fail(409, 'NO_SEAT', `${reasonText(fit, o)}.`);
       const planned = fit.ev.byBooking.get(id);
       const pickupAt = new Date(o.departAt.getTime() + planned.pickupS * 1000);
       if (Math.abs(pickupAt.getTime() - request.pickupAt.getTime()) > c.bufferMs)
-        throw c.conflict(`This ride would pick you up more than ${cfg.matching.bufferMinutes} minutes from your time.`);
+        throw c.conflict(
+          `This ride would pick you up more than ${cfg.matching.bufferMinutes} minutes from your time.`,
+        );
       const cost = splitCost(fit.ev, o.costPerKmPaise);
       const data = {
         requestId: request.id,
@@ -601,7 +676,9 @@ module.exports = function offers(c, services) {
       };
       const booking = existing
         ? await tx.ridesOfferBooking.update({ where: { id }, data })
-        : await tx.ridesOfferBooking.create({ data: { id, offerId, passengerId: userId, ...data } });
+        : await tx.ridesOfferBooking.create({
+            data: { id, offerId, passengerId: userId, ...data },
+          });
       await emitToDriver(emit, o, g, userId, 'rides.seat_requested');
       if (o.autoAccept) await acceptInTx(tx, emit, g, o, booking, request);
     });
@@ -617,7 +694,8 @@ module.exports = function offers(c, services) {
       const o = await lockOffer(tx, peek.offerId);
       if (!o || o.driverId !== userId) throw c.notFound('Booking not found');
       const booking = await tx.ridesOfferBooking.findUniqueOrThrow({ where: { id: bookingId } });
-      if (booking.status !== 'requested') throw c.conflict(`This request is already ${booking.status}.`);
+      if (booking.status !== 'requested')
+        throw c.conflict(`This request is already ${booking.status}.`);
       if (!accept) {
         await tx.ridesOfferBooking.update({
           where: { id: bookingId },
@@ -669,18 +747,33 @@ module.exports = function offers(c, services) {
         });
         const rest = await acceptedOf(tx, o.id);
         const stops = stopsOf(o).filter((s) => s.bookingId !== bookingId);
-        await savePlan(tx, o, stops, rest.map((b) => b.id), g);
+        await savePlan(
+          tx,
+          o,
+          stops,
+          rest.map((b) => b.id),
+          g,
+        );
         const minutes = minutesTo(o);
         if (minutes < O.lateCancelMinutes) {
-          await audit(tx, userId, 'rides.booking_cancelled_late', 'rides_offer_booking', bookingId, {
-            offerId: o.id,
-            minutesToDeparture: minutes,
-          }, requestId);
+          await audit(
+            tx,
+            userId,
+            'rides.booking_cancelled_late',
+            'rides_offer_booking',
+            bookingId,
+            {
+              offerId: o.id,
+              minutesToDeparture: minutes,
+            },
+            requestId,
+          );
         }
       }
       await emitToDriver(emit, o, g, userId, 'rides.booking_cancelled');
     });
-    return view(userId, peek.offerId);
+    // No longer a member, so no offer view: just the acknowledgement.
+    return { cancelled: true, bookingId, offerId: peek.offerId };
   }
 
   // ── Views ─────────────────────────────────────────────────────────────────────────────
@@ -784,7 +877,12 @@ module.exports = function offers(c, services) {
       }),
       c.loadGraph(),
     ]);
-    return c.toPage(rows, limit, (o) => o.departAt, (o) => describe(g, o, userId));
+    return c.toPage(
+      rows,
+      limit,
+      (o) => o.departAt,
+      (o) => describe(g, o, userId),
+    );
   }
 
   // Offers I booked (requested or accepted), latest pickup first, in two queries.
@@ -806,8 +904,11 @@ module.exports = function offers(c, services) {
       c.loadGraph(),
     ]);
     const byId = new Map(offers.map((o) => [o.id, o]));
-    return c.toPage(bookings, limit, (b) => b.plannedPickupAt, (b) =>
-      describe(g, byId.get(b.offerId), userId),
+    return c.toPage(
+      bookings,
+      limit,
+      (b) => b.plannedPickupAt,
+      (b) => describe(g, byId.get(b.offerId), userId),
     );
   }
 
@@ -936,7 +1037,11 @@ module.exports = function offers(c, services) {
     );
     const reasons = [...hidden]
       .sort(([a], [b]) => a.localeCompare(b))
-      .map(([reason, count]) => ({ reason, count, message: `${count} hidden: ${HIDDEN[reason]()}` }));
+      .map(([reason, count]) => ({
+        reason,
+        count,
+        message: `${count} hidden: ${HIDDEN[reason]()}`,
+      }));
     return {
       matches: results.slice(0, q.limit),
       hidden: { total: reasons.reduce((t, r) => t + r.count, 0), reasons },

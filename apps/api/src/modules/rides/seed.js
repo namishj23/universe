@@ -33,7 +33,12 @@ module.exports = async function seed(platform, c, s) {
     await prisma.ridesRouteEdge.upsert({
       where: { nodeAId_nodeBId: { nodeAId: e.nodeAId, nodeBId: e.nodeBId } },
       create: e,
-      update: { distanceM: e.distanceM, durationS: e.durationS, mode: e.mode, estimated: e.estimated },
+      update: {
+        distanceM: e.distanceM,
+        durationS: e.durationS,
+        mode: e.mode,
+        estimated: e.estimated,
+      },
     });
   }
   assertValidGraph(
@@ -168,8 +173,22 @@ module.exports = async function seed(platform, c, s) {
   // Carpool (P3b): the mentor drives a car, student2 a bike; both approved with verified
   // documents. Two open offers and one completed shared ride, only on the first seed.
   const carpoolers = [
-    { userId: mentor, vehicleType: 'car', plateNumber: 'MH02AB1234', model: 'Maruti Swift', colour: 'White', seats: 3 },
-    { userId: student2, vehicleType: 'bike', plateNumber: 'MH47C5678', model: 'Honda Activa', colour: 'Grey', seats: 1 },
+    {
+      userId: mentor,
+      vehicleType: 'car',
+      plateNumber: 'MH02AB1234',
+      model: 'Maruti Swift',
+      colour: 'White',
+      seats: 3,
+    },
+    {
+      userId: student2,
+      vehicleType: 'bike',
+      plateNumber: 'MH47C5678',
+      model: 'Honda Activa',
+      colour: 'Grey',
+      seats: 1,
+    },
   ].filter((x) => x.userId);
   for (const x of carpoolers) {
     if (await prisma.ridesDriver.findUnique({ where: { userId: x.userId } })) continue;

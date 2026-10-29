@@ -124,7 +124,8 @@ function insertPassenger(sp, offer, stops, directM, passenger, limits) {
  */
 function splitCost(ev, perKmPaise) {
   const people = [{ userId: '__driver', boardM: 0, dropM: ev.distanceM }];
-  for (const [id, b] of ev.byBooking) people.push({ userId: id, boardM: b.pickupM, dropM: b.dropM });
+  for (const [id, b] of ev.byBooking)
+    people.push({ userId: id, boardM: b.pickupM, dropM: b.dropM });
   const routeStops = ev.points.map((p) => ({ cumulativeM: p.atM }));
   const { totalPaise, shares } = splitBySegments(routeStops, people, (m) =>
     costForDistance(m, perKmPaise),
@@ -157,7 +158,9 @@ const round3 = (x) => Math.round(x * 1000) / 1000;
  * from components rounded to 3 decimals so the breakdown adds up as shown.
  */
 function score({ sharedM, passengerM, routeM, minutesApart, bufferMinutes, weights }) {
-  const routeSimilarity = round3(Math.max(passengerM, routeM) > 0 ? sharedM / Math.max(passengerM, routeM) : 1);
+  const routeSimilarity = round3(
+    Math.max(passengerM, routeM) > 0 ? sharedM / Math.max(passengerM, routeM) : 1,
+  );
   const overlapRatio = round3(passengerM > 0 ? sharedM / passengerM : 1);
   const timeFit = round3(Math.max(0, 1 - minutesApart / bufferMinutes));
   return {

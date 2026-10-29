@@ -73,7 +73,14 @@ module.exports = function core(p) {
                ST_Y(geom::geometry) AS lat, ST_X(geom::geometry) AS lng
         FROM rides_nodes ORDER BY area, name`,
       db.ridesRouteEdge.findMany({
-        select: { nodeAId: true, nodeBId: true, distanceM: true, durationS: true, mode: true, estimated: true },
+        select: {
+          nodeAId: true,
+          nodeBId: true,
+          distanceM: true,
+          durationS: true,
+          mode: true,
+          estimated: true,
+        },
         orderBy: { id: 'asc' },
       }),
     ]);

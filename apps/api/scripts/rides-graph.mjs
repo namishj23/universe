@@ -21,30 +21,144 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 // area: campus | city. geo: Nominatim query (city stops); lat/lng: fixed (campus, legacy).
 const NODES = [
   // Module B's stops (names, so ids, unchanged).
-  { name: 'SPIT Campus (Gate 2)', shortName: 'SPIT', area: 'campus', aliases: ['spit', 'campus', 'college', 'gate 2', 'sp it', 'spit gate'] },
+  {
+    name: 'SPIT Campus (Gate 2)',
+    shortName: 'SPIT',
+    area: 'campus',
+    aliases: ['spit', 'campus', 'college', 'gate 2', 'sp it', 'spit gate'],
+  },
   { name: 'Azad Nagar', shortName: 'AZAD NAGAR', area: 'city', aliases: ['azad'] },
-  { name: 'Andheri', shortName: 'ANDHERI', area: 'city', aliases: ['andheri east', 'andheri west', 'andheri station'] },
+  {
+    name: 'Andheri',
+    shortName: 'ANDHERI',
+    area: 'city',
+    aliases: ['andheri east', 'andheri west', 'andheri station'],
+  },
   { name: 'Marol Naka', shortName: 'MAROL', area: 'city', aliases: ['marol'] },
   { name: 'Saki Naka', shortName: 'SAKI NAKA', area: 'city', aliases: ['saki', 'sakinaka'] },
   { name: 'Ghatkopar', shortName: 'GHATKOPAR', area: 'city', aliases: ['ghatkopar station'] },
   // The western line from the team's UI design.
-  { name: 'Dahisar', shortName: 'DAHISAR', area: 'city', aliases: ['dahisar station', 'dahisar east'], geo: 'Dahisar railway station, Mumbai' },
-  { name: 'Borivali Station', shortName: 'BORIVALI', area: 'city', aliases: ['borivali', 'borivli', 'borivali west', 'borivali east'], geo: 'Borivali railway station, Mumbai' },
-  { name: 'Kandivali', shortName: 'KANDIVALI', area: 'city', aliases: ['kandivli', 'kandivali station', 'kandivali west'], geo: 'Kandivali railway station, Mumbai' },
-  { name: 'Malad', shortName: 'MALAD', area: 'city', aliases: ['malad station', 'malad west', 'malad east'], geo: 'Malad railway station, Mumbai' },
-  { name: 'Goregaon', shortName: 'GOREGAON', area: 'city', aliases: ['goregaon station', 'goregaon west', 'goregaon east'], geo: 'Goregaon railway station, Mumbai' },
-  { name: 'Jogeshwari', shortName: 'JOGESHWARI', area: 'city', aliases: ['jogeshwari station', 'jogeshwari east', 'jogeshwari west'], geo: 'Jogeshwari railway station, Mumbai' },
-  { name: 'Lokhandwala', shortName: 'LOKHANDWALA', area: 'city', aliases: ['lokhandwala complex', 'lokhandwala market'], geo: 'Lokhandwala Complex, Andheri West, Mumbai' },
-  { name: 'Powai', shortName: 'POWAI', area: 'city', aliases: ['hiranandani', 'powai lake', 'iit powai'], geo: 'Hiranandani Gardens, Powai, Mumbai' },
+  {
+    name: 'Dahisar',
+    shortName: 'DAHISAR',
+    area: 'city',
+    aliases: ['dahisar station', 'dahisar east'],
+    geo: 'Dahisar railway station, Mumbai',
+  },
+  {
+    name: 'Borivali Station',
+    shortName: 'BORIVALI',
+    area: 'city',
+    aliases: ['borivali', 'borivli', 'borivali west', 'borivali east'],
+    geo: 'Borivali railway station, Mumbai',
+  },
+  {
+    name: 'Kandivali',
+    shortName: 'KANDIVALI',
+    area: 'city',
+    aliases: ['kandivli', 'kandivali station', 'kandivali west'],
+    geo: 'Kandivali railway station, Mumbai',
+  },
+  {
+    name: 'Malad',
+    shortName: 'MALAD',
+    area: 'city',
+    aliases: ['malad station', 'malad west', 'malad east'],
+    geo: 'Malad railway station, Mumbai',
+  },
+  {
+    name: 'Goregaon',
+    shortName: 'GOREGAON',
+    area: 'city',
+    aliases: ['goregaon station', 'goregaon west', 'goregaon east'],
+    geo: 'Goregaon railway station, Mumbai',
+  },
+  {
+    name: 'Jogeshwari',
+    shortName: 'JOGESHWARI',
+    area: 'city',
+    aliases: ['jogeshwari station', 'jogeshwari east', 'jogeshwari west'],
+    geo: 'Jogeshwari railway station, Mumbai',
+  },
+  {
+    name: 'Lokhandwala',
+    shortName: 'LOKHANDWALA',
+    area: 'city',
+    aliases: ['lokhandwala complex', 'lokhandwala market'],
+    geo: 'Lokhandwala Complex, Andheri West, Mumbai',
+  },
+  {
+    name: 'Powai',
+    shortName: 'POWAI',
+    area: 'city',
+    aliases: ['hiranandani', 'powai lake', 'iit powai'],
+    geo: 'Hiranandani Gardens, Powai, Mumbai',
+  },
   // Campus points: hand-placed around Gate 2 (approximate, for the demo map and routing).
-  { name: 'SPIT Main Gate', shortName: 'MAIN GATE', area: 'campus', aliases: ['main gate', 'spit main gate', 'gate 1'], lat: 19.1227, lng: 72.8378 },
-  { name: 'Campus Parking', shortName: 'PARKING', area: 'campus', aliases: ['parking', 'car park', 'bike parking'], lat: 19.1229, lng: 72.8368 },
-  { name: 'Main Building', shortName: 'MAIN BLDG', area: 'campus', aliases: ['main building', 'admin block', 'classrooms'], lat: 19.1236, lng: 72.8372 },
-  { name: 'Library', shortName: 'LIBRARY', area: 'campus', aliases: ['central library', 'reading room'], lat: 19.1241, lng: 72.8368 },
-  { name: 'Canteen', shortName: 'CANTEEN', area: 'campus', aliases: ['cafeteria', 'mess', 'food court'], lat: 19.1238, lng: 72.8362 },
-  { name: 'Boys Hostel', shortName: 'BOYS HOSTEL', area: 'campus', aliases: ['boys hostel', 'hostel b'], lat: 19.1246, lng: 72.8358 },
-  { name: 'Girls Hostel', shortName: 'GIRLS HOSTEL', area: 'campus', aliases: ['girls hostel', 'hostel g', 'ladies hostel'], lat: 19.1244, lng: 72.8376 },
-  { name: 'Sports Ground', shortName: 'GROUND', area: 'campus', aliases: ['ground', 'sports complex', 'playground'], lat: 19.125, lng: 72.8365 },
+  {
+    name: 'SPIT Main Gate',
+    shortName: 'MAIN GATE',
+    area: 'campus',
+    aliases: ['main gate', 'spit main gate', 'gate 1'],
+    lat: 19.1227,
+    lng: 72.8378,
+  },
+  {
+    name: 'Campus Parking',
+    shortName: 'PARKING',
+    area: 'campus',
+    aliases: ['parking', 'car park', 'bike parking'],
+    lat: 19.1229,
+    lng: 72.8368,
+  },
+  {
+    name: 'Main Building',
+    shortName: 'MAIN BLDG',
+    area: 'campus',
+    aliases: ['main building', 'admin block', 'classrooms'],
+    lat: 19.1236,
+    lng: 72.8372,
+  },
+  {
+    name: 'Library',
+    shortName: 'LIBRARY',
+    area: 'campus',
+    aliases: ['central library', 'reading room'],
+    lat: 19.1241,
+    lng: 72.8368,
+  },
+  {
+    name: 'Canteen',
+    shortName: 'CANTEEN',
+    area: 'campus',
+    aliases: ['cafeteria', 'mess', 'food court'],
+    lat: 19.1238,
+    lng: 72.8362,
+  },
+  {
+    name: 'Boys Hostel',
+    shortName: 'BOYS HOSTEL',
+    area: 'campus',
+    aliases: ['boys hostel', 'hostel b'],
+    lat: 19.1246,
+    lng: 72.8358,
+  },
+  {
+    name: 'Girls Hostel',
+    shortName: 'GIRLS HOSTEL',
+    area: 'campus',
+    aliases: ['girls hostel', 'hostel g', 'ladies hostel'],
+    lat: 19.1244,
+    lng: 72.8376,
+  },
+  {
+    name: 'Sports Ground',
+    shortName: 'GROUND',
+    area: 'campus',
+    aliases: ['ground', 'sports complex', 'playground'],
+    lat: 19.125,
+    lng: 72.8365,
+  },
 ];
 
 // [a, b, mode]. road = public road (OSRM), campus_road = slow lane inside campus, walk = foot only.
@@ -119,7 +233,8 @@ for (const n of NODES) {
   const { geo, lat, lng, ...rest } = n;
   let at;
   let source;
-  if (legacy.coordinates[n.name]) [at, source] = [legacy.coordinates[n.name], 'nominatim (Module B cache)'];
+  if (legacy.coordinates[n.name])
+    [at, source] = [legacy.coordinates[n.name], 'nominatim (Module B cache)'];
   else if (lat !== undefined) [at, source] = [{ lat, lng }, 'hand-placed (approximate)'];
   else if (prevNode.has(n.name)) [at, source] = [prevNode.get(n.name), prevNode.get(n.name).source];
   else {
@@ -138,7 +253,8 @@ for (const [a, b, mode] of EDGES) {
   const legacyKm = legacy.distances[key];
   let distanceM;
   let source;
-  if (legacyKm !== undefined) [distanceM, source] = [Math.round(legacyKm * 1000), 'osrm (Module B cache)'];
+  if (legacyKm !== undefined)
+    [distanceM, source] = [Math.round(legacyKm * 1000), 'osrm (Module B cache)'];
   else if (prevEdge.has(key) && prevEdge.get(key).source !== 'estimated') {
     [distanceM, source] = [prevEdge.get(key).distanceM, prevEdge.get(key).source];
   } else if (mode === 'road') {

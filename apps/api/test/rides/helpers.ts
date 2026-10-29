@@ -1,3 +1,5 @@
+import { randomUUID } from 'node:crypto';
+import { createRequire } from 'node:module';
 import type { Express } from 'express';
 import { expect } from 'vitest';
 import type { Role } from '@universe/contracts';
@@ -19,6 +21,7 @@ export async function setupRides(): Promise<Rides> {
   await modules.find((m) => m.id === 'rides')?.seed?.();
   await prisma.ridesGroup.deleteMany();
   await prisma.ridesRequest.deleteMany();
+  await prisma.ridesOffer.deleteMany();
   return { app: createApp({ modules }), modules };
 }
 
@@ -120,3 +123,91 @@ export const driverEmail = (name: string) =>
   `${name.toLowerCase().replace(/\s+/g, '.')}@drivers.universe.test`;
 
 export { prisma };
+
+const { stopId } = createRequire(import.meta.url)('../../src/modules/rides/data/stops.js') as {
+  stopId: (name: string) => string;
+};
+/** A stop's stable id by name. */
+export const stop = (name: string) => stopId(name);
+
+export const inMinutes = (m: number) => new Date(Date.now() + m * 60_000).toISOString();
+
+let plates = 0;
+/**
+ * Makes `s` an approved carpool driver with verified documents (straight into the database;
+ * the API flow itself is tested in offers.test.ts).
+ */
+export async function makeCarpoolDriver(
+  s: Session,
+  { seats = 3, vehicleType = 'car', gender = null as string | null } = {},
+) {
+  plates += 1;
+  const plate = `MH01ZZ${String(1000 + plates)}`;
+  await s.http.get('/api/rides/me').expect(200); // creates the rides profile
+  if (gender) await prisma.ridesProfile.update({ where: { userId: s.user.id }, data: { gender } });
+  const v = await prisma.ridesVehicle.create({
+    data: {
+      vehicleType,
+      plateNumber: `${plate}-${randomUUID().slice(0, 4)}`,
+      registrationNumber: plate,
+      model: 'Test car',
+      seats,
+      insuranceExpiresAt: new Date(Date.now() + 200 * 86_400_000),
+      pucExpiresAt: new Date(Date.now() + 200 * 86_400_000),
+    },
+  });
+  await prisma.ridesDriver.create({
+    data: {
+      userId: s.user.id,
+      kind: 'carpool',
+      status: 'approved',
+      vehicleId: v.id,
+      driverCode: `RP-DRV-${randomUUID().slice(0, 6).toUpperCase()}`,
+    },
+  });
+  for (const type of ['licence', 'inspection_certificate']) {
+    await prisma.ridesDriverDocument.create({
+      data: { driverId: s.user.id, type, fileId: randomUUID(), status: 'verified' },
+    });
+  }
+  return v;
+}
+
+/** Creates an offer as `driver` and returns its body. */
+export async function offer(driver: Session, body: Record<string, unknown>) {
+  const res = await driver.http.post('/api/rides/offers').send(body);
+  if (res.status !== 201)
+    throw new Error(`offer failed: ${res.status} ${JSON.stringify(res.body)}`);
+  return res.body as OfferBody;
+}
+
+export interface OfferBody {
+  id: string;
+  status: string;
+  peakOnboard: number;
+  tripCostPaise: number;
+  driverSharePaise: number;
+  planDistanceM: number;
+  route: string[];
+  plan: { type: string; stop: { name: string } }[];
+  bookings: {
+    id: string;
+    status: string;
+    isYou: boolean;
+    costSharePaise: number;
+    soloFarePaise: number;
+    savingsPaise: number;
+    inVehicleM: number;
+    addedDetourM: number;
+  }[];
+}
+
+/** A ride request by stop names at a given ISO time. */
+export async function requestAt(s: Session, pickup: string, drop: string, pickupTime: string) {
+  const res = await s.http
+    .post('/api/rides/requests')
+    .send({ pickupNodeId: stop(pickup), dropNodeId: stop(drop), pickupTime });
+  if (res.status !== 201)
+    throw new Error(`request failed: ${res.status} ${JSON.stringify(res.body)}`);
+  return res.body as { id: string; soloFarePaise: number; distanceM: number };
+}

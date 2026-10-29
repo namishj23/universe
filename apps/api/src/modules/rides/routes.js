@@ -259,7 +259,7 @@ module.exports = function routes(p, s) {
       'rider',
       'rides-carpool',
       'Withdraw my seat request or give up my seat',
-      { params: IdPath, body: R.NoBody, response: R.OfferView },
+      { params: IdPath, body: R.NoBody, response: Ok },
       (req) => (noBody(req), s.offers.cancelBooking(user(req).id, id(req), req.id)),
     ],
     [

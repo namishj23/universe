@@ -156,7 +156,12 @@ module.exports = function vehicles(c) {
       throw c.badRequest(
         'Photos required: tyres, lights, seats, meter (uploaded by you as inspection photos)',
       );
-    if (!(await prisma.ridesVehicle.findFirst({ where: { id: vehicleId, vehicleType: 'auto' }, select: { id: true } })))
+    if (
+      !(await prisma.ridesVehicle.findFirst({
+        where: { id: vehicleId, vehicleType: 'auto' },
+        select: { id: true },
+      }))
+    )
       throw c.notFound('Vehicle not found');
     await c.ensureProfile(userId);
     const row = await prisma.ridesVehicleInspection.create({

@@ -160,7 +160,12 @@ export const OfferView = z
     status: OfferStatus,
     isDriver: z.boolean(),
     driverFirstName: z.string(),
-    vehicle: z.object({ vehicleType: VehicleType, model: z.string(), colour: z.string().nullable(), plateNumber: z.string() }),
+    vehicle: z.object({
+      vehicleType: VehicleType,
+      model: z.string(),
+      colour: z.string().nullable(),
+      plateNumber: z.string(),
+    }),
     origin: StopRef,
     destination: StopRef,
     departAt: When,
@@ -292,7 +297,11 @@ export const RidesStatsReport = z
       .nullable(),
     weeks: z.array(WeekRow),
     busiestRoutes: z.array(
-      z.object({ pickupName: z.string(), dropName: z.string(), trips: z.number().int().positive() }),
+      z.object({
+        pickupName: z.string(),
+        dropName: z.string(),
+        trips: z.number().int().positive(),
+      }),
     ),
     assumptions: z.object({
       autoTariff: z.object({
