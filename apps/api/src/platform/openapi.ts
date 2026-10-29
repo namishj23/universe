@@ -49,9 +49,7 @@ const json = (schema: z.ZodType, description = 'OK') => ({
 });
 
 const errors = (...codes: number[]): ZodOpenApiResponsesObject =>
-  Object.fromEntries(
-    codes.map((c) => [String(c), json(ApiErrorBody, STATUS_TEXT[c] ?? 'Error')]),
-  ) as ZodOpenApiResponsesObject;
+  Object.fromEntries(codes.map((c) => [String(c), json(ApiErrorBody, STATUS_TEXT[c] ?? 'Error')]));
 
 const noContent = { '204': { description: 'No content' } };
 const IdPath = z.object({ id: z.uuid() });
@@ -302,7 +300,7 @@ export function buildOpenApiDocument(modules: readonly ModuleDefinition[]) {
   const modulePaths: ZodOpenApiPathsObject = {};
   for (const m of modules)
     for (const [path, item] of Object.entries(m.openapi ?? {}))
-      modulePaths[`${basePath(m)}${path}`] = item as ZodOpenApiPathsObject[string];
+      modulePaths[`${basePath(m)}${path}`] = item;
   return createDocument({
     openapi: '3.1.0',
     info: {

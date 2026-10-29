@@ -1,5 +1,5 @@
 import { createHash, randomUUID } from 'node:crypto';
-import { createWriteStream } from 'node:fs';
+import { createWriteStream, type WriteStream } from 'node:fs';
 import { Transform, type Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 import busboy from 'busboy';
@@ -93,6 +93,8 @@ function receiveUpload(req: Request, maxBytes: number): Promise<Received> {
     try {
       bb = busboy({
         headers: req.headers,
+        // Browsers send UTF-8 filenames; busboy's default is latin1.
+        defParamCharset: 'utf8',
         limits: { files: 1, fields: 0, parts: 1, fileSize: maxBytes, headerPairs: 20 },
       });
     } catch {
@@ -101,6 +103,7 @@ function receiveUpload(req: Request, maxBytes: number): Promise<Received> {
     }
     const tempPath = storage.tempPath();
     let file: Readable | undefined;
+    let out: WriteStream | undefined;
     let written: Promise<Omit<Received, 'tempPath'>> | undefined;
     let settled = false;
 
@@ -108,17 +111,24 @@ function receiveUpload(req: Request, maxBytes: number): Promise<Received> {
       if (settled) return;
       settled = true;
       req.unpipe(bb);
+      // Delete only after the write stream has closed, or a late open could re-create the file.
+      const closed =
+        out && !out.closed
+          ? new Promise<void>((done) => out?.once('close', () => done()))
+          : Promise.resolve();
       file?.destroy();
-      // Wait for the write stream to finish or fail before deleting, or it could re-create the file.
-      void (written ?? Promise.resolve())
-        .catch(() => undefined)
+      out?.destroy();
+      void closed
         .then(() => storage.removeTemp(tempPath))
         .catch((e: unknown) => logger.error({ err: e }, 'could not delete a temporary upload'))
-        .finally(() => reject(err));
+        .finally(() => reject(err instanceof Error ? err : new Error(String(err))));
     };
 
+    // Limits: one file part, no fields. busboy skips any further parts without reading them
+    // into memory or onto disk, and truncates the file at `fileSize` (the 'limit' event).
     bb.on('file', (_field, stream, info) => {
       file = stream;
+      out = createWriteStream(tempPath, { flags: 'wx', mode: 0o600 });
       const hash = createHash('sha256');
       let size = 0;
       const tap = new Transform({
@@ -131,18 +141,13 @@ function receiveUpload(req: Request, maxBytes: number): Promise<Received> {
       stream.on('limit', () =>
         fail(new ApiError(413, 'FILE_TOO_LARGE', `The file is larger than ${maxBytes} bytes`)),
       );
-      written = pipeline(
-        stream,
-        tap,
-        createWriteStream(tempPath, { flags: 'wx', mode: 0o600 }),
-      ).then(() => ({ size, sha256: hash.digest('hex'), filename: info.filename ?? '' }));
+      written = pipeline(stream, tap, out).then(() => ({
+        size,
+        sha256: hash.digest('hex'),
+        filename: info.filename ?? '',
+      }));
       written.catch(fail);
     });
-    const tooManyParts = () =>
-      fail(new ApiError(400, 'INVALID_UPLOAD', 'Send exactly one file and no other fields'));
-    bb.on('filesLimit', tooManyParts);
-    bb.on('fieldsLimit', tooManyParts);
-    bb.on('partsLimit', tooManyParts);
     bb.on('error', () => fail(new ApiError(400, 'INVALID_UPLOAD', 'The upload could not be read')));
     bb.on('close', () => {
       if (!written) return fail(new ApiError(400, 'INVALID_UPLOAD', 'No file was sent'));
@@ -253,9 +258,15 @@ export function fileRoutes(modules: readonly ModuleDefinition[]): Router {
       res.sendFile(
         storage.pathFor(file.storageKey),
         { cacheControl: false, dotfiles: 'deny' },
-        (err) => {
+        (err: (Error & { status?: number }) | undefined) => {
           if (!err) return;
-          next(res.headersSent ? err : notFound());
+          if (res.headersSent) return next(err);
+          // `send` has already set `Content-Range: bytes */<size>` for an unsatisfiable range.
+          next(
+            err.status === 416
+              ? new ApiError(416, 'RANGE_NOT_SATISFIABLE', 'Requested range not satisfiable')
+              : notFound(),
+          );
         },
       );
     }),

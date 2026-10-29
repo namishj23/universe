@@ -8,7 +8,6 @@ import {
   type Page,
 } from '@universe/contracts';
 import type { ReqId } from 'pino-http';
-import type { Prisma } from '../../generated/prisma/client.js';
 import type { Db } from '../db.js';
 import { prisma } from '../db.js';
 import { requireAuth, requireRole } from '../auth/guards.js';
@@ -46,7 +45,7 @@ async function record<A extends AuditAction>(tx: Db, input: AuditInput<A>): Prom
       action: input.action,
       targetType: input.targetType ?? null,
       targetId: input.targetId ?? null,
-      metadata: schema.parse(input.metadata) as Prisma.InputJsonObject,
+      metadata: schema.parse(input.metadata),
       requestId: typeof input.requestId === 'string' ? input.requestId : null,
     },
   });
