@@ -163,7 +163,7 @@ model HubResource {
   semester    Int?                     @db.SmallInt
   examYear    Int?                     @map("exam_year") @db.SmallInt
   uploaderId  String                   @map("uploader_id") @db.Uuid
-  search      Unsupported("tsvector")? @default(dbgenerated("((setweight(to_tsvector('english'::regconfig, title), 'A'::\"char\") || setweight(to_tsvector('simple'::regconfig, subject), 'A'::\"char\")) || setweight(to_tsvector('english'::regconfig, COALESCE(description, ''::text)), 'B'::\"char\"))"))
+  search      Unsupported("tsvector")? @default(dbgenerated("((((setweight(to_tsvector('simple'::regconfig, title), 'A'::\"char\") || setweight(to_tsvector('english'::regconfig, title), 'A'::\"char\")) || setweight(to_tsvector('simple'::regconfig, subject), 'A'::\"char\")) || setweight(to_tsvector('simple'::regconfig, COALESCE(description, ''::text)), 'B'::\"char\")) || setweight(to_tsvector('english'::regconfig, COALESCE(description, ''::text)), 'B'::\"char\"))"))
   createdAt   DateTime                 @default(now()) @map("created_at") @db.Timestamptz(3)
   deletedAt   DateTime?                @map("deleted_at") @db.Timestamptz(3)
 

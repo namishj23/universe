@@ -88,9 +88,9 @@ export function resourceService(p: Platform) {
       const after = input.cursor ? decodeRank(input.cursor) : null;
       rows = await p.prisma.$queryRaw<Row[]>`
         WITH hits AS (
-          SELECT r.id, ts_rank(r.search, to_tsquery('english', ${tsq}))::float8 AS rank
+          SELECT r.id, ts_rank(r.search, to_tsquery('simple', ${tsq}))::float8 AS rank
           FROM hub_resources r
-          WHERE ${tsq} <> '' AND r.search @@ to_tsquery('english', ${tsq})
+          WHERE ${tsq} <> '' AND r.search @@ to_tsquery('simple', ${tsq})
           UNION ALL
           SELECT r.id, 0::float8 FROM users u JOIN hub_resources r ON r.uploader_id = u.id
           WHERE u.name ILIKE ${pattern}
@@ -222,7 +222,7 @@ export function resourceService(p: Platform) {
             type: r.type as hub.ResourceType,
             ownResource: r.uploaderId === user.id,
           },
-          requestId,
+          ...(requestId !== undefined && { requestId }),
         });
     });
   }
