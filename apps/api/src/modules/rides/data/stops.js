@@ -1,28 +1,11 @@
-// The stop graph, ported from Module B (config/stopGraph.js + stopEdges.json, written by its
-// scripts/buildStopEdges.js from OpenStreetMap). Six stops in road order; each consecutive
-// pair is one edge with its OSRM road distance. The seed writes these to rides_nodes and
-// rides_route_edges; routing reads the tables.
+// The stop graph: Module B's six stops plus the western line and campus points, written once
+// by apps/api/scripts/rides-graph.mjs (OSRM road distances, Nominatim coordinates; campus
+// points hand-placed, their edges estimated). The seed writes it to rides_nodes and
+// rides_route_edges; routing reads the tables. Validated when this file loads.
 const { createHash } = require('node:crypto');
-const cached = require('./stopEdges.json');
-
-const STOPS = [
-  {
-    name: 'SPIT Campus (Gate 2)',
-    shortName: 'SPIT',
-    kmFromCampus: 0,
-    aliases: ['spit', 'campus', 'college', 'gate 2', 'sp it'],
-  },
-  { name: 'Azad Nagar', shortName: 'AZAD NAGAR', kmFromCampus: 1.2, aliases: ['azad'] },
-  {
-    name: 'Andheri',
-    shortName: 'ANDHERI',
-    kmFromCampus: 2.5,
-    aliases: ['andheri east', 'andheri west', 'andheri station'],
-  },
-  { name: 'Marol Naka', shortName: 'MAROL', kmFromCampus: 4.0, aliases: ['marol'] },
-  { name: 'Saki Naka', shortName: 'SAKI NAKA', kmFromCampus: 6.0, aliases: ['saki', 'sakinaka'] },
-  { name: 'Ghatkopar', shortName: 'GHATKOPAR', kmFromCampus: 9.5, aliases: ['ghatkopar station'] },
-];
+const { graph: graphCfg } = require('../config');
+const { assertValidGraph } = require('../lib/graph');
+const data = require('./graph.json');
 
 // Stable UUID per stop name (same ids as Module B), so reordering stops doesn't change ids.
 // md5 here only derives an identifier; it protects nothing.
@@ -31,21 +14,29 @@ function stopId(name) {
   return `${h.slice(0, 8)}-${h.slice(8, 12)}-${h.slice(12, 16)}-${h.slice(16, 20)}-${h.slice(20, 32)}`;
 }
 
-const STOP_NODES = STOPS.map((s) => ({
-  id: stopId(s.name),
-  name: s.name,
-  shortName: s.shortName,
-  area: s.kmFromCampus === 0 ? 'campus' : 'city',
-  aliases: s.aliases,
-  lat: cached.coordinates[s.name].lat,
-  lng: cached.coordinates[s.name].lng,
+const STOP_NODES = data.nodes.map((n) => ({
+  id: stopId(n.name),
+  name: n.name,
+  shortName: n.shortName,
+  area: n.area,
+  aliases: n.aliases,
+  lat: n.lat,
+  lng: n.lng,
 }));
 
-// Road distances in whole metres (the JSON has km to 2 decimals, i.e. 10 m steps).
-const STOP_EDGES = STOP_NODES.slice(1).map((n, i) => ({
-  nodeAId: STOP_NODES[i].id,
-  nodeBId: n.id,
-  distanceM: Math.round(cached.distances[`${STOP_NODES[i].name}|${n.name}`] * 1000),
+// Seconds to cover `metres` at the documented average speed for the edge's kind of path.
+const durationOf = (metres, mode) =>
+  Math.max(1, Math.round((metres * 3.6) / graphCfg.speedKmh[mode]));
+
+const STOP_EDGES = data.edges.map((e) => ({
+  nodeAId: stopId(e.a),
+  nodeBId: stopId(e.b),
+  distanceM: e.distanceM,
+  durationS: durationOf(e.distanceM, e.mode),
+  mode: e.mode,
+  estimated: e.estimated,
 }));
 
-module.exports = { STOP_NODES, STOP_EDGES };
+assertValidGraph(STOP_NODES, STOP_EDGES, 'data/graph.json');
+
+module.exports = { STOP_NODES, STOP_EDGES, stopId, durationOf };

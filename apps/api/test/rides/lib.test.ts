@@ -50,8 +50,8 @@ const id = (name: string) => STOP_NODES.find((n) => n.name === name)?.id ?? '';
 const [SPIT, AZAD, ANDHERI, MAROL, , GHATKOPAR] = STOP_NODES.map((n) => n.id);
 
 describe('stop graph and Dijkstra', () => {
-  it('has the six OSRM stops in a line, in metres', () => {
-    expect(STOP_NODES.map((n) => n.name)).toEqual([
+  it("keeps Module B's six stops, their ids and road distances", () => {
+    expect(STOP_NODES.slice(0, 6).map((n) => n.name)).toEqual([
       'SPIT Campus (Gate 2)',
       'Azad Nagar',
       'Andheri',
@@ -59,16 +59,17 @@ describe('stop graph and Dijkstra', () => {
       'Saki Naka',
       'Ghatkopar',
     ]);
-    expect(STOP_EDGES.map((e) => e.distanceM)).toEqual([1040, 2080, 4680, 680, 4050]);
+    expect(STOP_EDGES.slice(0, 5).map((e) => e.distanceM)).toEqual([1040, 2080, 4680, 680, 4050]);
+    expect(id('SPIT Campus (Gate 2)')).toBe('97fc8fe0-438b-0e32-a77d-ea63fd3fbee3');
   });
 
   it('finds the shortest path in either direction', () => {
     const { pathTo } = dijkstra(STOP_EDGES, AZAD ?? '');
-    expect(pathTo(GHATKOPAR ?? '')).toEqual({
+    expect(pathTo(GHATKOPAR ?? '')).toMatchObject({
       distanceM: 2080 + 4680 + 680 + 4050,
       nodeIds: [AZAD, ANDHERI, MAROL, id('Saki Naka'), GHATKOPAR],
     });
-    expect(pathTo(SPIT ?? '')).toEqual({ distanceM: 1040, nodeIds: [AZAD, SPIT] });
+    expect(pathTo(SPIT ?? '')).toMatchObject({ distanceM: 1040, nodeIds: [AZAD, SPIT] });
     expect(pathTo('nowhere')).toBeNull();
   });
 });

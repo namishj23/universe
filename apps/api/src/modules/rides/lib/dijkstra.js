@@ -1,46 +1,73 @@
-// Ported from Module B (utils/dijkstra.js); distances are integer metres instead of km.
+// Shortest paths on the stop graph. Replaces Module B's O(V^2) scan with a binary-heap
+// Dijkstra: O((V + E) log V) per source. Distances are integer metres; each edge may carry
+// durationS (seconds), summed along the chosen (shortest-distance) path.
 
-function buildGraph(edges) {
+// Undirected adjacency list. `allow(edge)` filters edges (vehicles skip walking paths).
+function buildGraph(edges, allow = () => true) {
   const graph = new Map();
-  for (const { nodeAId, nodeBId, distanceM } of edges) {
-    if (!graph.has(nodeAId)) graph.set(nodeAId, []);
-    if (!graph.has(nodeBId)) graph.set(nodeBId, []);
-    graph.get(nodeAId).push({ to: nodeBId, weight: distanceM });
-    graph.get(nodeBId).push({ to: nodeAId, weight: distanceM });
+  const add = (from, to, e) => {
+    if (!graph.has(from)) graph.set(from, []);
+    graph.get(from).push({ to, weight: e.distanceM, durationS: e.durationS ?? 0 });
+  };
+  for (const e of edges) {
+    if (!allow(e)) continue;
+    add(e.nodeAId, e.nodeBId, e);
+    add(e.nodeBId, e.nodeAId, e);
   }
   return graph;
 }
 
-// Simple O(V^2) Dijkstra - the campus route graph is small enough that a
-// binary-heap priority queue would be premature optimization.
-function dijkstra(edges, sourceId) {
-  const graph = buildGraph(edges);
-  const dist = new Map([[sourceId, 0]]);
-  const prev = new Map();
-  const visited = new Set();
-  const queue = new Set(graph.keys());
-  queue.add(sourceId);
-
-  while (queue.size) {
-    let current = null;
-    let currentDist = Infinity;
-    for (const nodeId of queue) {
-      const d = dist.has(nodeId) ? dist.get(nodeId) : Infinity;
-      if (d < currentDist) {
-        currentDist = d;
-        current = nodeId;
-      }
+// Min-heap of [distance, nodeId]; ties broken by node id so results are deterministic.
+const less = (a, b) => a[0] < b[0] || (a[0] === b[0] && a[1] < b[1]);
+function push(heap, item) {
+  heap.push(item);
+  let i = heap.length - 1;
+  while (i > 0) {
+    const parent = (i - 1) >> 1;
+    if (!less(heap[i], heap[parent])) break;
+    [heap[i], heap[parent]] = [heap[parent], heap[i]];
+    i = parent;
+  }
+}
+function pop(heap) {
+  const top = heap[0];
+  const last = heap.pop();
+  if (heap.length > 0) {
+    heap[0] = last;
+    let i = 0;
+    for (;;) {
+      const l = 2 * i + 1;
+      const r = l + 1;
+      let m = i;
+      if (l < heap.length && less(heap[l], heap[m])) m = l;
+      if (r < heap.length && less(heap[r], heap[m])) m = r;
+      if (m === i) break;
+      [heap[i], heap[m]] = [heap[m], heap[i]];
+      i = m;
     }
-    if (current === null) break;
-    queue.delete(current);
-    visited.add(current);
+  }
+  return top;
+}
 
-    for (const { to, weight } of graph.get(current) || []) {
-      if (visited.has(to)) continue;
-      const alt = currentDist + weight;
-      if (alt < (dist.has(to) ? dist.get(to) : Infinity)) {
+/** Single-source shortest paths over a graph from buildGraph(). */
+function shortestPaths(graph, sourceId) {
+  const dist = new Map([[sourceId, 0]]);
+  const time = new Map([[sourceId, 0]]);
+  const prev = new Map();
+  const done = new Set();
+  const heap = [[0, sourceId]];
+  // Lazy deletion: stale heap entries are skipped when popped.
+  while (heap.length) {
+    const [d, node] = pop(heap);
+    if (done.has(node)) continue;
+    done.add(node);
+    for (const { to, weight, durationS } of graph.get(node) || []) {
+      const alt = d + weight;
+      if (!done.has(to) && alt < (dist.get(to) ?? Infinity)) {
         dist.set(to, alt);
-        prev.set(to, current);
+        time.set(to, time.get(node) + durationS);
+        prev.set(to, node);
+        push(heap, [alt, to]);
       }
     }
   }
@@ -53,10 +80,13 @@ function dijkstra(edges, sourceId) {
       cur = prev.get(cur);
       nodeIds.unshift(cur);
     }
-    return { distanceM: dist.get(targetId), nodeIds };
+    return { distanceM: dist.get(targetId), durationS: time.get(targetId), nodeIds };
   }
 
   return { dist, prev, pathTo };
 }
 
-module.exports = { dijkstra };
+/** One-off: shortest paths from `sourceId` over `edges` (all edges allowed). */
+const dijkstra = (edges, sourceId, allow) => shortestPaths(buildGraph(edges, allow), sourceId);
+
+module.exports = { buildGraph, shortestPaths, dijkstra };
