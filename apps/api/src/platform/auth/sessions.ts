@@ -6,12 +6,13 @@ import type { User } from '../../generated/prisma/client.js';
 import { prisma, type Db } from '../db.js';
 import { asyncHandler } from '../http.js';
 import { logger } from '../logger.js';
+import { purgeStaleThrottle } from './throttle.js';
 
 declare global {
   // eslint-disable-next-line @typescript-eslint/no-namespace
   namespace Express {
     interface Request {
-      auth?: { sessionId: string; user: PublicUser };
+      auth?: { sessionId: string; user: PublicUser; mustChangePassword: boolean };
     }
   }
 }
@@ -78,7 +79,11 @@ export const loadSession = asyncHandler(async (req: Request, res, next) => {
   if (now - session.lastSeenAt.getTime() > TOUCH_EVERY_MS) {
     await prisma.session.update({ where: { id: session.id }, data: { lastSeenAt: new Date(now) } });
   }
-  req.auth = { sessionId: session.id, user: toPublicUser(session.user) };
+  req.auth = {
+    sessionId: session.id,
+    user: toPublicUser(session.user),
+    mustChangePassword: session.user.mustChangePassword,
+  };
   next();
 });
 
@@ -101,12 +106,16 @@ export async function deleteDeadSessions(): Promise<number> {
   return count;
 }
 
-/** Deletes expired sessions now and hourly. The timer never keeps the process alive. */
+/** Deletes expired sessions and stale login-throttle rows now and hourly. The timer never keeps the process alive. */
 export function startSessionCleanup(): () => void {
   const run = () => {
     deleteDeadSessions().then(
       (count) => logger.info({ count }, 'deleted expired sessions'),
       (err: unknown) => logger.error({ err }, 'session cleanup failed'),
+    );
+    purgeStaleThrottle().then(
+      (count) => logger.info({ count }, 'deleted stale login throttle rows'),
+      (err: unknown) => logger.error({ err }, 'login throttle cleanup failed'),
     );
   };
   run();

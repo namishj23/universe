@@ -1,6 +1,8 @@
 import type { ActivityEvent } from '@universe/contracts';
 
 export interface Stream {
+  /** The session that opened the stream, so signing a session out can close its streams. */
+  readonly sessionId: string;
   send(event: string, data: unknown, id?: string): void;
   close(): void;
 }
@@ -34,6 +36,12 @@ export function sendToUser(userId: string, event: string, data: unknown, id?: st
 
 export const sendActivity = (userId: string, event: ActivityEvent) =>
   sendToUser(userId, 'activity', event, event.id);
+
+/** Closes a user's open streams (all of them, or all but one session's). */
+export function closeUserStreams(userId: string, exceptSessionId?: string): void {
+  for (const stream of [...(streams.get(userId) ?? [])])
+    if (stream.sessionId !== exceptSessionId) stream.close();
+}
 
 export function closeAllStreams(): void {
   for (const set of [...streams.values()]) for (const stream of [...set]) stream.close();

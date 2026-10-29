@@ -46,3 +46,21 @@ export const csrfProtection: RequestHandler = (req, _res, next) => {
   if (!token || !safeEqual(token, csrfTokenFor(req.auth.sessionId))) throw csrfFailed();
   next();
 };
+
+/** While a temporary password is in use, only these routes (and the public health checks) work. */
+const PASSWORD_CHANGE_ALLOWED = new Set([
+  '/api/auth/me',
+  '/api/auth/change-password',
+  '/api/auth/logout',
+  '/api/auth/login',
+]);
+
+export const passwordChangeGate: RequestHandler = (req, _res, next) => {
+  if (
+    req.auth?.mustChangePassword &&
+    !PASSWORD_CHANGE_ALLOWED.has(req.path) &&
+    !req.path.startsWith('/api/health/')
+  )
+    throw new ApiError(403, 'PASSWORD_CHANGE_REQUIRED', 'Change your password to continue');
+  next();
+};

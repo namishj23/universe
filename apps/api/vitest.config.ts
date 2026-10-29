@@ -1,8 +1,13 @@
+import { mkdtempSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { defineConfig } from 'vitest/config';
 
 // Tests always run against universe_test (copy .env.test.example to .env.test).
 process.loadEnvFile(fileURLToPath(new URL('.env.test', import.meta.url)));
+// Uploads go to a fresh folder per run, never to the developer's real storage.
+process.env.STORAGE_DIR = mkdtempSync(join(tmpdir(), 'universe-test-storage-'));
 
 export default defineConfig({
   resolve: {

@@ -2,6 +2,7 @@ import request from 'supertest';
 import { beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { ApiErrorBody } from '@universe/contracts';
 import { createApp } from '../src/app.js';
+import { emailHmac } from '../src/platform/auth/throttle.js';
 import { prisma } from '../src/platform/db.js';
 import { DEMO_ACCOUNTS, login, PASSWORD, seed } from './helpers.js';
 
@@ -24,7 +25,12 @@ describe('POST /api/auth/login', () => {
     expect(cookie).toMatch(/^uv_session=[\w-]{43};/);
     expect(cookie).toMatch(/; HttpOnly/);
     expect(cookie).toMatch(/; SameSite=Lax/);
-    expect(Object.keys(res.body as object).sort()).toEqual(['csrfToken', 'user']);
+    expect(Object.keys(res.body as object).sort()).toEqual([
+      'csrfToken',
+      'mustChangePassword',
+      'user',
+    ]);
+    expect(res.body).toMatchObject({ mustChangePassword: false });
     expect(res.body).toMatchObject({ user: { email, name, role } });
     expect(Object.keys((res.body as { user: object }).user).sort()).toEqual([
       'email',
@@ -32,7 +38,7 @@ describe('POST /api/auth/login', () => {
       'name',
       'role',
     ]);
-    expect(JSON.stringify(res.body)).not.toMatch(/password|hash|token_?hash/i);
+    expect(JSON.stringify(res.body)).not.toMatch(/"password|hash/i);
   });
 
   it('gives the same status and message for a wrong password and an unknown email', async () => {
@@ -69,7 +75,7 @@ describe('POST /api/auth/login', () => {
       .expect(415);
   });
 
-  it('locks the account after five failures, refuses the right password, and unlocks later', async () => {
+  it('locks the email after five failures, refuses the right password, and unlocks later', async () => {
     const app = createApp();
     const email = 'mentor@universe.test';
     for (let i = 0; i < 5; i++) {
@@ -81,27 +87,31 @@ describe('POST /api/auth/login', () => {
     const locked = await request(app).post('/api/auth/login').send({ email, password: PASSWORD });
     expect(locked.status).toBe(429);
     expect(errorOf(locked.body).message).not.toMatch(/account|locked|exist/i);
-    expect((await prisma.user.findUniqueOrThrow({ where: { email } })).lockedUntil).not.toBeNull();
+    const keyHash = emailHmac(email);
+    expect(
+      (await prisma.loginThrottle.findUniqueOrThrow({ where: { keyHash } })).lockedUntil,
+    ).not.toBeNull();
 
     // Let the 15-minute lock run out.
-    await prisma.user.update({
-      where: { email },
+    await prisma.loginThrottle.update({
+      where: { keyHash },
       data: { lockedUntil: new Date(Date.now() - 1000) },
     });
     await request(app).post('/api/auth/login').send({ email, password: PASSWORD }).expect(200);
+    expect(await prisma.loginThrottle.count({ where: { keyHash } })).toBe(0);
     const user = await prisma.user.findUniqueOrThrow({ where: { email } });
-    expect(user.failedLoginCount).toBe(0);
     expect(user.lastLoginAt).not.toBeNull();
   });
 
   it('rate-limits to 10 requests per minute per IP', async () => {
     const app = createApp();
-    const attempt = () =>
+    // A different email each time, so the per-email lockout (5 failures) never applies.
+    const attempt = (i: number) =>
       request(app)
         .post('/api/auth/login')
-        .send({ email: 'ghost@universe.test', password: 'whatever' });
-    for (let i = 0; i < 10; i++) expect((await attempt()).status).toBe(401);
-    const res = await attempt();
+        .send({ email: `ghost${i}@universe.test`, password: 'whatever' });
+    for (let i = 0; i < 10; i++) expect((await attempt(i)).status).toBe(401);
+    const res = await attempt(10);
     expect(res.status).toBe(429);
     expect(errorOf(res.body).code).toBe('TOO_MANY_ATTEMPTS');
   });
@@ -122,7 +132,7 @@ describe('sessions', () => {
   it('/me returns the user and the same CSRF token', async () => {
     const { app, cookie, csrfToken, user } = await login('student@universe.test');
     const me = await request(app).get('/api/auth/me').set('Cookie', cookie).expect(200);
-    expect(me.body).toEqual({ user, csrfToken });
+    expect(me.body).toEqual({ user, csrfToken, mustChangePassword: false });
   });
 
   it('logout deletes the session; the old cookie then gets 401', async () => {

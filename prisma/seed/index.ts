@@ -1,5 +1,6 @@
-// Each owner area adds its own seed file and one call below.
+// Each owner area adds its own seed: Platform here, modules through `seed()` in their ModuleDefinition.
 import { prisma } from '../../apps/api/src/platform/db.js';
+import { loadModules } from '../../apps/api/src/platform/modules/index.js';
 import { seedPlatform } from './platform.js';
 
 if (process.env.NODE_ENV === 'production') {
@@ -14,6 +15,11 @@ if (password.length < 12) {
 
 try {
   await seedPlatform(prisma, password);
+  for (const module of await loadModules()) {
+    if (!module.seed) continue;
+    await module.seed();
+    console.log(`Seeded ${module.id}.`);
+  }
   console.log('Seed complete.');
 } finally {
   await prisma.$disconnect();

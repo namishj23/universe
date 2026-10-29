@@ -8,25 +8,17 @@ import {
   type Page,
   type UnreadCount,
 } from '@universe/contracts';
+import { audit } from '../audit/index.js';
 import { prisma } from '../db.js';
-import { ApiError, asyncHandler } from '../http.js';
+import { ApiError, asyncHandler, IdParam } from '../http.js';
 import { authOf, requireAuth, requireRole } from '../auth/guards.js';
 import { isSessionLive } from '../auth/sessions.js';
+import { newestFirst, olderThan, toPage } from '../paging.js';
 import { addStream, removeStream, type Stream } from './broker.js';
-import { actorSelect, emit, pushUnreadCounts, toActivityEvent } from './service.js';
+import { actorSelect, pushUnreadCounts, toActivityEvent, transaction } from './service.js';
 
 const HEARTBEAT_MS = 25_000;
 const REPLAY_LIMIT = 100;
-const newestFirst = [{ createdAt: 'desc' }, { id: 'desc' }] as const;
-
-const Cursor = z.tuple([z.iso.datetime(), z.uuid()]);
-const encodeCursor = (e: ActivityEvent) =>
-  Buffer.from(`${e.createdAt}|${e.id}`).toString('base64url');
-function decodeCursor(cursor: string) {
-  const [createdAt, id] = Cursor.parse(Buffer.from(cursor, 'base64url').toString().split('|'));
-  return { createdAt: new Date(createdAt), id };
-}
-const IdParam = z.object({ id: z.uuid() }).strict();
 
 export const activityRoutes = Router();
 activityRoutes.use(requireAuth);
@@ -36,29 +28,13 @@ activityRoutes.get(
   asyncHandler(async (req, res) => {
     const { user } = authOf(req);
     const { cursor, limit } = PageQuery.parse(req.query);
-    const after = cursor ? decodeCursor(cursor) : undefined;
     const rows = await prisma.activityEvent.findMany({
-      where: {
-        recipientId: user.id,
-        ...(after && {
-          // The redundant bound lets PostgreSQL seek the feed index instead of filtering from the top.
-          createdAt: { lte: after.createdAt },
-          OR: [
-            { createdAt: { lt: after.createdAt } },
-            { createdAt: after.createdAt, id: { lt: after.id } },
-          ],
-        }),
-      },
+      where: { recipientId: user.id, ...olderThan(cursor) },
       orderBy: [...newestFirst],
       take: limit + 1,
       include: actorSelect,
     });
-    const items = rows.slice(0, limit).map(toActivityEvent);
-    const last = items.at(-1);
-    const body: Page<ActivityEvent> = {
-      items,
-      nextCursor: rows.length > limit && last ? encodeCursor(last) : null,
-    };
+    const body: Page<ActivityEvent> = toPage(rows, limit, toActivityEvent);
     res.json(body);
   }),
 );
@@ -119,12 +95,21 @@ activityRoutes.post(
       where: { isActive: true, ...(roles && { role: { in: roles } }) },
       select: { id: true },
     });
-    const recorded = await emit({
-      recipients: recipients.map((r) => r.id),
-      actorId: user.id,
-      module: 'platform',
-      type: 'platform.announcement',
-      payload: { message },
+    const recorded = await transaction(async (tx, emit) => {
+      const sent = await emit({
+        recipients: recipients.map((r) => r.id),
+        actorId: user.id,
+        module: 'platform',
+        type: 'platform.announcement',
+        payload: { message },
+      });
+      await audit.record(tx, {
+        actorId: user.id,
+        action: 'platform.announcement_sent',
+        metadata: { recipients: sent.length, ...(roles && { roles }) },
+        requestId: req.id,
+      });
+      return sent;
     });
     const body: AnnouncementResponse = { recipients: recorded.length };
     res.json(body);
@@ -150,6 +135,7 @@ activityRoutes.get(
     let lastId = lastEventId.success ? lastEventId.data : undefined;
     let closed = false;
     const stream: Stream = {
+      sessionId,
       send(event, data, id) {
         if (closed) return;
         if (event === 'activity' && id) lastId = id;

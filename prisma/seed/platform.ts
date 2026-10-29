@@ -1,6 +1,7 @@
 import type { Role } from '@universe/contracts';
 import { recordActivity } from '../../apps/api/src/platform/activity/service.js';
 import { hashPassword } from '../../apps/api/src/platform/auth/password.js';
+import { emailHmac } from '../../apps/api/src/platform/auth/throttle.js';
 import type { Db } from '../../apps/api/src/platform/db.js';
 
 // The .test domain is reserved (RFC 2606), so these can never be real addresses.
@@ -12,14 +13,20 @@ export const DEMO_ACCOUNTS: readonly { email: string; name: string; role: Role }
   { email: 'admin@universe.test', name: 'Admin Office', role: 'admin' },
 ];
 
-/** Idempotent: upserts by email and adds one welcome announcement to an account that has none. */
+/**
+ * Idempotent: upserts by email, clears any sign-in lockout, and adds one welcome announcement
+ * to an account that has none.
+ */
 export async function seedPlatform(db: Db, password: string): Promise<void> {
+  await db.loginThrottle.deleteMany({
+    where: { keyHash: { in: DEMO_ACCOUNTS.map((a) => emailHmac(a.email)) } },
+  });
   for (const account of DEMO_ACCOUNTS) {
     const passwordHash = await hashPassword(password);
     const user = await db.user.upsert({
       where: { email: account.email },
       create: { ...account, passwordHash },
-      update: { ...account, passwordHash, isActive: true, failedLoginCount: 0, lockedUntil: null },
+      update: { ...account, passwordHash, isActive: true, mustChangePassword: false },
     });
     const announcements = await db.activityEvent.count({
       where: { recipientId: user.id, type: 'platform.announcement' },

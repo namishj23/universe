@@ -24,15 +24,17 @@ export const activityRegistry = {
 export type ActivityType = keyof typeof activityRegistry;
 export type ActivityPayload<T extends ActivityType> = z.infer<(typeof activityRegistry)[T]>;
 
-export const ActivityEvent = z.object({
-  id: z.uuid(),
-  module: ActivityModule,
-  type: z.string(),
-  payload: z.unknown(),
-  actor: z.object({ id: z.uuid(), name: z.string() }).nullable(),
-  readAt: z.iso.datetime().nullable(),
-  createdAt: z.iso.datetime(),
-});
+export const ActivityEvent = z
+  .object({
+    id: z.uuid(),
+    module: ActivityModule,
+    type: z.string(),
+    payload: z.unknown(),
+    actor: z.object({ id: z.uuid(), name: z.string() }).nullable(),
+    readAt: z.iso.datetime().nullable(),
+    createdAt: z.iso.datetime(),
+  })
+  .meta({ id: 'ActivityEvent' });
 export type ActivityEvent = z.infer<typeof ActivityEvent>;
 
 export const UnreadCount = z.object({ count: z.number().int().nonnegative() });
