@@ -27,4 +27,15 @@ export const ridesAudit = {
     .strict(),
   'rides.vehicle_serviced': z.object({ servicedOn: z.iso.datetime() }).strict(),
   'rides.inspection_reviewed': z.object({ status: z.enum(['approved', 'rejected']) }).strict(),
+  'rides.carpool_driver_reviewed': z
+    .object({ status: z.enum(['approved', 'rejected', 'suspended']), note: reason })
+    .strict(),
+  'rides.offer_cancelled_late': z
+    .object({ minutesToDeparture: z.number().int(), passengers: z.number().int().nonnegative() })
+    .strict(),
+  'rides.booking_cancelled_late': z
+    .object({ offerId: z.uuid(), minutesToDeparture: z.number().int() })
+    .strict(),
+  'rides.offer_departed': z.object({ passengers: z.number().int().nonnegative() }).strict(),
+  'rides.offer_completed': z.object({ passengers: z.number().int().nonnegative() }).strict(),
 } as const;

@@ -1851,7 +1851,7 @@
             }
           },
           "404": {
-            "description": "Not found (also for groups you are not in)",
+            "description": "Not found (also for groups and offers you are not in)",
             "content": {
               "application/json": {
                 "schema": {
@@ -1967,7 +1967,181 @@
             }
           },
           "404": {
-            "description": "Not found (also for groups you are not in)",
+            "description": "Not found (also for groups and offers you are not in)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict (full group, taken ride, wrong state)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/rides/graph": {
+      "get": {
+        "tags": [
+          "rides"
+        ],
+        "summary": "The stop graph: stops (walk-only flagged) and edges with distance, duration, mode and whether estimated",
+        "description": "Who may call: any signed-in rides user.",
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RidesGraph"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation failed or bad input",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Wrong role, CSRF, or suspended from rides",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found (also for groups and offers you are not in)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict (full group, taken ride, wrong state)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/rides/route": {
+      "get": {
+        "tags": [
+          "rides"
+        ],
+        "summary": "Shortest road route between two stops (Dijkstra; vehicles never use walking paths)",
+        "description": "Who may call: any signed-in rides user.",
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "from",
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$"
+            },
+            "required": true
+          },
+          {
+            "in": "query",
+            "name": "to",
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RidesRoute"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation failed or bad input",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Wrong role, CSRF, or suspended from rides",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found (also for groups and offers you are not in)",
             "content": {
               "application/json": {
                 "schema": {
@@ -2043,7 +2217,7 @@
             }
           },
           "404": {
-            "description": "Not found (also for groups you are not in)",
+            "description": "Not found (also for groups and offers you are not in)",
             "content": {
               "application/json": {
                 "schema": {
@@ -2157,7 +2331,7 @@
             }
           },
           "404": {
-            "description": "Not found (also for groups you are not in)",
+            "description": "Not found (also for groups and offers you are not in)",
             "content": {
               "application/json": {
                 "schema": {
@@ -2233,7 +2407,7 @@
             }
           },
           "404": {
-            "description": "Not found (also for groups you are not in)",
+            "description": "Not found (also for groups and offers you are not in)",
             "content": {
               "application/json": {
                 "schema": {
@@ -2349,7 +2523,7 @@
             }
           },
           "404": {
-            "description": "Not found (also for groups you are not in)",
+            "description": "Not found (also for groups and offers you are not in)",
             "content": {
               "application/json": {
                 "schema": {
@@ -2457,7 +2631,7 @@
             }
           },
           "404": {
-            "description": "Not found (also for groups you are not in)",
+            "description": "Not found (also for groups and offers you are not in)",
             "content": {
               "application/json": {
                 "schema": {
@@ -2533,7 +2707,1808 @@
             }
           },
           "404": {
-            "description": "Not found (also for groups you are not in)",
+            "description": "Not found (also for groups and offers you are not in)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict (full group, taken ride, wrong state)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/rides/carpool/driver": {
+      "post": {
+        "tags": [
+          "rides-carpool"
+        ],
+        "summary": "Apply to drive: vehicle type, plate, seats, insurance and PUC (admin approves)",
+        "description": "Who may call: students and mentors (offer routes also need an approved carpool driver record).",
+        "security": [
+          {
+            "session": [],
+            "csrf": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "vehicleType": {
+                    "type": "string",
+                    "enum": [
+                      "car",
+                      "bike"
+                    ]
+                  },
+                  "plateNumber": {
+                    "type": "string",
+                    "maxLength": 20
+                  },
+                  "model": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 60
+                  },
+                  "colour": {
+                    "type": "string",
+                    "maxLength": 30
+                  },
+                  "seats": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 6
+                  },
+                  "insuranceExpiresAt": {
+                    "type": "string",
+                    "format": "date-time",
+                    "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                  },
+                  "pucExpiresAt": {
+                    "type": "string",
+                    "format": "date-time",
+                    "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                  }
+                },
+                "required": [
+                  "vehicleType",
+                  "plateNumber",
+                  "model",
+                  "seats",
+                  "insuranceExpiresAt",
+                  "pucExpiresAt"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RidesCarpoolDriver"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation failed or bad input",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Wrong role, CSRF, or suspended from rides",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found (also for groups and offers you are not in)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict (full group, taken ride, wrong state)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "rides-carpool"
+        ],
+        "summary": "My carpool driver application, vehicle and whether I can offer rides",
+        "description": "Who may call: students and mentors (offer routes also need an approved carpool driver record).",
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RidesCarpoolDriver"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation failed or bad input",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Wrong role, CSRF, or suspended from rides",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found (also for groups and offers you are not in)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict (full group, taken ride, wrong state)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/rides/carpool/driver/documents": {
+      "post": {
+        "tags": [
+          "rides-carpool"
+        ],
+        "summary": "Attach an uploaded rides.driver_document file (licence or inspection certificate)",
+        "description": "Who may call: students and mentors (offer routes also need an approved carpool driver record).",
+        "security": [
+          {
+            "session": [],
+            "csrf": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "licence",
+                      "inspection_certificate"
+                    ]
+                  },
+                  "fileId": {
+                    "type": "string",
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                  }
+                },
+                "required": [
+                  "type",
+                  "fileId"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RidesCarpoolDriver"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation failed or bad input",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Wrong role, CSRF, or suspended from rides",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found (also for groups and offers you are not in)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict (full group, taken ride, wrong state)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/rides/offers": {
+      "post": {
+        "tags": [
+          "rides-carpool"
+        ],
+        "summary": "Offer a ride (approved carpool drivers only)",
+        "description": "Who may call: students and mentors (offer routes also need an approved carpool driver record).",
+        "security": [
+          {
+            "session": [],
+            "csrf": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "originNodeId": {
+                    "type": "string",
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$"
+                  },
+                  "destNodeId": {
+                    "type": "string",
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$"
+                  },
+                  "departAt": {
+                    "type": "string",
+                    "format": "date-time",
+                    "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                  },
+                  "seats": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 6
+                  },
+                  "maxDetourM": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 10000
+                  },
+                  "maxDetourS": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 3600
+                  },
+                  "costPerKmPaise": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 5000
+                  },
+                  "autoAccept": {
+                    "type": "boolean"
+                  },
+                  "womenOnly": {
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "originNodeId",
+                  "destNodeId",
+                  "departAt",
+                  "seats"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RidesOffer"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation failed or bad input",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Wrong role, CSRF, or suspended from rides",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found (also for groups and offers you are not in)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict (full group, taken ride, wrong state)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/rides/offers/mine": {
+      "get": {
+        "tags": [
+          "rides-carpool"
+        ],
+        "summary": "Rides I offered, latest departure first",
+        "description": "Who may call: students and mentors (offer routes also need an approved carpool driver record).",
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "cursor",
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "default": 20,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/RidesOffer"
+                      }
+                    },
+                    "nextCursor": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "items",
+                    "nextCursor"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation failed or bad input",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Wrong role, CSRF, or suspended from rides",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found (also for groups and offers you are not in)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict (full group, taken ride, wrong state)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/rides/offers/matches": {
+      "get": {
+        "tags": [
+          "rides-carpool"
+        ],
+        "summary": "Offers my ride request fits, with score breakdown and added detour; hidden offers counted",
+        "description": "Who may call: students, mentors and admins; not drivers.",
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "requestId",
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "required": true
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "default": 20,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 50
+            }
+          },
+          {
+            "in": "query",
+            "name": "relaxPreference",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "true",
+                "false"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RidesOfferMatches"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation failed or bad input",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Wrong role, CSRF, or suspended from rides",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found (also for groups and offers you are not in)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict (full group, taken ride, wrong state)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/rides/offers/{id}": {
+      "get": {
+        "tags": [
+          "rides-carpool"
+        ],
+        "summary": "One offer (its driver and passengers with a live booking only; others get 404)",
+        "description": "Who may call: students, mentors and admins; not drivers.",
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RidesOffer"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation failed or bad input",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Wrong role, CSRF, or suspended from rides",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found (also for groups and offers you are not in)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict (full group, taken ride, wrong state)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "rides-carpool"
+        ],
+        "summary": "Edit my offer (with confirmed passengers: only more seats or detour, lower cost, auto-accept)",
+        "description": "Who may call: students and mentors (offer routes also need an approved carpool driver record).",
+        "security": [
+          {
+            "session": [],
+            "csrf": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "required": true
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "originNodeId": {
+                    "type": "string",
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$"
+                  },
+                  "destNodeId": {
+                    "type": "string",
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$"
+                  },
+                  "departAt": {
+                    "type": "string",
+                    "format": "date-time",
+                    "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                  },
+                  "seats": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 6
+                  },
+                  "maxDetourM": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 10000
+                  },
+                  "maxDetourS": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 3600
+                  },
+                  "costPerKmPaise": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 5000
+                  },
+                  "autoAccept": {
+                    "type": "boolean"
+                  },
+                  "womenOnly": {
+                    "type": "boolean"
+                  }
+                },
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RidesOffer"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation failed or bad input",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Wrong role, CSRF, or suspended from rides",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found (also for groups and offers you are not in)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict (full group, taken ride, wrong state)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/rides/offers/{id}/cancel": {
+      "post": {
+        "tags": [
+          "rides-carpool"
+        ],
+        "summary": "Cancel my offer (passengers are told; within 15 minutes of departure it is audited)",
+        "description": "Who may call: students and mentors (offer routes also need an approved carpool driver record).",
+        "security": [
+          {
+            "session": [],
+            "csrf": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "required": true
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {},
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RidesOffer"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation failed or bad input",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Wrong role, CSRF, or suspended from rides",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found (also for groups and offers you are not in)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict (full group, taken ride, wrong state)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/rides/offers/{id}/depart": {
+      "post": {
+        "tags": [
+          "rides-carpool"
+        ],
+        "summary": "Mark my ride departed (from 30 minutes before departure)",
+        "description": "Who may call: students and mentors (offer routes also need an approved carpool driver record).",
+        "security": [
+          {
+            "session": [],
+            "csrf": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "required": true
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {},
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RidesOffer"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation failed or bad input",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Wrong role, CSRF, or suspended from rides",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found (also for groups and offers you are not in)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict (full group, taken ride, wrong state)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/rides/offers/{id}/complete": {
+      "post": {
+        "tags": [
+          "rides-carpool"
+        ],
+        "summary": "Mark my departed ride completed",
+        "description": "Who may call: students and mentors (offer routes also need an approved carpool driver record).",
+        "security": [
+          {
+            "session": [],
+            "csrf": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "required": true
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {},
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RidesOffer"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation failed or bad input",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Wrong role, CSRF, or suspended from rides",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found (also for groups and offers you are not in)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict (full group, taken ride, wrong state)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/rides/offers/{id}/bookings": {
+      "post": {
+        "tags": [
+          "rides-carpool"
+        ],
+        "summary": "Ask for a seat with my open ride request (accepted at once if the driver chose auto-accept)",
+        "description": "Who may call: students, mentors and admins; not drivers.",
+        "security": [
+          {
+            "session": [],
+            "csrf": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "required": true
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "requestId": {
+                    "type": "string",
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                  }
+                },
+                "required": [
+                  "requestId"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RidesOffer"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation failed or bad input",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Wrong role, CSRF, or suspended from rides",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found (also for groups and offers you are not in)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict (full group, taken ride, wrong state)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/rides/bookings/mine": {
+      "get": {
+        "tags": [
+          "rides-carpool"
+        ],
+        "summary": "Offers I asked for or have a seat on, latest pickup first",
+        "description": "Who may call: students, mentors and admins; not drivers.",
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "cursor",
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "default": 20,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/RidesOffer"
+                      }
+                    },
+                    "nextCursor": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "items",
+                    "nextCursor"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation failed or bad input",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Wrong role, CSRF, or suspended from rides",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found (also for groups and offers you are not in)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict (full group, taken ride, wrong state)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/rides/bookings/{id}/accept": {
+      "post": {
+        "tags": [
+          "rides-carpool"
+        ],
+        "summary": "Accept a seat request on my offer",
+        "description": "Who may call: students and mentors (offer routes also need an approved carpool driver record).",
+        "security": [
+          {
+            "session": [],
+            "csrf": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "required": true
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {},
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RidesOffer"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation failed or bad input",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Wrong role, CSRF, or suspended from rides",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found (also for groups and offers you are not in)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict (full group, taken ride, wrong state)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/rides/bookings/{id}/decline": {
+      "post": {
+        "tags": [
+          "rides-carpool"
+        ],
+        "summary": "Decline a seat request on my offer",
+        "description": "Who may call: students and mentors (offer routes also need an approved carpool driver record).",
+        "security": [
+          {
+            "session": [],
+            "csrf": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "required": true
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {},
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RidesOffer"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation failed or bad input",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Wrong role, CSRF, or suspended from rides",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found (also for groups and offers you are not in)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict (full group, taken ride, wrong state)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/rides/bookings/{id}/cancel": {
+      "post": {
+        "tags": [
+          "rides-carpool"
+        ],
+        "summary": "Withdraw my seat request or give up my seat",
+        "description": "Who may call: students, mentors and admins; not drivers.",
+        "security": [
+          {
+            "session": [],
+            "csrf": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "required": true
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {},
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RidesOffer"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation failed or bad input",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Wrong role, CSRF, or suspended from rides",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found (also for groups and offers you are not in)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict (full group, taken ride, wrong state)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/rides/stats/me": {
+      "get": {
+        "tags": [
+          "rides-carpool"
+        ],
+        "summary": "My shared-ride totals, weekly series and busiest routes over both ride types (estimates)",
+        "description": "Who may call: students, mentors and admins; not drivers.",
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RidesStatsReport"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation failed or bad input",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Wrong role, CSRF, or suspended from rides",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found (also for groups and offers you are not in)",
             "content": {
               "application/json": {
                 "schema": {
@@ -2650,7 +4625,7 @@
             }
           },
           "404": {
-            "description": "Not found (also for groups you are not in)",
+            "description": "Not found (also for groups and offers you are not in)",
             "content": {
               "application/json": {
                 "schema": {
@@ -2772,7 +4747,7 @@
             }
           },
           "404": {
-            "description": "Not found (also for groups you are not in)",
+            "description": "Not found (also for groups and offers you are not in)",
             "content": {
               "application/json": {
                 "schema": {
@@ -2890,7 +4865,7 @@
             }
           },
           "404": {
-            "description": "Not found (also for groups you are not in)",
+            "description": "Not found (also for groups and offers you are not in)",
             "content": {
               "application/json": {
                 "schema": {
@@ -3006,7 +4981,7 @@
             }
           },
           "404": {
-            "description": "Not found (also for groups you are not in)",
+            "description": "Not found (also for groups and offers you are not in)",
             "content": {
               "application/json": {
                 "schema": {
@@ -3122,7 +5097,7 @@
             }
           },
           "404": {
-            "description": "Not found (also for groups you are not in)",
+            "description": "Not found (also for groups and offers you are not in)",
             "content": {
               "application/json": {
                 "schema": {
@@ -3210,7 +5185,7 @@
             }
           },
           "404": {
-            "description": "Not found (also for groups you are not in)",
+            "description": "Not found (also for groups and offers you are not in)",
             "content": {
               "application/json": {
                 "schema": {
@@ -3310,7 +5285,7 @@
             }
           },
           "404": {
-            "description": "Not found (also for groups you are not in)",
+            "description": "Not found (also for groups and offers you are not in)",
             "content": {
               "application/json": {
                 "schema": {
@@ -3410,7 +5385,7 @@
             }
           },
           "404": {
-            "description": "Not found (also for groups you are not in)",
+            "description": "Not found (also for groups and offers you are not in)",
             "content": {
               "application/json": {
                 "schema": {
@@ -3518,7 +5493,7 @@
             }
           },
           "404": {
-            "description": "Not found (also for groups you are not in)",
+            "description": "Not found (also for groups and offers you are not in)",
             "content": {
               "application/json": {
                 "schema": {
@@ -3631,7 +5606,7 @@
             }
           },
           "404": {
-            "description": "Not found (also for groups you are not in)",
+            "description": "Not found (also for groups and offers you are not in)",
             "content": {
               "application/json": {
                 "schema": {
@@ -3738,7 +5713,7 @@
             }
           },
           "404": {
-            "description": "Not found (also for groups you are not in)",
+            "description": "Not found (also for groups and offers you are not in)",
             "content": {
               "application/json": {
                 "schema": {
@@ -3853,7 +5828,7 @@
             }
           },
           "404": {
-            "description": "Not found (also for groups you are not in)",
+            "description": "Not found (also for groups and offers you are not in)",
             "content": {
               "application/json": {
                 "schema": {
@@ -3941,7 +5916,7 @@
             }
           },
           "404": {
-            "description": "Not found (also for groups you are not in)",
+            "description": "Not found (also for groups and offers you are not in)",
             "content": {
               "application/json": {
                 "schema": {
@@ -4067,7 +6042,7 @@
             }
           },
           "404": {
-            "description": "Not found (also for groups you are not in)",
+            "description": "Not found (also for groups and offers you are not in)",
             "content": {
               "application/json": {
                 "schema": {
@@ -4174,7 +6149,7 @@
             }
           },
           "404": {
-            "description": "Not found (also for groups you are not in)",
+            "description": "Not found (also for groups and offers you are not in)",
             "content": {
               "application/json": {
                 "schema": {
@@ -4303,7 +6278,7 @@
             }
           },
           "404": {
-            "description": "Not found (also for groups you are not in)",
+            "description": "Not found (also for groups and offers you are not in)",
             "content": {
               "application/json": {
                 "schema": {
@@ -4431,7 +6406,7 @@
             }
           },
           "404": {
-            "description": "Not found (also for groups you are not in)",
+            "description": "Not found (also for groups and offers you are not in)",
             "content": {
               "application/json": {
                 "schema": {
@@ -4507,7 +6482,7 @@
             }
           },
           "404": {
-            "description": "Not found (also for groups you are not in)",
+            "description": "Not found (also for groups and offers you are not in)",
             "content": {
               "application/json": {
                 "schema": {
@@ -4616,7 +6591,7 @@
             }
           },
           "404": {
-            "description": "Not found (also for groups you are not in)",
+            "description": "Not found (also for groups and offers you are not in)",
             "content": {
               "application/json": {
                 "schema": {
@@ -4711,7 +6686,7 @@
             }
           },
           "404": {
-            "description": "Not found (also for groups you are not in)",
+            "description": "Not found (also for groups and offers you are not in)",
             "content": {
               "application/json": {
                 "schema": {
@@ -4816,7 +6791,7 @@
             }
           },
           "404": {
-            "description": "Not found (also for groups you are not in)",
+            "description": "Not found (also for groups and offers you are not in)",
             "content": {
               "application/json": {
                 "schema": {
@@ -4940,7 +6915,7 @@
             }
           },
           "404": {
-            "description": "Not found (also for groups you are not in)",
+            "description": "Not found (also for groups and offers you are not in)",
             "content": {
               "application/json": {
                 "schema": {
@@ -5056,7 +7031,7 @@
             }
           },
           "404": {
-            "description": "Not found (also for groups you are not in)",
+            "description": "Not found (also for groups and offers you are not in)",
             "content": {
               "application/json": {
                 "schema": {
@@ -5156,7 +7131,7 @@
             }
           },
           "404": {
-            "description": "Not found (also for groups you are not in)",
+            "description": "Not found (also for groups and offers you are not in)",
             "content": {
               "application/json": {
                 "schema": {
@@ -5256,7 +7231,7 @@
             }
           },
           "404": {
-            "description": "Not found (also for groups you are not in)",
+            "description": "Not found (also for groups and offers you are not in)",
             "content": {
               "application/json": {
                 "schema": {
@@ -5353,7 +7328,7 @@
             }
           },
           "404": {
-            "description": "Not found (also for groups you are not in)",
+            "description": "Not found (also for groups and offers you are not in)",
             "content": {
               "application/json": {
                 "schema": {
@@ -5453,7 +7428,7 @@
             }
           },
           "404": {
-            "description": "Not found (also for groups you are not in)",
+            "description": "Not found (also for groups and offers you are not in)",
             "content": {
               "application/json": {
                 "schema": {
@@ -5574,7 +7549,7 @@
             }
           },
           "404": {
-            "description": "Not found (also for groups you are not in)",
+            "description": "Not found (also for groups and offers you are not in)",
             "content": {
               "application/json": {
                 "schema": {
@@ -5674,7 +7649,7 @@
             }
           },
           "404": {
-            "description": "Not found (also for groups you are not in)",
+            "description": "Not found (also for groups and offers you are not in)",
             "content": {
               "application/json": {
                 "schema": {
@@ -5802,7 +7777,7 @@
             }
           },
           "404": {
-            "description": "Not found (also for groups you are not in)",
+            "description": "Not found (also for groups and offers you are not in)",
             "content": {
               "application/json": {
                 "schema": {
@@ -5907,7 +7882,7 @@
             }
           },
           "404": {
-            "description": "Not found (also for groups you are not in)",
+            "description": "Not found (also for groups and offers you are not in)",
             "content": {
               "application/json": {
                 "schema": {
@@ -6012,7 +7987,7 @@
             }
           },
           "404": {
-            "description": "Not found (also for groups you are not in)",
+            "description": "Not found (also for groups and offers you are not in)",
             "content": {
               "application/json": {
                 "schema": {
@@ -6128,7 +8103,7 @@
             }
           },
           "404": {
-            "description": "Not found (also for groups you are not in)",
+            "description": "Not found (also for groups and offers you are not in)",
             "content": {
               "application/json": {
                 "schema": {
@@ -6239,7 +8214,7 @@
             }
           },
           "404": {
-            "description": "Not found (also for groups you are not in)",
+            "description": "Not found (also for groups and offers you are not in)",
             "content": {
               "application/json": {
                 "schema": {
@@ -6355,7 +8330,7 @@
             }
           },
           "404": {
-            "description": "Not found (also for groups you are not in)",
+            "description": "Not found (also for groups and offers you are not in)",
             "content": {
               "application/json": {
                 "schema": {
@@ -6470,7 +8445,7 @@
             }
           },
           "404": {
-            "description": "Not found (also for groups you are not in)",
+            "description": "Not found (also for groups and offers you are not in)",
             "content": {
               "application/json": {
                 "schema": {
@@ -6586,7 +8561,7 @@
             }
           },
           "404": {
-            "description": "Not found (also for groups you are not in)",
+            "description": "Not found (also for groups and offers you are not in)",
             "content": {
               "application/json": {
                 "schema": {
@@ -6693,7 +8668,7 @@
             }
           },
           "404": {
-            "description": "Not found (also for groups you are not in)",
+            "description": "Not found (also for groups and offers you are not in)",
             "content": {
               "application/json": {
                 "schema": {
@@ -6782,7 +8757,7 @@
             }
           },
           "404": {
-            "description": "Not found (also for groups you are not in)",
+            "description": "Not found (also for groups and offers you are not in)",
             "content": {
               "application/json": {
                 "schema": {
@@ -6898,7 +8873,7 @@
             }
           },
           "404": {
-            "description": "Not found (also for groups you are not in)",
+            "description": "Not found (also for groups and offers you are not in)",
             "content": {
               "application/json": {
                 "schema": {
@@ -6986,7 +8961,7 @@
             }
           },
           "404": {
-            "description": "Not found (also for groups you are not in)",
+            "description": "Not found (also for groups and offers you are not in)",
             "content": {
               "application/json": {
                 "schema": {
@@ -7120,7 +9095,7 @@
             }
           },
           "404": {
-            "description": "Not found (also for groups you are not in)",
+            "description": "Not found (also for groups and offers you are not in)",
             "content": {
               "application/json": {
                 "schema": {
@@ -7235,7 +9210,7 @@
             }
           },
           "404": {
-            "description": "Not found (also for groups you are not in)",
+            "description": "Not found (also for groups and offers you are not in)",
             "content": {
               "application/json": {
                 "schema": {
@@ -7341,7 +9316,7 @@
             }
           },
           "404": {
-            "description": "Not found (also for groups you are not in)",
+            "description": "Not found (also for groups and offers you are not in)",
             "content": {
               "application/json": {
                 "schema": {
@@ -7477,7 +9452,7 @@
             }
           },
           "404": {
-            "description": "Not found (also for groups you are not in)",
+            "description": "Not found (also for groups and offers you are not in)",
             "content": {
               "application/json": {
                 "schema": {
@@ -7588,7 +9563,7 @@
             }
           },
           "404": {
-            "description": "Not found (also for groups you are not in)",
+            "description": "Not found (also for groups and offers you are not in)",
             "content": {
               "application/json": {
                 "schema": {
@@ -7704,7 +9679,7 @@
             }
           },
           "404": {
-            "description": "Not found (also for groups you are not in)",
+            "description": "Not found (also for groups and offers you are not in)",
             "content": {
               "application/json": {
                 "schema": {
@@ -7815,7 +9790,199 @@
             }
           },
           "404": {
-            "description": "Not found (also for groups you are not in)",
+            "description": "Not found (also for groups and offers you are not in)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict (full group, taken ride, wrong state)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/rides/admin/drivers/{id}/review": {
+      "post": {
+        "tags": [
+          "rides-admin"
+        ],
+        "summary": "Approve, reject or suspend a carpool driver (suspension cancels their upcoming offers)",
+        "description": "Who may call: admins.",
+        "security": [
+          {
+            "session": [],
+            "csrf": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "required": true
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "decision": {
+                    "type": "string",
+                    "enum": [
+                      "approve",
+                      "reject",
+                      "suspend"
+                    ]
+                  },
+                  "note": {
+                    "type": "string",
+                    "maxLength": 300
+                  }
+                },
+                "required": [
+                  "decision"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RidesCarpoolDriver"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation failed or bad input",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Wrong role, CSRF, or suspended from rides",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found (also for groups and offers you are not in)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict (full group, taken ride, wrong state)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/rides/admin/stats": {
+      "get": {
+        "tags": [
+          "rides-admin"
+        ],
+        "summary": "Campus shared-ride totals, weekly series and busiest routes over both ride types (estimates)",
+        "description": "Who may call: admins.",
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RidesStatsReport"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation failed or bad input",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Wrong role, CSRF, or suspended from rides",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found (also for groups and offers you are not in)",
             "content": {
               "application/json": {
                 "schema": {
@@ -8398,6 +10565,201 @@
         ],
         "additionalProperties": false
       },
+      "RidesGraph": {
+        "type": "object",
+        "properties": {
+          "nodes": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "format": "uuid",
+                  "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "shortName": {
+                  "type": "string"
+                },
+                "area": {
+                  "type": "string",
+                  "enum": [
+                    "campus",
+                    "city"
+                  ]
+                },
+                "lat": {
+                  "type": "number"
+                },
+                "lng": {
+                  "type": "number"
+                },
+                "walkOnly": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "id",
+                "name",
+                "shortName",
+                "area",
+                "lat",
+                "lng",
+                "walkOnly"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "edges": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "nodeAId": {
+                  "type": "string",
+                  "format": "uuid",
+                  "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$"
+                },
+                "nodeBId": {
+                  "type": "string",
+                  "format": "uuid",
+                  "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$"
+                },
+                "distanceM": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991
+                },
+                "durationS": {
+                  "type": "integer",
+                  "exclusiveMinimum": 0,
+                  "maximum": 9007199254740991
+                },
+                "mode": {
+                  "type": "string",
+                  "enum": [
+                    "road",
+                    "campus_road",
+                    "walk"
+                  ]
+                },
+                "estimated": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "nodeAId",
+                "nodeBId",
+                "distanceM",
+                "durationS",
+                "mode",
+                "estimated"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
+          "nodes",
+          "edges"
+        ],
+        "additionalProperties": false
+      },
+      "RidesRoute": {
+        "type": "object",
+        "properties": {
+          "from": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "format": "uuid",
+                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$"
+              },
+              "name": {
+                "type": "string"
+              },
+              "shortName": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "name",
+              "shortName"
+            ],
+            "additionalProperties": false
+          },
+          "to": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "format": "uuid",
+                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$"
+              },
+              "name": {
+                "type": "string"
+              },
+              "shortName": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "name",
+              "shortName"
+            ],
+            "additionalProperties": false
+          },
+          "distanceM": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "durationS": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "stops": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "format": "uuid",
+                  "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "shortName": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "id",
+                "name",
+                "shortName"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
+          "from",
+          "to",
+          "distanceM",
+          "durationS",
+          "stops"
+        ],
+        "additionalProperties": false
+      },
       "RidesProfile": {
         "type": "object",
         "properties": {
@@ -8649,6 +11011,971 @@
           "totalSavingsPaise",
           "hourLabels",
           "byHour"
+        ],
+        "additionalProperties": false
+      },
+      "RidesCarpoolDriver": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "driverCode": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "approved",
+              "rejected",
+              "suspended"
+            ]
+          },
+          "reviewNote": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "vehicle": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "format": "uuid",
+                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+              },
+              "vehicleType": {
+                "type": "string",
+                "enum": [
+                  "car",
+                  "bike"
+                ]
+              },
+              "plateNumber": {
+                "type": "string"
+              },
+              "model": {
+                "type": "string"
+              },
+              "colour": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "seats": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              "insuranceExpiresAt": {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+              },
+              "pucExpiresAt": {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+              }
+            },
+            "required": [
+              "id",
+              "vehicleType",
+              "plateNumber",
+              "model",
+              "colour",
+              "seats",
+              "insuranceExpiresAt",
+              "pucExpiresAt"
+            ],
+            "additionalProperties": false
+          },
+          "documentsVerified": {
+            "type": "boolean"
+          },
+          "documentsMessage": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "canOffer": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "driverCode",
+          "status",
+          "reviewNote",
+          "vehicle",
+          "documentsVerified",
+          "documentsMessage",
+          "canOffer"
+        ],
+        "additionalProperties": false
+      },
+      "RidesOffer": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "open",
+              "full",
+              "departed",
+              "completed",
+              "cancelled"
+            ]
+          },
+          "isDriver": {
+            "type": "boolean"
+          },
+          "driverFirstName": {
+            "type": "string"
+          },
+          "vehicle": {
+            "type": "object",
+            "properties": {
+              "vehicleType": {
+                "type": "string",
+                "enum": [
+                  "car",
+                  "bike"
+                ]
+              },
+              "model": {
+                "type": "string"
+              },
+              "colour": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "plateNumber": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "vehicleType",
+              "model",
+              "colour",
+              "plateNumber"
+            ],
+            "additionalProperties": false
+          },
+          "origin": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "format": "uuid",
+                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$"
+              },
+              "name": {
+                "type": "string"
+              },
+              "shortName": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "name",
+              "shortName"
+            ],
+            "additionalProperties": false
+          },
+          "destination": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "format": "uuid",
+                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$"
+              },
+              "name": {
+                "type": "string"
+              },
+              "shortName": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "name",
+              "shortName"
+            ],
+            "additionalProperties": false
+          },
+          "departAt": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+          },
+          "seats": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "peakOnboard": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "maxDetourM": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "maxDetourS": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "costPerKmPaise": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "autoAccept": {
+            "type": "boolean"
+          },
+          "womenOnly": {
+            "type": "boolean"
+          },
+          "baseDistanceM": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "planDistanceM": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "planDurationS": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "tripCostPaise": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "driverSharePaise": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "route": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "plan": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "enum": [
+                    "origin",
+                    "pickup",
+                    "drop",
+                    "destination"
+                  ]
+                },
+                "stop": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "shortName": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "name",
+                    "shortName"
+                  ],
+                  "additionalProperties": false
+                },
+                "passengerFirstName": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "atM": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991
+                },
+                "at": {
+                  "type": "string",
+                  "format": "date-time",
+                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                }
+              },
+              "required": [
+                "type",
+                "stop",
+                "passengerFirstName",
+                "atM",
+                "at"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "bookings": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "format": "uuid",
+                  "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                },
+                "status": {
+                  "type": "string",
+                  "enum": [
+                    "requested",
+                    "accepted",
+                    "declined",
+                    "cancelled"
+                  ]
+                },
+                "passengerFirstName": {
+                  "type": "string"
+                },
+                "isYou": {
+                  "type": "boolean"
+                },
+                "pickup": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "shortName": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "name",
+                    "shortName"
+                  ],
+                  "additionalProperties": false
+                },
+                "drop": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "shortName": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "name",
+                    "shortName"
+                  ],
+                  "additionalProperties": false
+                },
+                "plannedPickupAt": {
+                  "type": "string",
+                  "format": "date-time",
+                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                },
+                "addedDetourM": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991
+                },
+                "inVehicleM": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991
+                },
+                "costSharePaise": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991
+                },
+                "soloFarePaise": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991
+                },
+                "savingsPaise": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991
+                }
+              },
+              "required": [
+                "id",
+                "status",
+                "passengerFirstName",
+                "isYou",
+                "pickup",
+                "drop",
+                "plannedPickupAt",
+                "addedDetourM",
+                "inVehicleM",
+                "costSharePaise",
+                "soloFarePaise",
+                "savingsPaise"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
+          "id",
+          "status",
+          "isDriver",
+          "driverFirstName",
+          "vehicle",
+          "origin",
+          "destination",
+          "departAt",
+          "seats",
+          "peakOnboard",
+          "maxDetourM",
+          "maxDetourS",
+          "costPerKmPaise",
+          "autoAccept",
+          "womenOnly",
+          "baseDistanceM",
+          "planDistanceM",
+          "planDurationS",
+          "tripCostPaise",
+          "driverSharePaise",
+          "route",
+          "plan",
+          "bookings"
+        ],
+        "additionalProperties": false
+      },
+      "RidesOfferMatches": {
+        "type": "object",
+        "properties": {
+          "matches": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RidesOfferMatch"
+            }
+          },
+          "hidden": {
+            "type": "object",
+            "properties": {
+              "total": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              "reasons": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "reason": {
+                      "type": "string"
+                    },
+                    "count": {
+                      "type": "integer",
+                      "exclusiveMinimum": 0,
+                      "maximum": 9007199254740991
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "reason",
+                    "count",
+                    "message"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            },
+            "required": [
+              "total",
+              "reasons"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "matches",
+          "hidden"
+        ],
+        "additionalProperties": false
+      },
+      "RidesOfferMatch": {
+        "type": "object",
+        "properties": {
+          "offerId": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "eligible": {
+            "type": "boolean"
+          },
+          "reason": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "reasonText": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "score": {
+            "type": "number"
+          },
+          "routeSimilarity": {
+            "type": "number"
+          },
+          "timeFit": {
+            "type": "number"
+          },
+          "weights": {
+            "type": "object",
+            "properties": {
+              "routeSimilarity": {
+                "type": "number"
+              },
+              "timeFit": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "routeSimilarity",
+              "timeFit"
+            ],
+            "additionalProperties": false
+          },
+          "minutesApart": {
+            "type": "number"
+          },
+          "overlapRatio": {
+            "type": "number"
+          },
+          "addedDetourMetres": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "pickupAt": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+          },
+          "departAt": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+          },
+          "seatsLeft": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "driverFirstName": {
+            "type": "string"
+          },
+          "vehicleType": {
+            "type": "string",
+            "enum": [
+              "car",
+              "bike"
+            ]
+          },
+          "womenOnly": {
+            "type": "boolean"
+          },
+          "pickupNode": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "format": "uuid",
+                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$"
+              },
+              "name": {
+                "type": "string"
+              },
+              "shortName": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "name",
+              "shortName"
+            ],
+            "additionalProperties": false
+          },
+          "dropNode": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "format": "uuid",
+                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$"
+              },
+              "name": {
+                "type": "string"
+              },
+              "shortName": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "name",
+              "shortName"
+            ],
+            "additionalProperties": false
+          },
+          "route": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "costSharePaise": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "soloFarePaise": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "savingsPaise": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          }
+        },
+        "required": [
+          "offerId",
+          "eligible",
+          "reason",
+          "reasonText",
+          "score",
+          "routeSimilarity",
+          "timeFit",
+          "weights",
+          "minutesApart",
+          "overlapRatio",
+          "addedDetourMetres",
+          "pickupAt",
+          "departAt",
+          "seatsLeft",
+          "driverFirstName",
+          "vehicleType",
+          "womenOnly",
+          "pickupNode",
+          "dropNode",
+          "route",
+          "costSharePaise",
+          "soloFarePaise",
+          "savingsPaise"
+        ],
+        "additionalProperties": false
+      },
+      "RidesStatsReport": {
+        "type": "object",
+        "properties": {
+          "estimate": {
+            "type": "boolean",
+            "const": true
+          },
+          "totals": {
+            "type": "object",
+            "properties": {
+              "sharedTrips": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              "sharedDistanceM": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              "savingsPaise": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              "averageOccupancy": {
+                "type": "number",
+                "minimum": 0
+              },
+              "pooledTrips": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              "carpoolTrips": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              }
+            },
+            "required": [
+              "sharedTrips",
+              "sharedDistanceM",
+              "savingsPaise",
+              "averageOccupancy",
+              "pooledTrips",
+              "carpoolTrips"
+            ],
+            "additionalProperties": false
+          },
+          "driver": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "completedOffers": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 9007199254740991
+                  },
+                  "seatsFilled": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 9007199254740991
+                  },
+                  "costRecoveredPaise": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 9007199254740991
+                  }
+                },
+                "required": [
+                  "completedOffers",
+                  "seatsFilled",
+                  "costRecoveredPaise"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "weeks": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "weekStart": {
+                  "type": "string",
+                  "format": "date",
+                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+                },
+                "sharedTrips": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991
+                },
+                "sharedDistanceM": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991
+                },
+                "savingsPaise": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991
+                },
+                "averageOccupancy": {
+                  "type": "number",
+                  "minimum": 0
+                }
+              },
+              "required": [
+                "weekStart",
+                "sharedTrips",
+                "sharedDistanceM",
+                "savingsPaise",
+                "averageOccupancy"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "busiestRoutes": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "pickupName": {
+                  "type": "string"
+                },
+                "dropName": {
+                  "type": "string"
+                },
+                "trips": {
+                  "type": "integer",
+                  "exclusiveMinimum": 0,
+                  "maximum": 9007199254740991
+                }
+              },
+              "required": [
+                "pickupName",
+                "dropName",
+                "trips"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "assumptions": {
+            "type": "object",
+            "properties": {
+              "autoTariff": {
+                "type": "object",
+                "properties": {
+                  "baseFarePaise": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 9007199254740991
+                  },
+                  "baseMetres": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 9007199254740991
+                  },
+                  "perKmPaise": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 9007199254740991
+                  },
+                  "surgePercent": {
+                    "type": "integer",
+                    "minimum": -9007199254740991,
+                    "maximum": 9007199254740991
+                  }
+                },
+                "required": [
+                  "baseFarePaise",
+                  "baseMetres",
+                  "perKmPaise",
+                  "surgePercent"
+                ],
+                "additionalProperties": false
+              },
+              "carpoolCostPerKmPaise": {
+                "type": "object",
+                "properties": {
+                  "car": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 9007199254740991
+                  },
+                  "bike": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 9007199254740991
+                  }
+                },
+                "required": [
+                  "car",
+                  "bike"
+                ],
+                "additionalProperties": false
+              },
+              "speedKmh": {
+                "type": "object",
+                "properties": {
+                  "road": {
+                    "type": "number"
+                  },
+                  "campus_road": {
+                    "type": "number"
+                  },
+                  "walk": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "road",
+                  "campus_road",
+                  "walk"
+                ],
+                "additionalProperties": false
+              },
+              "notes": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            },
+            "required": [
+              "autoTariff",
+              "carpoolCostPerKmPaise",
+              "speedKmh",
+              "notes"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "estimate",
+          "totals",
+          "driver",
+          "weeks",
+          "busiestRoutes",
+          "assumptions"
         ],
         "additionalProperties": false
       },
@@ -10586,6 +13913,22 @@
           "online": {
             "type": "boolean"
           },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "auto",
+              "carpool"
+            ]
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "approved",
+              "rejected",
+              "suspended"
+            ]
+          },
           "verification": {
             "$ref": "#/components/schemas/RidesDriverVerification"
           }
@@ -10598,6 +13941,8 @@
           "vehicle",
           "plateNumber",
           "online",
+          "kind",
+          "status",
           "verification"
         ],
         "additionalProperties": false

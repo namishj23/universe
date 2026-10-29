@@ -431,6 +431,8 @@ module.exports = function admin(c, services) {
           plateNumber: d.vehicle?.plateNumber ?? null,
           // Lapsed documents count as offline, as the driver's own next request will record.
           online: d.online && verification.verified,
+          kind: d.kind,
+          status: d.status,
           verification,
         };
       },

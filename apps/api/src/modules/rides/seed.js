@@ -3,7 +3,8 @@
 // documents are added only to drivers that have none, and demo rides only when no upcoming
 // group exists. Demo rides go through the real services, so their fares are the real ones.
 const { randomInt } = require('node:crypto');
-const { STOP_NODES, STOP_EDGES } = require('./data/stops');
+const { STOP_NODES, STOP_EDGES, stopId } = require('./data/stops');
+const { assertValidGraph } = require('./lib/graph');
 const { DEMO_DRIVERS, VEHICLE_OFFSETS, STATE_DEMO_DRIVERS, driverEmail } = require('./data/roster');
 
 const DAY = 86_400_000;
@@ -18,7 +19,8 @@ module.exports = async function seed(platform, c, s) {
   const now = Date.now();
   const inDays = (n) => new Date(now + n * DAY);
 
-  // Stops (PostGIS geography, so raw tagged SQL) and the road edges between them.
+  // Stops (PostGIS geography, so raw tagged SQL) and the edges between them (road, campus
+  // road, walking path), then the stored graph is validated as a whole.
   for (const n of STOP_NODES) {
     await prisma.$executeRaw`
       INSERT INTO rides_nodes (id, name, short_name, area, aliases, geom)
@@ -31,9 +33,14 @@ module.exports = async function seed(platform, c, s) {
     await prisma.ridesRouteEdge.upsert({
       where: { nodeAId_nodeBId: { nodeAId: e.nodeAId, nodeBId: e.nodeBId } },
       create: e,
-      update: { distanceM: e.distanceM },
+      update: { distanceM: e.distanceM, durationS: e.durationS, mode: e.mode, estimated: e.estimated },
     });
   }
+  assertValidGraph(
+    await prisma.ridesNode.findMany({ select: { id: true, name: true } }),
+    await prisma.ridesRouteEdge.findMany(),
+    'database after seed',
+  );
 
   // The seven autos, with Module B's document offsets (two are off the road on purpose).
   const vehicleIds = [];
@@ -155,6 +162,89 @@ module.exports = async function seed(platform, c, s) {
       pickupText: 'Azad Nagar',
       dropText: 'Andheri',
       pickupTime: at(93),
+    });
+  }
+
+  // Carpool (P3b): the mentor drives a car, student2 a bike; both approved with verified
+  // documents. Two open offers and one completed shared ride, only on the first seed.
+  const carpoolers = [
+    { userId: mentor, vehicleType: 'car', plateNumber: 'MH02AB1234', model: 'Maruti Swift', colour: 'White', seats: 3 },
+    { userId: student2, vehicleType: 'bike', plateNumber: 'MH47C5678', model: 'Honda Activa', colour: 'Grey', seats: 1 },
+  ].filter((x) => x.userId);
+  for (const x of carpoolers) {
+    if (await prisma.ridesDriver.findUnique({ where: { userId: x.userId } })) continue;
+    const v = await prisma.ridesVehicle.create({
+      data: {
+        vehicleType: x.vehicleType,
+        plateNumber: x.plateNumber,
+        registrationNumber: x.plateNumber,
+        model: x.model,
+        colour: x.colour,
+        seats: x.seats,
+        insuranceExpiresAt: inDays(200),
+        pucExpiresAt: inDays(120),
+      },
+    });
+    const profile = await prisma.ridesProfile.findUniqueOrThrow({ where: { userId: x.userId } });
+    await upsertDriver(x.userId, {
+      kind: 'carpool',
+      status: 'approved',
+      vehicleId: v.id,
+      gender: profile.gender,
+      reviewedAt: new Date(now),
+    });
+    await addDocuments(x.userId, { licence: 30, inspection_certificate: 30 });
+  }
+  if (mentor && student && student2 && (await prisma.ridesOffer.count()) === 0) {
+    const at = (minutes) => new Date(now + minutes * 60_000).toISOString();
+    const BORIVALI = stopId('Borivali Station');
+    const MALAD = stopId('Malad');
+    const SPIT = stopId('SPIT Campus (Gate 2)');
+    // A completed ride: offered, booked, accepted, departed and completed through the
+    // services (so every figure is the real one), then moved to yesterday.
+    const done = await s.offers.create(mentor, {
+      originNodeId: BORIVALI,
+      destNodeId: SPIT,
+      departAt: at(20),
+      seats: 3,
+    });
+    const toMalad = await s.offers.route({ from: BORIVALI, to: MALAD });
+    const req = await s.riders.createRequest(student, {
+      pickupNodeId: MALAD,
+      dropNodeId: stopId('Andheri'),
+      pickupTime: new Date(Date.parse(done.departAt) + toMalad.durationS * 1000).toISOString(),
+    });
+    const booked = await s.offers.requestSeat(student, done.id, { requestId: req.id });
+    await s.offers.accept(mentor, booked.bookings[0].id);
+    await s.offers.depart(mentor, done.id, null);
+    await s.offers.complete(mentor, done.id, null);
+    const back = 86_400_000;
+    await prisma.$executeRaw`
+      UPDATE rides_offers SET depart_at = depart_at - ${back} * interval '1 millisecond',
+        departed_at = departed_at - ${back} * interval '1 millisecond',
+        completed_at = completed_at - ${back} * interval '1 millisecond'
+      WHERE id = ${done.id}::uuid`;
+    await prisma.$executeRaw`
+      UPDATE rides_offer_bookings SET planned_pickup_at = planned_pickup_at - ${back} * interval '1 millisecond'
+      WHERE offer_id = ${done.id}::uuid`;
+    await prisma.$executeRaw`
+      UPDATE rides_requests SET pickup_at = pickup_at - ${back} * interval '1 millisecond'
+      WHERE id = ${req.id}::uuid`;
+
+    // Open offers for the demo: the design's main corridor, and a women-only bike ride.
+    await s.offers.create(mentor, {
+      originNodeId: BORIVALI,
+      destNodeId: SPIT,
+      departAt: at(75),
+      seats: 3,
+      autoAccept: true,
+    });
+    await s.offers.create(student2, {
+      originNodeId: stopId('Goregaon'),
+      destNodeId: SPIT,
+      departAt: at(50),
+      seats: 1,
+      womenOnly: true,
     });
   }
 };

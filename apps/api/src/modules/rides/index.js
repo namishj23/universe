@@ -7,12 +7,15 @@ const drivers = require('./services/drivers');
 const vehicles = require('./services/vehicles');
 const admin = require('./services/admin');
 const history = require('./services/history');
+const offers = require('./services/offers');
+const stats = require('./services/stats');
 const routes = require('./routes');
 const seed = require('./seed');
 
 const WHO = {
   any: 'any signed-in rides user',
   rider: 'students, mentors and admins; not drivers',
+  carpool: 'students and mentors (offer routes also need an approved carpool driver record)',
   driver: 'drivers',
   admin: 'admins',
 };
@@ -47,12 +50,22 @@ function openapi(table, ErrorBody) {
         400: error('Validation failed or bad input'),
         401: error('Not signed in'),
         403: error('Wrong role, CSRF, or suspended from rides'),
-        404: error('Not found (also for groups you are not in)'),
+        404: error('Not found (also for groups and offers you are not in)'),
         409: error('Conflict (full group, taken ride, wrong state)'),
       },
     };
   }
   return paths;
+}
+
+// Which of `ids` a rides table still references in any of `fields` (one query).
+async function referenced(model, ids, fields) {
+  const rows = await model.findMany({
+    where: { OR: fields.map((f) => ({ [f]: { in: [...ids] } })) },
+    select: Object.fromEntries(fields.map((f) => [f, true])),
+  });
+  const wanted = new Set(ids);
+  return new Set(rows.flatMap((r) => fields.map((f) => r[f])).filter((id) => wanted.has(id)));
 }
 
 module.exports = (platform) => {
@@ -64,6 +77,8 @@ module.exports = (platform) => {
     vehicles: vehicles(c, s),
     admin: admin(c, s),
     history: history(c, s),
+    offers: offers(c, s),
+    stats: stats(c, s),
   });
   const { router, table } = routes(platform, s);
 
@@ -84,14 +99,23 @@ module.exports = (platform) => {
         mimeTypes: ['application/pdf', 'image/jpeg', 'image/png'],
         maxBytes: 5 * 1024 * 1024,
         // The driver who uploaded it, and admins. Anyone else gets 404.
-        authorizeRead: (user, file) =>
-          user.role === 'admin' || (user.role === 'driver' && user.id === file.ownerId),
+        // The driver (auto or carpool) who uploaded it, and admins. Anyone else gets 404.
+        authorizeRead: (user, file) => user.role === 'admin' || user.id === file.ownerId,
+        // Attached to a driver document: can't be deleted, never swept.
+        inUse: (ids) => referenced(platform.prisma.ridesDriverDocument, ids, ['fileId']),
       },
       {
         id: 'rides.inspection_photo',
         mimeTypes: ['image/jpeg', 'image/png', 'image/webp'],
         maxBytes: 5 * 1024 * 1024,
         authorizeRead: (user) => user.role === 'admin',
+        inUse: (ids) =>
+          referenced(platform.prisma.ridesVehicleInspection, ids, [
+            'tyresFileId',
+            'lightsFileId',
+            'seatsFileId',
+            'meterFileId',
+          ]),
       },
     ],
     openapi: openapi(table, platform.contracts.ApiErrorBody),

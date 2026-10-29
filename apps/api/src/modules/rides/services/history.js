@@ -4,7 +4,7 @@
 // the group was not cancelled and has either been completed by the driver or passed pickup.
 const HOUR_BUCKETS = [8, 10, 12, 14, 16, 18, 20];
 
-module.exports = function history(c) {
+module.exports = function history(c, services) {
   const { prisma } = c;
 
   function row(m, coRiders, graph, now) {
@@ -132,31 +132,69 @@ module.exports = function history(c) {
     };
   }
 
-  // GET /api/dashboard for a rider: next ride, rides completed, distance shared, money saved.
+  // Completed carpool seats (P3b): count, in-vehicle metres, savings (never negative per ride).
+  async function carpoolTotals(userId) {
+    const [t] = await prisma.$queryRaw`
+      SELECT count(*)::int AS rides, COALESCE(sum(b.in_vehicle_m), 0)::int AS "sharedDistanceM",
+             COALESCE(sum(GREATEST(b.solo_fare_paise - b.cost_share_paise, 0)), 0)::int AS "savedPaise"
+      FROM rides_offer_bookings b JOIN rides_offers o ON o.id = b.offer_id
+      WHERE b.passenger_id = ${userId}::uuid AND b.status = 'accepted' AND o.status = 'completed'`;
+    return t;
+  }
+
+  // GET /api/dashboard for a rider: the next ride of either kind, rides completed, distance
+  // shared and money saved over pooled autos and carpool seats; carpool drivers also see
+  // seats filled and cost recovered.
   async function riderSummary(userId) {
-    const [t, { soon }, graph] = await Promise.all([
+    const now = Date.now();
+    const [t, { soon }, graph, cp, seat, isDriver] = await Promise.all([
       totals(userId),
       upcoming(userId),
       c.loadGraph(),
+      carpoolTotals(userId),
+      prisma.ridesOfferBooking.findFirst({
+        where: {
+          passengerId: userId,
+          status: 'accepted',
+          plannedPickupAt: { gte: new Date(now - c.bufferMs) },
+          offer: { status: { in: ['open', 'full', 'departed'] } },
+        },
+        orderBy: [{ plannedPickupAt: 'asc' }, { id: 'asc' }],
+        include: { offer: { select: { peakOnboard: true } } },
+      }),
+      prisma.ridesDriver.count({ where: { userId, kind: 'carpool' } }),
     ]);
     const next = soon[0];
-    const size = next
-      ? await prisma.ridesGroupMember.count({ where: { groupId: next.groupId } })
-      : 0;
+    let upcomingRide = null;
+    if (next && (!seat || next.group.pickupAt <= seat.plannedPickupAt)) {
+      upcomingRide = {
+        rideType: 'pool',
+        id: next.groupId,
+        pickupName: graph.stop(next.group.pickupNodeId).name,
+        dropName: graph.stop(next.dropNodeId).name,
+        pickupTime: next.group.pickupAt.toISOString(),
+        groupSize: await prisma.ridesGroupMember.count({ where: { groupId: next.groupId } }),
+      };
+    } else if (seat) {
+      upcomingRide = {
+        rideType: 'carpool',
+        id: seat.offerId,
+        pickupName: graph.stop(seat.pickupNodeId).name,
+        dropName: graph.stop(seat.dropNodeId).name,
+        pickupTime: seat.plannedPickupAt.toISOString(),
+        groupSize: seat.offer.peakOnboard + 1,
+      };
+    }
+    const driver = isDriver ? await services.stats.driverTotals(userId) : null;
     return {
       kind: 'rider',
-      upcomingRide: next
-        ? {
-            groupId: next.groupId,
-            pickupName: graph.stop(next.group.pickupNodeId).name,
-            dropName: graph.stop(next.dropNodeId).name,
-            pickupTime: next.group.pickupAt.toISOString(),
-            groupSize: size,
-          }
+      upcomingRide,
+      ridesCompleted: t.completedRides + cp.rides,
+      sharedDistanceM: t.sharedDistanceM + cp.sharedDistanceM,
+      savedPaise: t.totalSavingsPaise + cp.savedPaise,
+      carpool: driver
+        ? { seatsFilled: driver.seatsFilled, costRecoveredPaise: driver.costRecoveredPaise }
         : null,
-      ridesCompleted: t.completedRides,
-      sharedDistanceM: t.sharedDistanceM,
-      savedPaise: t.totalSavingsPaise,
     };
   }
 

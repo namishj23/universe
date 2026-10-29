@@ -28,6 +28,8 @@ model RidesProfile {
   inspectionsFiled   RidesVehicleInspection[] @relation("InspectionSubmitter")
   inspectionsChecked RidesVehicleInspection[] @relation("InspectionReviewer")
   documentsChecked   RidesDriverDocument[]
+  driversReviewed    RidesDriver[]            @relation("DriverReviewer")
+  bookings           RidesOfferBooking[]
 
   @@index([createdAt(sort: Desc), userId(sort: Desc)])
   @@map("rides_profiles")
@@ -43,22 +45,31 @@ model RidesNode {
   geom      Unsupported("geography(Point, 4326)")
   createdAt DateTime                              @default(now()) @map("created_at") @db.Timestamptz(3)
 
-  edgesAsA       RidesRouteEdge[]   @relation("EdgeNodeA")
-  edgesAsB       RidesRouteEdge[]   @relation("EdgeNodeB")
+  edgesAsA       RidesRouteEdge[]    @relation("EdgeNodeA")
+  edgesAsB       RidesRouteEdge[]    @relation("EdgeNodeB")
   groups         RidesGroup[]
-  requestsPickup RidesRequest[]     @relation("RequestPickup")
-  requestsDrop   RidesRequest[]     @relation("RequestDrop")
+  requestsPickup RidesRequest[]      @relation("RequestPickup")
+  requestsDrop   RidesRequest[]      @relation("RequestDrop")
   memberDrops    RidesGroupMember[]
+  offersFrom     RidesOffer[]        @relation("OfferOrigin")
+  offersTo       RidesOffer[]        @relation("OfferDestination")
+  bookingPickups RidesOfferBooking[] @relation("BookingPickup")
+  bookingDrops   RidesOfferBooking[] @relation("BookingDrop")
 
   @@index([geom], type: Gist)
   @@map("rides_nodes")
 }
 
 model RidesRouteEdge {
-  id        String @id @default(uuid()) @db.Uuid
-  nodeAId   String @map("node_a_id") @db.Uuid
-  nodeBId   String @map("node_b_id") @db.Uuid
-  distanceM Int    @map("distance_m")
+  id        String  @id @default(uuid()) @db.Uuid
+  nodeAId   String  @map("node_a_id") @db.Uuid
+  nodeBId   String  @map("node_b_id") @db.Uuid
+  distanceM Int     @map("distance_m")
+  /// Seconds at the documented average speed for this kind of path (config graph.speedKmh).
+  durationS Int     @map("duration_s")
+  mode      String  @default("road") // road | campus_road | walk (walk: never used by vehicles)
+  /// True when the distance is straight line x 1.3, not a routed road distance.
+  estimated Boolean @default(false)
 
   nodeA RidesNode @relation("EdgeNodeA", fields: [nodeAId], references: [id], onDelete: Cascade)
   nodeB RidesNode @relation("EdgeNodeB", fields: [nodeBId], references: [id], onDelete: Cascade)
@@ -81,11 +92,12 @@ model RidesRequest {
   groupId       String?  @map("group_id") @db.Uuid
   createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
 
-  user       RidesProfile      @relation(fields: [userId], references: [userId], onDelete: Cascade)
-  pickupNode RidesNode         @relation("RequestPickup", fields: [pickupNodeId], references: [id])
-  dropNode   RidesNode         @relation("RequestDrop", fields: [dropNodeId], references: [id])
-  group      RidesGroup?       @relation(fields: [groupId], references: [id], onDelete: SetNull)
+  user       RidesProfile        @relation(fields: [userId], references: [userId], onDelete: Cascade)
+  pickupNode RidesNode           @relation("RequestPickup", fields: [pickupNodeId], references: [id])
+  dropNode   RidesNode           @relation("RequestDrop", fields: [dropNodeId], references: [id])
+  group      RidesGroup?         @relation(fields: [groupId], references: [id], onDelete: SetNull)
   member     RidesGroupMember?
+  bookings   RidesOfferBooking[]
 
   @@index([userId, status])
   @@index([pickupNodeId, status, pickupAt])
@@ -173,23 +185,26 @@ model RidesChatMessage {
 }
 
 model RidesVehicle {
-  id                 String   @id @default(uuid()) @db.Uuid
-  plateNumber        String   @unique @map("plate_number")
-  registrationNumber String   @map("registration_number")
+  id                 String    @id @default(uuid()) @db.Uuid
+  plateNumber        String    @unique @map("plate_number")
+  registrationNumber String    @map("registration_number")
   model              String
   colour             String?
-  seats              Int      @default(3)
-  permitExpiresAt    DateTime @map("permit_expires_at") @db.Timestamptz(3)
-  insuranceExpiresAt DateTime @map("insurance_expires_at") @db.Timestamptz(3)
-  pucExpiresAt       DateTime @map("puc_expires_at") @db.Timestamptz(3)
-  fitnessExpiresAt   DateTime @map("fitness_expires_at") @db.Timestamptz(3)
-  documentsStatus    String   @default("approved") @map("documents_status") // approved | pending | rejected
-  status             String   @default("active") // active | suspended
-  flaggedReason      String?  @map("flagged_reason")
-  lastServiceAt      DateTime @map("last_service_at") @db.Timestamptz(3)
-  lastServiceM       Int      @default(0) @map("last_service_m")
-  drivenM            Int      @default(0) @map("driven_m")
-  createdAt          DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  /// auto (roster auto-rickshaw) | car | bike (a carpool driver's own vehicle).
+  vehicleType        String    @default("auto") @map("vehicle_type")
+  seats              Int       @default(3)
+  /// Permit, fitness and service apply to autos only (CHECK): null for cars and bikes.
+  permitExpiresAt    DateTime? @map("permit_expires_at") @db.Timestamptz(3)
+  insuranceExpiresAt DateTime  @map("insurance_expires_at") @db.Timestamptz(3)
+  pucExpiresAt       DateTime  @map("puc_expires_at") @db.Timestamptz(3)
+  fitnessExpiresAt   DateTime? @map("fitness_expires_at") @db.Timestamptz(3)
+  documentsStatus    String    @default("approved") @map("documents_status") // approved | pending | rejected
+  status             String    @default("active") // active | suspended
+  flaggedReason      String?   @map("flagged_reason")
+  lastServiceAt      DateTime? @map("last_service_at") @db.Timestamptz(3)
+  lastServiceM       Int       @default(0) @map("last_service_m")
+  drivenM            Int       @default(0) @map("driven_m")
+  createdAt          DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
 
   driver      RidesDriver?
   groups      RidesGroup[]
@@ -197,8 +212,10 @@ model RidesVehicle {
   feedback    RidesVehicleFeedback[]
   reports     RidesSafetyReport[]
   trips       RidesDriverTrip[]
+  offers      RidesOffer[]
 
   @@index([createdAt, id])
+  @@index([vehicleType, createdAt, id])
   @@map("rides_vehicles")
 }
 
@@ -222,6 +239,10 @@ model RidesVehicleInspection {
   reviewedBy  RidesProfile? @relation("InspectionReviewer", fields: [reviewedById], references: [userId])
 
   @@index([vehicleId, submittedAt(sort: Desc)])
+  @@index([tyresFileId])
+  @@index([lightsFileId])
+  @@index([seatsFileId])
+  @@index([meterFileId])
   @@index([status, submittedAt])
   @@index([submittedById])
   @@index([reviewedById])
@@ -292,24 +313,33 @@ model RidesNotice {
   @@map("rides_notices")
 }
 
-/// A driver is a platform user with role `driver`. `kind` is 'auto' (a roster auto driver);
-/// P3b adds 'carpool' (students or mentors offering rides), whose vehicle may be null.
+/// `kind` 'auto': a roster auto driver, a platform user with role `driver`. `kind` 'carpool': a
+/// student or mentor who drives their own car or bike; their role stays student/mentor and an
+/// admin approves the record (`status`). Offer routes check this record, not the role.
 model RidesDriver {
-  userId       String   @id @map("user_id") @db.Uuid
-  kind         String   @default("auto")
-  vehicleId    String?  @unique @map("vehicle_id") @db.Uuid
-  driverCode   String   @unique @map("driver_code") // RP-DRV-XXXXXX, generated once
+  userId       String    @id @map("user_id") @db.Uuid
+  kind         String    @default("auto")
+  status       String    @default("approved") // pending | approved | rejected | suspended
+  reviewedById String?   @map("reviewed_by_id") @db.Uuid
+  reviewedAt   DateTime? @map("reviewed_at") @db.Timestamptz(3)
+  reviewNote   String?   @map("review_note")
+  vehicleId    String?   @unique @map("vehicle_id") @db.Uuid
+  driverCode   String    @unique @map("driver_code") // RP-DRV-XXXXXX, generated once
   gender       String? // used only for the female-driver rules
-  online       Boolean  @default(false)
-  ratingTenths Int?     @map("rating_tenths") // 48 = 4.8 stars
-  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  online       Boolean   @default(false)
+  ratingTenths Int?      @map("rating_tenths") // 48 = 4.8 stars
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
 
-  user      User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
-  vehicle   RidesVehicle?         @relation(fields: [vehicleId], references: [id], onDelete: SetNull)
-  documents RidesDriverDocument[]
-  trips     RidesDriverTrip[]
+  user       User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  vehicle    RidesVehicle?         @relation(fields: [vehicleId], references: [id], onDelete: SetNull)
+  reviewedBy RidesProfile?         @relation("DriverReviewer", fields: [reviewedById], references: [userId], onDelete: SetNull)
+  documents  RidesDriverDocument[]
+  trips      RidesDriverTrip[]
+  offers     RidesOffer[]
 
   @@index([online])
+  @@index([kind, status])
+  @@index([reviewedById])
   @@index([createdAt, userId])
   @@map("rides_drivers")
 }
@@ -330,6 +360,7 @@ model RidesDriverDocument {
   reviewedBy RidesProfile? @relation(fields: [reviewedById], references: [userId], onDelete: SetNull)
 
   @@index([driverId, uploadedAt(sort: Desc)])
+  @@index([fileId])
   @@index([status])
   @@index([reviewedById])
   @@map("rides_driver_documents")
@@ -357,4 +388,86 @@ model RidesDriverTrip {
   @@index([driverId, status])
   @@index([vehicleId])
   @@map("rides_driver_trips")
+}
+
+/// A ride a carpool driver offers: origin -> destination at a time, with seats, a detour
+/// budget and a cost per km shared by everyone aboard. `plan` is the ordered list of accepted
+/// passengers' pickups and drops between origin and destination; the plan_* and cost columns
+/// are recomputed in the same transaction whenever a booking is accepted or cancelled.
+model RidesOffer {
+  id               String    @id @default(uuid()) @db.Uuid
+  driverId         String    @map("driver_id") @db.Uuid
+  vehicleId        String    @map("vehicle_id") @db.Uuid
+  originNodeId     String    @map("origin_node_id") @db.Uuid
+  destNodeId       String    @map("dest_node_id") @db.Uuid
+  departAt         DateTime  @map("depart_at") @db.Timestamptz(3)
+  seats            Int
+  maxDetourM       Int       @map("max_detour_m")
+  maxDetourS       Int       @map("max_detour_s")
+  costPerKmPaise   Int       @map("cost_per_km_paise")
+  autoAccept       Boolean   @default(false) @map("auto_accept")
+  womenOnly        Boolean   @default(false) @map("women_only")
+  status           String    @default("open") // open | full | departed | completed | cancelled
+  basePath         String[]  @map("base_path") @db.Uuid
+  baseDistanceM    Int       @map("base_distance_m")
+  baseDurationS    Int       @map("base_duration_s")
+  /// [{ bookingId, nodeId, type: 'pickup' | 'drop' }] in driving order.
+  plan             Json      @default("[]")
+  planDistanceM    Int       @map("plan_distance_m")
+  planDurationS    Int       @map("plan_duration_s")
+  peakOnboard      Int       @default(0) @map("peak_onboard")
+  tripCostPaise    Int       @map("trip_cost_paise")
+  driverSharePaise Int       @map("driver_share_paise")
+  createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt        DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+  cancelledAt      DateTime? @map("cancelled_at") @db.Timestamptz(3)
+  departedAt       DateTime? @map("departed_at") @db.Timestamptz(3)
+  completedAt      DateTime? @map("completed_at") @db.Timestamptz(3)
+
+  driver     RidesDriver         @relation(fields: [driverId], references: [userId], onDelete: Cascade)
+  vehicle    RidesVehicle        @relation(fields: [vehicleId], references: [id])
+  originNode RidesNode           @relation("OfferOrigin", fields: [originNodeId], references: [id])
+  destNode   RidesNode           @relation("OfferDestination", fields: [destNodeId], references: [id])
+  bookings   RidesOfferBooking[]
+
+  @@index([status, departAt])
+  @@index([driverId, departAt, id])
+  @@index([vehicleId])
+  @@index([originNodeId])
+  @@index([destNodeId])
+  @@map("rides_offers")
+}
+
+/// A passenger's seat on an offer, made from their ride request. Unique per (offer, passenger);
+/// a cancelled booking is reused if they ask again. The planned figures are kept current.
+model RidesOfferBooking {
+  id              String    @id @default(uuid()) @db.Uuid
+  offerId         String    @map("offer_id") @db.Uuid
+  passengerId     String    @map("passenger_id") @db.Uuid
+  requestId       String    @map("request_id") @db.Uuid
+  pickupNodeId    String    @map("pickup_node_id") @db.Uuid
+  dropNodeId      String    @map("drop_node_id") @db.Uuid
+  status          String    @default("requested") // requested | accepted | declined | cancelled
+  addedDetourM    Int       @default(0) @map("added_detour_m")
+  plannedPickupAt DateTime  @map("planned_pickup_at") @db.Timestamptz(3)
+  inVehicleM      Int       @default(0) @map("in_vehicle_m")
+  directM         Int       @map("direct_m")
+  costSharePaise  Int       @default(0) @map("cost_share_paise")
+  soloFarePaise   Int       @map("solo_fare_paise")
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  decidedAt       DateTime? @map("decided_at") @db.Timestamptz(3)
+
+  offer      RidesOffer   @relation(fields: [offerId], references: [id], onDelete: Cascade)
+  passenger  RidesProfile @relation(fields: [passengerId], references: [userId], onDelete: Cascade)
+  request    RidesRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  pickupNode RidesNode    @relation("BookingPickup", fields: [pickupNodeId], references: [id])
+  dropNode   RidesNode    @relation("BookingDrop", fields: [dropNodeId], references: [id])
+
+  @@unique([offerId, passengerId])
+  @@index([offerId, status])
+  @@index([passengerId, status, plannedPickupAt])
+  @@index([requestId])
+  @@index([pickupNodeId])
+  @@index([dropNodeId])
+  @@map("rides_offer_bookings")
 }
