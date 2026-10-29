@@ -206,6 +206,22 @@ export async function saveFile(input: SaveFileInput): Promise<FileRecord> {
   }
 }
 
+/** The ids among `files` that their purpose's module still references. */
+async function referenced(
+  modules: readonly ModuleDefinition[],
+  files: readonly { id: string; purpose: string }[],
+): Promise<Set<string>> {
+  const out = new Set<string>();
+  for (const module of modules) {
+    for (const purpose of module.filePurposes ?? []) {
+      const ids = files.filter((f) => f.purpose === purpose.id).map((f) => f.id);
+      if (ids.length === 0 || !purpose.inUse) continue;
+      for (const id of await purpose.inUse(ids)) out.add(id);
+    }
+  }
+  return out;
+}
+
 /** `/api/files`: uploads, downloads and deletes for every purpose the modules register. */
 export function fileRoutes(modules: readonly ModuleDefinition[]): Router {
   const purposes = new Map<string, { purpose: FilePurpose; module: ModuleDefinition }>();
@@ -323,6 +339,8 @@ export function fileRoutes(modules: readonly ModuleDefinition[]): Router {
       if (!file || !(await canRead(user, file))) throw notFound();
       if (file.ownerId !== user.id && user.role !== 'admin')
         throw new ApiError(403, 'FORBIDDEN', 'Only the owner or an admin can delete this file');
+      if ((await referenced(modules, [file])).has(id))
+        throw new ApiError(409, 'FILE_IN_USE', 'This file is still attached to a record');
       // Soft delete: hidden at once; the bytes are removed by the sweep after 24 hours.
       await prisma.file.updateMany({
         where: { id, deletedAt: null },
@@ -335,14 +353,21 @@ export function fileRoutes(modules: readonly ModuleDefinition[]): Router {
   return router;
 }
 
-/** Removes stale temporary files and the bytes (then rows) of files deleted over 24 hours ago. */
-export async function sweepFiles(): Promise<{ temp: number; purged: number }> {
+/**
+ * Removes stale temporary files and the bytes (then rows) of files deleted over 24 hours ago,
+ * except files a module still references (a delete that raced an attach stays readable).
+ */
+export async function sweepFiles(
+  modules: readonly ModuleDefinition[] = [],
+): Promise<{ temp: number; purged: number }> {
   const temp = await storage.sweepTemp(TEMP_MAX_AGE_MS);
-  const expired = await prisma.file.findMany({
+  const candidates = await prisma.file.findMany({
     where: { deletedAt: { lt: new Date(Date.now() - DELETED_KEEP_MS) } },
-    select: { id: true, storageKey: true },
+    select: { id: true, storageKey: true, purpose: true },
     take: 1_000,
   });
+  const keep = await referenced(modules, candidates);
+  const expired = candidates.filter((f) => !keep.has(f.id));
   for (const f of expired) await storage.remove(f.storageKey);
   const { count } = await prisma.file.deleteMany({
     where: { id: { in: expired.map((f) => f.id) } },
@@ -351,9 +376,9 @@ export async function sweepFiles(): Promise<{ temp: number; purged: number }> {
 }
 
 /** Runs the sweep now and hourly. The timer never keeps the process alive. */
-export function startFileSweep(): () => void {
+export function startFileSweep(modules: readonly ModuleDefinition[]): () => void {
   const run = () => {
-    sweepFiles().then(
+    sweepFiles(modules).then(
       (counts) => logger.info(counts, 'file sweep finished'),
       (err: unknown) => logger.error({ err }, 'file sweep failed'),
     );

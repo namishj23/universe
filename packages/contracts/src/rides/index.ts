@@ -580,6 +580,9 @@ export const AdminDriverRow = z
     vehicle: z.string().nullable(),
     plateNumber: z.string().nullable(),
     online: z.boolean(),
+    /** auto: roster auto driver; carpool: a student or mentor with their own car or bike. */
+    kind: z.enum(['auto', 'carpool']),
+    status: z.enum(['pending', 'approved', 'rejected', 'suspended']),
     verification: DriverVerification,
   })
   .meta({ id: 'RidesAdminDriver' });
@@ -650,3 +653,5 @@ export const pages = {
   adminDrivers: page(AdminDriverRow),
   vehicles: page(VehicleView),
 };
+
+export * from './offers.js';

@@ -35,9 +35,10 @@ module.exports = function vehicles(c) {
 
   async function list(query) {
     const { cursor, limit } = c.pageQuery(query);
+    // The auto fleet only: carpool cars and bikes follow other rules (see offers.js).
     const rows = await prisma.ridesVehicle.findMany({
-      where: c.afterAsc('createdAt', cursor),
-      orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
+      where: { vehicleType: 'auto', ...c.afterAsc('createdAt', cursor) },
+      orderBy: [{ vehicleType: 'asc' }, { createdAt: 'asc' }, { id: 'asc' }],
       take: limit + 1,
       include,
     });
@@ -52,14 +53,14 @@ module.exports = function vehicles(c) {
 
   async function get(vehicleId, db = prisma) {
     const v = await db.ridesVehicle.findUnique({ where: { id: vehicleId }, include });
-    if (!v) throw c.notFound('Vehicle not found');
+    if (!v || v.vehicleType !== 'auto') throw c.notFound('Vehicle not found');
     return (await describeMany([v], db))[0];
   }
 
   // Locks the vehicle row for an admin change; 404 if it doesn't exist.
   async function lockVehicle(tx, vehicleId) {
     const [row] =
-      await tx.$queryRaw`SELECT id FROM rides_vehicles WHERE id = ${vehicleId}::uuid FOR UPDATE`;
+      await tx.$queryRaw`SELECT id FROM rides_vehicles WHERE id = ${vehicleId}::uuid AND vehicle_type = 'auto' FOR UPDATE`;
     if (!row) throw c.notFound('Vehicle not found');
     return tx.ridesVehicle.findUniqueOrThrow({ where: { id: vehicleId } });
   }
@@ -155,7 +156,12 @@ module.exports = function vehicles(c) {
       throw c.badRequest(
         'Photos required: tyres, lights, seats, meter (uploaded by you as inspection photos)',
       );
-    if (!(await prisma.ridesVehicle.findUnique({ where: { id: vehicleId }, select: { id: true } })))
+    if (
+      !(await prisma.ridesVehicle.findFirst({
+        where: { id: vehicleId, vehicleType: 'auto' },
+        select: { id: true },
+      }))
+    )
       throw c.notFound('Vehicle not found');
     await c.ensureProfile(userId);
     const row = await prisma.ridesVehicleInspection.create({

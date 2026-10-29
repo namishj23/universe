@@ -5,6 +5,13 @@ import { z } from 'zod';
 const group = { groupId: z.uuid() };
 const ride = { ...group, pickupName: z.string(), pickupTime: z.iso.datetime({ offset: true }) };
 
+const offer = {
+  offerId: z.uuid(),
+  originName: z.string(),
+  destinationName: z.string(),
+  departAt: z.iso.datetime({ offset: true }),
+};
+
 export const ridesActivity = {
   'rides.member_joined': z.object({ ...ride, memberName: z.string() }).strict(),
   'rides.group_confirmed': z.object(ride).strict(),
@@ -37,4 +44,17 @@ export const ridesActivity = {
   // To riders, about their driver.
   'rides.driver_accepted': z.object({ ...ride, driverName: z.string() }).strict(),
   'rides.driver_heading': z.object({ ...ride, driverName: z.string() }).strict(),
+  // Carpool offers (P3b).
+  'rides.seat_requested': z.object({ ...offer, passengerFirstName: z.string() }).strict(),
+  'rides.seat_accepted': z.object(offer).strict(),
+  'rides.seat_declined': z.object(offer).strict(),
+  'rides.offer_cancelled': z.object(offer).strict(),
+  'rides.booking_cancelled': z.object({ ...offer, passengerFirstName: z.string() }).strict(),
+  'rides.offer_departing': z.object(offer).strict(),
+  'rides.carpool_reviewed': z
+    .object({
+      status: z.enum(['approved', 'rejected', 'suspended']),
+      note: z.string().nullable(),
+    })
+    .strict(),
 } as const;

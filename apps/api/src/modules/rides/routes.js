@@ -1,6 +1,7 @@
 // Every rides route in one table: the router and the OpenAPI document are both built from it,
 // so a route can't exist undocumented. Paths are relative to /api/rides. Who may call:
 //   rider  = student, mentor, admin (never a driver)    driver = driver    admin = admin
+//   carpool = student, mentor (offer routes also check an approved carpool driver record)
 //   any    = every role the module admits
 // Ownership is checked in the services (a non-member gets 404 for a group).
 const { Router } = require('express');
@@ -42,6 +43,24 @@ module.exports = function routes(p, s) {
       (req) => s.admin.notices(req.query, { activeOnly: true }),
     ],
 
+    [
+      'get',
+      '/graph',
+      'any',
+      'rides',
+      'The stop graph: stops (walk-only flagged) and edges with distance, duration, mode and whether estimated',
+      { response: R.GraphView },
+      (req) => (noQuery(req), s.offers.graphView()),
+    ],
+    [
+      'get',
+      '/route',
+      'any',
+      'rides',
+      'Shortest road route between two stops (Dijkstra; vehicles never use walking paths)',
+      { query: R.RouteQuery, response: R.RouteView },
+      (req) => s.offers.route(req.query),
+    ],
     // ── Rider: profile and dashboard ──────────────────────────────────────────────────
     [
       'get',
@@ -98,6 +117,160 @@ module.exports = function routes(p, s) {
       (req) => (noQuery(req), s.history.campusStats()),
     ],
 
+    // ── Carpool: drive your own car or bike (P3b) ─────────────────────────────────────
+    [
+      'post',
+      '/carpool/driver',
+      'carpool',
+      'rides-carpool',
+      'Apply to drive: vehicle type, plate, seats, insurance and PUC (admin approves)',
+      { body: R.CarpoolApplyRequest, response: R.CarpoolDriver, status: 201 },
+      (req) => s.offers.apply(user(req).id, req.body),
+    ],
+    [
+      'get',
+      '/carpool/driver',
+      'carpool',
+      'rides-carpool',
+      'My carpool driver application, vehicle and whether I can offer rides',
+      { response: R.CarpoolDriver },
+      (req) => (noQuery(req), s.offers.carpoolMe(user(req).id)),
+    ],
+    [
+      'post',
+      '/carpool/driver/documents',
+      'carpool',
+      'rides-carpool',
+      'Attach an uploaded rides.driver_document file (licence or inspection certificate)',
+      { body: R.DriverDocumentRequest, response: R.CarpoolDriver, status: 201 },
+      (req) => s.offers.addDocument(user(req).id, req.body),
+    ],
+    [
+      'post',
+      '/offers',
+      'carpool',
+      'rides-carpool',
+      'Offer a ride (approved carpool drivers only)',
+      { body: R.CreateOfferRequest, response: R.OfferView, status: 201 },
+      (req) => s.offers.create(user(req).id, req.body),
+    ],
+    [
+      'get',
+      '/offers/mine',
+      'carpool',
+      'rides-carpool',
+      'Rides I offered, latest departure first',
+      { query: R.RidesPageQuery, response: R.offerPages.offers },
+      (req) => s.offers.mine(user(req).id, req.query),
+    ],
+    [
+      'get',
+      '/offers/matches',
+      'rider',
+      'rides-carpool',
+      'Offers my ride request fits, with score breakdown and added detour; hidden offers counted',
+      { query: R.OfferMatchesQuery, response: R.OfferMatches },
+      (req) => s.offers.matches(user(req).id, req.query),
+    ],
+    [
+      'get',
+      '/offers/:id',
+      'rider',
+      'rides-carpool',
+      'One offer (its driver and passengers with a live booking only; others get 404)',
+      { params: IdPath, response: R.OfferView },
+      (req) => (noQuery(req), s.offers.view(user(req).id, id(req))),
+    ],
+    [
+      'patch',
+      '/offers/:id',
+      'carpool',
+      'rides-carpool',
+      'Edit my offer (with confirmed passengers: only more seats or detour, lower cost, auto-accept)',
+      { params: IdPath, body: R.UpdateOfferRequest, response: R.OfferView },
+      (req) => s.offers.update(user(req).id, id(req), req.body),
+    ],
+    [
+      'post',
+      '/offers/:id/cancel',
+      'carpool',
+      'rides-carpool',
+      'Cancel my offer (passengers are told; within 15 minutes of departure it is audited)',
+      { params: IdPath, body: R.NoBody, response: R.OfferView },
+      (req) => (noBody(req), s.offers.cancel(user(req).id, id(req), req.id)),
+    ],
+    [
+      'post',
+      '/offers/:id/depart',
+      'carpool',
+      'rides-carpool',
+      'Mark my ride departed (from 30 minutes before departure)',
+      { params: IdPath, body: R.NoBody, response: R.OfferView },
+      (req) => (noBody(req), s.offers.depart(user(req).id, id(req), req.id)),
+    ],
+    [
+      'post',
+      '/offers/:id/complete',
+      'carpool',
+      'rides-carpool',
+      'Mark my departed ride completed',
+      { params: IdPath, body: R.NoBody, response: R.OfferView },
+      (req) => (noBody(req), s.offers.complete(user(req).id, id(req), req.id)),
+    ],
+    [
+      'post',
+      '/offers/:id/bookings',
+      'rider',
+      'rides-carpool',
+      'Ask for a seat with my open ride request (accepted at once if the driver chose auto-accept)',
+      { params: IdPath, body: R.BookSeatRequest, response: R.OfferView, status: 201 },
+      (req) => s.offers.requestSeat(user(req).id, id(req), req.body),
+    ],
+    [
+      'get',
+      '/bookings/mine',
+      'rider',
+      'rides-carpool',
+      'Offers I asked for or have a seat on, latest pickup first',
+      { query: R.RidesPageQuery, response: R.offerPages.offers },
+      (req) => s.offers.myBookings(user(req).id, req.query),
+    ],
+    [
+      'post',
+      '/bookings/:id/accept',
+      'carpool',
+      'rides-carpool',
+      'Accept a seat request on my offer',
+      { params: IdPath, body: R.NoBody, response: R.OfferView },
+      (req) => (noBody(req), s.offers.accept(user(req).id, id(req))),
+    ],
+    [
+      'post',
+      '/bookings/:id/decline',
+      'carpool',
+      'rides-carpool',
+      'Decline a seat request on my offer',
+      { params: IdPath, body: R.NoBody, response: R.OfferView },
+      (req) => (noBody(req), s.offers.decline(user(req).id, id(req))),
+    ],
+    [
+      'post',
+      '/bookings/:id/cancel',
+      'rider',
+      'rides-carpool',
+      'Withdraw my seat request or give up my seat',
+      { params: IdPath, body: R.NoBody, response: Ok },
+      (req) => (noBody(req), s.offers.cancelBooking(user(req).id, id(req), req.id)),
+    ],
+    [
+      'get',
+      '/stats/me',
+      'rider',
+      'rides-carpool',
+      'My shared-ride totals, weekly series and busiest routes over both ride types (estimates)',
+      { response: R.RidesStatsReport },
+      (req) => (noQuery(req), s.stats.report(user(req).id)),
+    ],
     // ── Rider: requests, matching, groups ─────────────────────────────────────────────
     [
       'post',
@@ -541,6 +714,24 @@ module.exports = function routes(p, s) {
       { params: IdPath, body: R.ReviewRequest, response: Ok },
       (req) => s.admin.reviewDocument(user(req), id(req), req.body, req.id),
     ],
+    [
+      'post',
+      '/admin/drivers/:id/review',
+      'admin',
+      'rides-admin',
+      'Approve, reject or suspend a carpool driver (suspension cancels their upcoming offers)',
+      { params: IdPath, body: R.CarpoolReviewRequest, response: R.CarpoolDriver },
+      (req) => s.offers.review(user(req), id(req), req.body, req.id),
+    ],
+    [
+      'get',
+      '/admin/stats',
+      'admin',
+      'rides-admin',
+      'Campus shared-ride totals, weekly series and busiest routes over both ride types (estimates)',
+      { response: R.RidesStatsReport },
+      (req) => (noQuery(req), s.stats.all()),
+    ],
   ];
 
   const guards = {
@@ -548,6 +739,7 @@ module.exports = function routes(p, s) {
     rider: [p.requireRole('student', 'mentor', 'admin')],
     driver: [p.requireRole('driver')],
     admin: [p.requireRole('admin')],
+    carpool: [p.requireRole('student', 'mentor')],
   };
 
   const router = Router();

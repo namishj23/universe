@@ -1,0 +1,503 @@
+{
+  "generatedAt": "2026-10-29T19:15:10.090Z",
+  "estimateFactor": 1.3,
+  "nodes": [
+    {
+      "name": "SPIT Campus (Gate 2)",
+      "shortName": "SPIT",
+      "area": "campus",
+      "aliases": [
+        "spit",
+        "campus",
+        "college",
+        "gate 2",
+        "sp it",
+        "spit gate"
+      ],
+      "lat": 19.1231413,
+      "lng": 72.8360659,
+      "source": "nominatim (Module B cache)"
+    },
+    {
+      "name": "Azad Nagar",
+      "shortName": "AZAD NAGAR",
+      "area": "city",
+      "aliases": [
+        "azad"
+      ],
+      "lat": 19.1283153,
+      "lng": 72.8400381,
+      "source": "nominatim (Module B cache)"
+    },
+    {
+      "name": "Andheri",
+      "shortName": "ANDHERI",
+      "area": "city",
+      "aliases": [
+        "andheri east",
+        "andheri west",
+        "andheri station"
+      ],
+      "lat": 19.1196976,
+      "lng": 72.8464205,
+      "source": "nominatim (Module B cache)"
+    },
+    {
+      "name": "Marol Naka",
+      "shortName": "MAROL",
+      "area": "city",
+      "aliases": [
+        "marol"
+      ],
+      "lat": 19.1081008,
+      "lng": 72.87963,
+      "source": "nominatim (Module B cache)"
+    },
+    {
+      "name": "Saki Naka",
+      "shortName": "SAKI NAKA",
+      "area": "city",
+      "aliases": [
+        "saki",
+        "sakinaka"
+      ],
+      "lat": 19.108206,
+      "lng": 72.8828404,
+      "source": "nominatim (Module B cache)"
+    },
+    {
+      "name": "Ghatkopar",
+      "shortName": "GHATKOPAR",
+      "area": "city",
+      "aliases": [
+        "ghatkopar station"
+      ],
+      "lat": 19.0856928,
+      "lng": 72.9083668,
+      "source": "nominatim (Module B cache)"
+    },
+    {
+      "name": "Dahisar",
+      "shortName": "DAHISAR",
+      "area": "city",
+      "aliases": [
+        "dahisar station",
+        "dahisar east"
+      ],
+      "lat": 19.2493572,
+      "lng": 72.8596302,
+      "source": "nominatim"
+    },
+    {
+      "name": "Borivali Station",
+      "shortName": "BORIVALI",
+      "area": "city",
+      "aliases": [
+        "borivali",
+        "borivli",
+        "borivali west",
+        "borivali east"
+      ],
+      "lat": 19.229068,
+      "lng": 72.8573628,
+      "source": "nominatim"
+    },
+    {
+      "name": "Kandivali",
+      "shortName": "KANDIVALI",
+      "area": "city",
+      "aliases": [
+        "kandivli",
+        "kandivali station",
+        "kandivali west"
+      ],
+      "lat": 19.2140036,
+      "lng": 72.8373054,
+      "source": "nominatim"
+    },
+    {
+      "name": "Malad",
+      "shortName": "MALAD",
+      "area": "city",
+      "aliases": [
+        "malad station",
+        "malad west",
+        "malad east"
+      ],
+      "lat": 19.1867193,
+      "lng": 72.8485884,
+      "source": "nominatim"
+    },
+    {
+      "name": "Goregaon",
+      "shortName": "GOREGAON",
+      "area": "city",
+      "aliases": [
+        "goregaon station",
+        "goregaon west",
+        "goregaon east"
+      ],
+      "lat": 19.1651072,
+      "lng": 72.8495973,
+      "source": "nominatim"
+    },
+    {
+      "name": "Jogeshwari",
+      "shortName": "JOGESHWARI",
+      "area": "city",
+      "aliases": [
+        "jogeshwari station",
+        "jogeshwari east",
+        "jogeshwari west"
+      ],
+      "lat": 19.1361144,
+      "lng": 72.848936,
+      "source": "nominatim"
+    },
+    {
+      "name": "Lokhandwala",
+      "shortName": "LOKHANDWALA",
+      "area": "city",
+      "aliases": [
+        "lokhandwala complex",
+        "lokhandwala market"
+      ],
+      "lat": 19.1444491,
+      "lng": 72.824092,
+      "source": "nominatim"
+    },
+    {
+      "name": "Powai",
+      "shortName": "POWAI",
+      "area": "city",
+      "aliases": [
+        "hiranandani",
+        "powai lake",
+        "iit powai"
+      ],
+      "lat": 19.1183882,
+      "lng": 72.911464,
+      "source": "nominatim"
+    },
+    {
+      "name": "SPIT Main Gate",
+      "shortName": "MAIN GATE",
+      "area": "campus",
+      "aliases": [
+        "main gate",
+        "spit main gate",
+        "gate 1"
+      ],
+      "lat": 19.1227,
+      "lng": 72.8378,
+      "source": "hand-placed (approximate)"
+    },
+    {
+      "name": "Campus Parking",
+      "shortName": "PARKING",
+      "area": "campus",
+      "aliases": [
+        "parking",
+        "car park",
+        "bike parking"
+      ],
+      "lat": 19.1229,
+      "lng": 72.8368,
+      "source": "hand-placed (approximate)"
+    },
+    {
+      "name": "Main Building",
+      "shortName": "MAIN BLDG",
+      "area": "campus",
+      "aliases": [
+        "main building",
+        "admin block",
+        "classrooms"
+      ],
+      "lat": 19.1236,
+      "lng": 72.8372,
+      "source": "hand-placed (approximate)"
+    },
+    {
+      "name": "Library",
+      "shortName": "LIBRARY",
+      "area": "campus",
+      "aliases": [
+        "central library",
+        "reading room"
+      ],
+      "lat": 19.1241,
+      "lng": 72.8368,
+      "source": "hand-placed (approximate)"
+    },
+    {
+      "name": "Canteen",
+      "shortName": "CANTEEN",
+      "area": "campus",
+      "aliases": [
+        "cafeteria",
+        "mess",
+        "food court"
+      ],
+      "lat": 19.1238,
+      "lng": 72.8362,
+      "source": "hand-placed (approximate)"
+    },
+    {
+      "name": "Boys Hostel",
+      "shortName": "BOYS HOSTEL",
+      "area": "campus",
+      "aliases": [
+        "boys hostel",
+        "hostel b"
+      ],
+      "lat": 19.1246,
+      "lng": 72.8358,
+      "source": "hand-placed (approximate)"
+    },
+    {
+      "name": "Girls Hostel",
+      "shortName": "GIRLS HOSTEL",
+      "area": "campus",
+      "aliases": [
+        "girls hostel",
+        "hostel g",
+        "ladies hostel"
+      ],
+      "lat": 19.1244,
+      "lng": 72.8376,
+      "source": "hand-placed (approximate)"
+    },
+    {
+      "name": "Sports Ground",
+      "shortName": "GROUND",
+      "area": "campus",
+      "aliases": [
+        "ground",
+        "sports complex",
+        "playground"
+      ],
+      "lat": 19.125,
+      "lng": 72.8365,
+      "source": "hand-placed (approximate)"
+    }
+  ],
+  "edges": [
+    {
+      "a": "SPIT Campus (Gate 2)",
+      "b": "Azad Nagar",
+      "mode": "road",
+      "distanceM": 1040,
+      "estimated": false,
+      "source": "osrm (Module B cache)"
+    },
+    {
+      "a": "Azad Nagar",
+      "b": "Andheri",
+      "mode": "road",
+      "distanceM": 2080,
+      "estimated": false,
+      "source": "osrm (Module B cache)"
+    },
+    {
+      "a": "Andheri",
+      "b": "Marol Naka",
+      "mode": "road",
+      "distanceM": 4680,
+      "estimated": false,
+      "source": "osrm (Module B cache)"
+    },
+    {
+      "a": "Marol Naka",
+      "b": "Saki Naka",
+      "mode": "road",
+      "distanceM": 680,
+      "estimated": false,
+      "source": "osrm (Module B cache)"
+    },
+    {
+      "a": "Saki Naka",
+      "b": "Ghatkopar",
+      "mode": "road",
+      "distanceM": 4050,
+      "estimated": false,
+      "source": "osrm (Module B cache)"
+    },
+    {
+      "a": "Dahisar",
+      "b": "Borivali Station",
+      "mode": "road",
+      "distanceM": 2811,
+      "estimated": false,
+      "source": "osrm"
+    },
+    {
+      "a": "Borivali Station",
+      "b": "Kandivali",
+      "mode": "road",
+      "distanceM": 4103,
+      "estimated": false,
+      "source": "osrm"
+    },
+    {
+      "a": "Kandivali",
+      "b": "Malad",
+      "mode": "road",
+      "distanceM": 4763,
+      "estimated": false,
+      "source": "osrm"
+    },
+    {
+      "a": "Malad",
+      "b": "Goregaon",
+      "mode": "road",
+      "distanceM": 3808,
+      "estimated": false,
+      "source": "osrm"
+    },
+    {
+      "a": "Goregaon",
+      "b": "Jogeshwari",
+      "mode": "road",
+      "distanceM": 5478,
+      "estimated": false,
+      "source": "osrm"
+    },
+    {
+      "a": "Jogeshwari",
+      "b": "Andheri",
+      "mode": "road",
+      "distanceM": 2489,
+      "estimated": false,
+      "source": "osrm"
+    },
+    {
+      "a": "Jogeshwari",
+      "b": "Lokhandwala",
+      "mode": "road",
+      "distanceM": 4032,
+      "estimated": false,
+      "source": "osrm"
+    },
+    {
+      "a": "Lokhandwala",
+      "b": "Azad Nagar",
+      "mode": "road",
+      "distanceM": 3601,
+      "estimated": false,
+      "source": "osrm"
+    },
+    {
+      "a": "Jogeshwari",
+      "b": "Powai",
+      "mode": "road",
+      "distanceM": 9829,
+      "estimated": false,
+      "source": "osrm"
+    },
+    {
+      "a": "Powai",
+      "b": "Saki Naka",
+      "mode": "road",
+      "distanceM": 4732,
+      "estimated": false,
+      "source": "osrm"
+    },
+    {
+      "a": "SPIT Main Gate",
+      "b": "Azad Nagar",
+      "mode": "road",
+      "distanceM": 1021,
+      "estimated": false,
+      "source": "osrm"
+    },
+    {
+      "a": "SPIT Campus (Gate 2)",
+      "b": "Campus Parking",
+      "mode": "campus_road",
+      "distanceM": 106,
+      "estimated": true,
+      "source": "estimated"
+    },
+    {
+      "a": "SPIT Main Gate",
+      "b": "Campus Parking",
+      "mode": "campus_road",
+      "distanceM": 140,
+      "estimated": true,
+      "source": "estimated"
+    },
+    {
+      "a": "SPIT Main Gate",
+      "b": "Main Building",
+      "mode": "walk",
+      "distanceM": 154,
+      "estimated": true,
+      "source": "estimated"
+    },
+    {
+      "a": "Campus Parking",
+      "b": "Main Building",
+      "mode": "walk",
+      "distanceM": 115,
+      "estimated": true,
+      "source": "estimated"
+    },
+    {
+      "a": "Main Building",
+      "b": "Library",
+      "mode": "walk",
+      "distanceM": 91,
+      "estimated": true,
+      "source": "estimated"
+    },
+    {
+      "a": "Main Building",
+      "b": "Canteen",
+      "mode": "walk",
+      "distanceM": 140,
+      "estimated": true,
+      "source": "estimated"
+    },
+    {
+      "a": "Canteen",
+      "b": "SPIT Campus (Gate 2)",
+      "mode": "walk",
+      "distanceM": 97,
+      "estimated": true,
+      "source": "estimated"
+    },
+    {
+      "a": "Canteen",
+      "b": "Boys Hostel",
+      "mode": "walk",
+      "distanceM": 128,
+      "estimated": true,
+      "source": "estimated"
+    },
+    {
+      "a": "Library",
+      "b": "Girls Hostel",
+      "mode": "walk",
+      "distanceM": 118,
+      "estimated": true,
+      "source": "estimated"
+    },
+    {
+      "a": "Library",
+      "b": "Sports Ground",
+      "mode": "walk",
+      "distanceM": 136,
+      "estimated": true,
+      "source": "estimated"
+    },
+    {
+      "a": "Sports Ground",
+      "b": "Boys Hostel",
+      "mode": "walk",
+      "distanceM": 112,
+      "estimated": true,
+      "source": "estimated"
+    }
+  ]
+}

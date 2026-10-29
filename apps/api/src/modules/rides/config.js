@@ -16,6 +16,35 @@ const config = {
     timeWeightPercent: 30,
     // Leaving is locked this many minutes before pickup.
     leaveLockMinutes: 10,
+    // A pooled auto drops riders in the cheapest order; that route may be at most this much
+    // longer than the longest rider's own shortest path (branching routes share an auto).
+    poolMaxDetourM: 2000,
+  },
+  graph: {
+    // Average speeds used to turn edge distances into durations (documented estimates):
+    // Mumbai road traffic, the slow lane inside campus, and walking.
+    speedKmh: { road: 20, campus_road: 10, walk: 5 },
+    // Shortest-path trees kept in memory (one per source stop), least recently used dropped.
+    pathCacheSize: 256,
+  },
+  // Rides offered by students and mentors in their own car or bike (P3b).
+  offers: {
+    defaultMaxDetourM: 2000,
+    maxDetourM: 10_000,
+    maxDetourS: 3600,
+    // Adding a passenger may move an already-confirmed passenger's pickup by at most this,
+    maxPickupDelayMinutes: 10,
+    // and nobody's ride may be longer than this percent of their own shortest path.
+    maxRideFactorPercent: 150,
+    // Cost sharing: fuel and running cost per km (estimates: petrol ~Rs 105/l, a car at
+    // ~15 km/l, a bike at ~45 km/l, plus wear), split among everyone aboard.
+    costPerKmPaise: { car: 700, bike: 250 },
+    // A driver's own route (before passengers) may take at most this long.
+    maxTripMinutes: 180,
+    // Cancelling within this many minutes of departure is audited.
+    lateCancelMinutes: 15,
+    // The driver can mark the ride departed from this long before the departure time.
+    departEarlyMinutes: 30,
   },
   // Auto-rickshaw meter tariff (Mumbai): Rs 27 for the first 1.5 km, Rs 18 per km after,
   // with a 1.2 surge multiplier on top for the driver.

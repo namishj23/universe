@@ -72,33 +72,42 @@ function largestRemainder(total, weights) {
 }
 
 /**
- * Each road segment's cost is shared only by the riders still on board for it (drop at or
- * beyond its end). members: [{ userId, dropM }] in join order. Returns integer paise:
- * { totalFarePaise, shares: Map(userId -> paise) } with the shares summing to the total.
+ * Each road segment's cost is shared only by the people aboard for all of it (boarded at or
+ * before its start, dropped at or beyond its end). people: [{ userId, boardM = 0, dropM }]
+ * in order; costAt(m) = integer paise for the first m metres of the route (non-decreasing).
+ * Returns { totalPaise, shares: Map(userId -> paise) }, the shares summing to the total.
  */
-function splitFareBySegments(routeStops, members, t) {
+function splitBySegments(routeStops, people, costAt) {
   const segments = [];
   for (let i = 1; i < routeStops.length; i++) {
-    const cost =
-      fareForDistance(routeStops[i].cumulativeM, t) -
-      fareForDistance(routeStops[i - 1].cumulativeM, t);
-    const aboard = members.filter((m) => m.dropM >= routeStops[i].cumulativeM);
-    segments.push({ cost, aboard });
+    const from = routeStops[i - 1].cumulativeM;
+    const to = routeStops[i].cumulativeM;
+    const aboard = people.filter((m) => (m.boardM ?? 0) <= from && m.dropM >= to);
+    segments.push({ cost: costAt(to) - costAt(from), aboard });
   }
-  const totalFarePaise = fareForDistance(routeStops[routeStops.length - 1].cumulativeM, t);
+  const totalPaise = costAt(routeStops[routeStops.length - 1].cumulativeM);
   // Exact shares as integers over a common denominator: each segment adds cost * (L / riders).
   const L = segments.reduce((acc, s) => (s.aboard.length ? lcm(acc, s.aboard.length) : acc), 1);
-  const weight = new Map(members.map((m) => [m.userId, 0]));
+  const weight = new Map(people.map((m) => [m.userId, 0]));
   for (const s of segments) {
     for (const m of s.aboard)
       weight.set(m.userId, weight.get(m.userId) + s.cost * (L / s.aboard.length));
   }
   const parts = largestRemainder(
-    totalFarePaise,
-    members.map((m) => weight.get(m.userId)),
+    totalPaise,
+    people.map((m) => weight.get(m.userId)),
   );
-  return { totalFarePaise, shares: new Map(members.map((m, i) => [m.userId, parts[i]])) };
+  return { totalPaise, shares: new Map(people.map((m, i) => [m.userId, parts[i]])) };
 }
+
+/** Pooled autos: the meter fare of the route, split by segment (everyone boards at 0). */
+function splitFareBySegments(routeStops, members, t) {
+  const { totalPaise, shares } = splitBySegments(routeStops, members, (m) => fareForDistance(m, t));
+  return { totalFarePaise: totalPaise, shares };
+}
+
+/** Carpool running cost of the first `metres` of a route, in paise (one rounding). */
+const costForDistance = (metres, perKmPaise) => divRound(metres * perKmPaise, 1000);
 
 // The driver's payout and the platform fee always add up to the fare.
 function payoutSplit(totalFarePaise, payoutPercent) {
@@ -112,6 +121,8 @@ module.exports = {
   fareForDistance,
   buildCumulativePath,
   largestRemainder,
+  splitBySegments,
   splitFareBySegments,
+  costForDistance,
   payoutSplit,
 };

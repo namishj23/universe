@@ -42,7 +42,8 @@ describe('dashboard summary', () => {
     expect(await ridesSummary(a)).toEqual({
       kind: 'rider',
       upcomingRide: {
-        groupId: group.id,
+        rideType: 'pool',
+        id: group.id,
         pickupName: 'Azad Nagar',
         dropName: 'Ghatkopar',
         pickupTime: view.pickupTime,
@@ -51,6 +52,7 @@ describe('dashboard summary', () => {
       ridesCompleted: 0,
       sharedDistanceM: 0,
       savedPaise: 0,
+      carpool: null,
     });
 
     // A boards and the driver completes the ride: solo 24818 - share 22572 = 2246 saved.
@@ -63,7 +65,8 @@ describe('dashboard summary', () => {
     expect(await ridesSummary(a)).toEqual({
       kind: 'rider',
       upcomingRide: {
-        groupId: next.id,
+        rideType: 'pool',
+        id: next.id,
         pickupName: 'SPIT Campus (Gate 2)',
         dropName: 'Andheri',
         pickupTime: expect.any(String) as unknown,
@@ -72,6 +75,7 @@ describe('dashboard summary', () => {
       ridesCompleted: 1,
       sharedDistanceM: 11490,
       savedPaise: 2246,
+      carpool: null,
     });
     // B never boarded: nothing completed.
     expect(await ridesSummary(b)).toMatchObject({ kind: 'rider', ridesCompleted: 0 });

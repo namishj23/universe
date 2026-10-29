@@ -6,3 +6,4 @@ prisma/schema/migrations
 package-lock.json
 *.md
 docs/api/openapi.json
+apps/api/src/modules/rides/data/graph.json

@@ -2,7 +2,8 @@
 // loading and rider profiles. Built once per platform by the module factory.
 const { randomInt } = require('node:crypto');
 const cfg = require('../config');
-const { dijkstra } = require('../lib/dijkstra');
+const { buildGraph, shortestPaths } = require('../lib/dijkstra');
+const { drivable } = require('../lib/graph');
 const fare = require('../lib/fare');
 
 const MIN = 60_000;
@@ -55,28 +56,76 @@ module.exports = function core(p) {
       .join('');
   const firstNameOf = (name) => name.split(/\s+/).filter((w) => !/\.$/.test(w))[0] || name;
 
-  // ── Stop graph: two small tables, loaded once per request ─────────────────────────────
+  // ── Stop graph: cached in memory until the tables change ──────────────────────────────
+  // One fingerprint query per call (md5 over every node and edge, ~30 rows); the graph and its
+  // shortest-path trees are rebuilt only when it changes (e.g. after a reseed).
+  let cachedGraph = null;
   async function loadGraph(db = prisma) {
+    const [{ key }] = await db.$queryRaw`
+      SELECT md5(
+        COALESCE((SELECT string_agg(concat_ws('/', id, name, short_name, area, aliases::text, ST_AsText(geom::geometry)), '|' ORDER BY id) FROM rides_nodes), '') || '#' ||
+        COALESCE((SELECT string_agg(concat_ws('/', node_a_id, node_b_id, distance_m, duration_s, mode, estimated), '|' ORDER BY id) FROM rides_route_edges), '')
+      ) AS key`;
+    if (cachedGraph?.key === key) return cachedGraph.graph;
     const [nodes, edges] = await Promise.all([
       db.$queryRaw`
         SELECT id::text, name, short_name AS "shortName", area, aliases,
                ST_Y(geom::geometry) AS lat, ST_X(geom::geometry) AS lng
         FROM rides_nodes ORDER BY area, name`,
-      db.ridesRouteEdge.findMany({ select: { nodeAId: true, nodeBId: true, distanceM: true } }),
+      db.ridesRouteEdge.findMany({
+        select: {
+          nodeAId: true,
+          nodeBId: true,
+          distanceM: true,
+          durationS: true,
+          mode: true,
+          estimated: true,
+        },
+        orderBy: { id: 'asc' },
+      }),
     ]);
+    const graph = buildGraphView(nodes, edges);
+    cachedGraph = { key, graph };
+    return graph;
+  }
+
+  function buildGraphView(nodes, edges) {
     const byId = new Map(nodes.map((n) => [n.id, n]));
+    const roads = buildGraph(edges, drivable);
+    // Bounded LRU of shortest-path trees, one per source stop (vehicles: no walking paths).
     const trees = new Map();
     const from = (sourceId) => {
-      if (!trees.has(sourceId)) trees.set(sourceId, dijkstra(edges, sourceId));
-      return trees.get(sourceId);
+      let tree = trees.get(sourceId);
+      if (tree) trees.delete(sourceId);
+      else tree = shortestPaths(roads, sourceId);
+      trees.set(sourceId, tree);
+      if (trees.size > cfg.graph.pathCacheSize) trees.delete(trees.keys().next().value);
+      return tree;
     };
+    const sp = (a, b) => from(a).pathTo(b);
+    const edgeLength = new Map();
+    for (const e of edges) {
+      edgeLength.set(`${e.nodeAId}>${e.nodeBId}`, e.distanceM);
+      edgeLength.set(`${e.nodeBId}>${e.nodeAId}`, e.distanceM);
+    }
+    const onRoad = new Set(edges.filter(drivable).flatMap((e) => [e.nodeAId, e.nodeBId]));
     const stop = (id) => {
       const n = byId.get(id);
       return n
         ? { id: n.id, name: n.name, shortName: n.shortName }
         : { id, name: 'Unknown stop', shortName: '?' };
     };
-    return { nodes, byId, edges, from, stop };
+    return {
+      nodes,
+      byId,
+      edges,
+      from,
+      sp,
+      stop,
+      edgeM: (a, b) => edgeLength.get(`${a}>${b}`) ?? 0,
+      // A stop only reachable on foot (inside campus): no vehicle pickup or drop there.
+      walkOnly: (id) => byId.has(id) && !onRoad.has(id),
+    };
   }
 
   /**
@@ -273,6 +322,7 @@ module.exports = function core(p) {
     initialsOf,
     firstNameOf,
     loadGraph,
+    buildGraphView,
     fareBreakup,
     pageQuery,
     afterAsc,
