@@ -17,22 +17,25 @@ Master plan (scope, architecture, rubric): the "UniVerse — Implementation Plan
 
 ## Person 1 phases
 
-| Phase | Hours | What | Model / effort | Status |
-| --- | --- | --- | --- | --- |
-| P1 | 1–2.5 | Platform core: monorepo, PostgreSQL + PostGIS, contracts, auth and sessions, roles, activity feed with live stream, minimal login page | Opus 5.5 / high | Done (report: `docs/sessions/P1.md`) |
-| P2 | 2.5–3.5 | App shell: layout, navigation by role, unified dashboard, notification bell, design system | Sonnet 5.5 / high | Not started |
-| P3 | 3.5–4.5 | Move Module B in: Prisma schema onto shared database and users, mount routers, replace emailed-code login with platform session, remove mock DB, activity events | Opus 5.5 / high | Not started |
-| P4 | 4.5–6.5 | Module A: profiles, placement prep tracker, mentor ranking, mentorship requests, resource repository | Opus 5.5 / high | Not started |
-| P5 | 6.5–8 | Module D: focus sessions, rules, sample import, metrics, inspect/delete/export, local-only storage | Sonnet 5.5 / high | Not started |
-| P6 | 8–9 | Cross-module links (A→B, D→A), seed data, test scenarios, demo storyline run | Sonnet 5.5 / medium | Not started |
-| P7 | 9–9.5 | Independent read-only audit of Platform, A, B, D (fresh session) | Opus 5.5 / xhigh | Not started |
-| P8 | 9.5–10 | Fix own audit findings | Sonnet 5.5 / high | Not started |
-| P9 | 10–11 | README, architecture doc, docs and slides for Platform, A, B, D | Sonnet 5.5 / medium | Not started |
+| Phase | What | Model / effort | Status |
+| --- | --- | --- | --- |
+| P1 | Platform core: auth, sessions, roles, activity feed with SSE | Opus 5.5 / high | Done |
+| P2 | Platform services: module registry, dashboard API, admin user management, password change, audit log, file storage, OpenAPI contract | Opus 5.5 / high | In progress |
+| P3 | Module B backend: Prisma on the shared database and users, platform sessions instead of emailed codes, mock DB removed, activity events, dashboard summary | Opus 5.5 / high | Not started |
+| P4 | Module A backend: profiles, prep tracker, mentor ranking, mentorship requests, resource repository with search | Opus 5.5 / high | Not started |
+| P5 | Module D: privacy logic library (sanitise, categorise, metrics) and API for opt-in daily totals, consent, export and delete | Sonnet 5.5 / high | Not started |
+| P6 | Cross-module links, seed data, test scenarios, demo storyline run through the API | Sonnet 5.5 / medium | Not started |
+| P7 | Independent read-only audit of Platform, A, B, D | Opus 5.5 / xhigh | Not started |
+| P8 | Fix audit findings | Sonnet 5.5 / high | Not started |
+| P9 | README, architecture, algorithms, docs | Sonnet 5.5 / medium | Not started |
+| U1 | Frontend shell from the team's UI design | Sonnet 5.5 / high | Waiting for UI |
+| U2 | Frontend screens for A, B, D from the team's UI design | Sonnet 5.5 / high | Waiting for UI |
 
 Checkpoints with Person 2: merge to `main` at Hour 5 and Hour 7. Feature freeze at Hour 9.
 
 ## Decisions (newest first)
 
+- 2026-10-29 — Backend first: all phases build backend only; frontend is built in phases U1–U2 from the team's UI design.
 - 2026-10-29 (P1) — **API is ESM** (`"type": "module"`, TS `module`/`moduleResolution: nodenext`, `verbatimModuleSyntax`). Prisma 7 ships ESM-only and its `prisma-client` generator recommends ESM. **How Module B mounts unchanged in P3:** copy its `.js` files to `apps/api/src/modules/rides/` with a nested `package.json` containing `{"type":"commonjs"}`; the ESM app default-imports the router (`import ridesRouter from './modules/rides/routes/index.js'` binds to `module.exports`); its CJS code can `require()` ESM platform modules (Node ≥22.12 `require(esm)`). Verified in P1 with a throwaway probe (ESM app → CJS router → `require()` of an ESM middleware): 200, no warnings on Node 24. Rule: **no top-level `await` anywhere in `apps/api/src`** (it breaks `require(esm)`). P3 must also copy that folder into `dist/` in `apps/api`'s build script (tsc does not emit `.js` sources; `allowJs` is off).
 - 2026-10-29 (P1) — Node engines `>=22.12 <23 || >=24 <25`; `.nvmrc` = 24. TypeScript pinned `~6.0.3` (typescript-eslint 8 supports `<6.1`; TS 7 is out but unsupported by the linter). Prisma pinned `7.10.1` (npm's `latest` tag points at an 8.0 RC).
 - 2026-10-29 (P1) — TS flags: `strict`, `noUncheckedIndexedAccess`, **`exactOptionalPropertyTypes` on** (did not fight Prisma 7 or Zod 4), `noImplicitOverride`, `noFallthroughCasesInSwitch` (`tsconfig.base.json`).
