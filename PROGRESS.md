@@ -9,7 +9,7 @@ Master plan (scope, architecture, rubric): the "UniVerse — Implementation Plan
 | Area | Owner | Phase now | Status |
 | --- | --- | --- | --- |
 | Platform | Person 1 | P3a (module factories, `driver` role, login-lockout fix) | Done — PR open to `main` (needs Person 2 review: shared areas) |
-| A · Student Hub | Person 1 | — | Not started |
+| A · Student Hub | Person 1 | P4 profiles, prep tracker, mentor ranking, mentorship requests, resource repository (backend) | Done — PR open (stacked on #4) |
 | B · Ride-Pooling | Person 1 | P3b carpool offers, campus graph, detour matching, savings | Done — PR #4 open (stacked on #3) |
 | D · Digital Wellbeing | Person 1 | — | Not started |
 | C · Observatory | Person 2 | — | Not started |
@@ -23,7 +23,7 @@ Master plan (scope, architecture, rubric): the "UniVerse — Implementation Plan
 | P2 | Platform services: module registry, dashboard API, admin user management, password change, audit log, file storage, OpenAPI contract | Opus 5.5 / high | Done (report: `docs/sessions/P2.md`) |
 | P3a | Module B onto the platform (Opus 5.5 / high) | Opus 5.5 / high | Done (report: `docs/sessions/P3a.md`) |
 | P3b | Rides: driver offers, campus graph, detour matching, savings (Opus 5.5 / high) | Opus 5.5 / high | Done (report: `docs/sessions/P3b.md`) |
-| P4 | Module A backend: profiles, prep tracker, mentor ranking, mentorship requests, resource repository with search | Opus 5.5 / high | Not started |
+| P4 | Module A backend: profiles, prep tracker, mentor ranking, mentorship requests, resource repository with search | Opus 5.5 / high | Done (report: `docs/sessions/P4.md`) |
 | P5 | Module D: privacy logic library (sanitise, categorise, metrics) and API for opt-in daily totals, consent, export and delete | Sonnet 5.5 / high | Not started |
 | P6 | Cross-module links, seed data, test scenarios, demo storyline run through the API | Sonnet 5.5 / medium | Not started |
 | P7 | Independent read-only audit of Platform, A, B, D | Opus 5.5 / xhigh | Not started |
@@ -35,6 +35,16 @@ Master plan (scope, architecture, rubric): the "UniVerse — Implementation Plan
 Checkpoints with Person 2: merge to `main` at Hour 5 and Hour 7. Feature freeze at Hour 9.
 
 ## Decisions (newest first)
+
+- 2026-10-30 (P4) — **Hub data model** (`prisma/schema/hub.prisma`, migrations `20261029202837_p4_hub` and `20261029210500_p4_hub_search_words`): every table `hub_`; `hub_profiles(user_id)` is created on first use and every other hub reference to a person points at it, so `User` gets **one** back-relation (`hubProfile`, the only line changed in `platform.prisma`; Prisma refuses one-sided relations). CHECKs on enum-like text, array sizes and item lengths (an IMMUTABLE `hub_items_ok()` helper), ranges and slot length. `hub_topic_progress` stores a copy of the topic's total with a composite FK `(topic_id, total_items) → hub_topics ON UPDATE CASCADE`, so a CHECK bounds `solved` and the copy can't go stale. Resource file ids have no FK to `files` (rides' reason: the sweep hard-deletes rows).
+- 2026-10-30 (P4) — **No-drift tricks:** Prisma compares partial-index predicates and generated-column expressions as text, so `hub.prisma` copies PostgreSQL's normalised forms (`status = ANY (ARRAY['pending'::text, 'accepted'::text])`, the `dbgenerated(...)` of the `search` column). The generated `tsvector` is declared `Unsupported("tsvector")? @default(dbgenerated(...))` with `@@index(type: Gin)`; `migrate diff` is empty on dev and test.
+- 2026-10-30 (P4) — **Search:** the vector holds title and description words both as written (`simple`) and stemmed (`english`) plus the subject code; queries are prefix-only `simple` tsqueries built from letters and digits (`graph:* & algo:*`), so half-typed words match and input can't be tsquery syntax. Changed in place with PostgreSQL 18's `ALTER COLUMN … SET EXPRESSION` (no DROP). Uploader names use P2's trigram index with escaped `ILIKE`. One statement (FTS UNION ALL names, joined to files and users). 60 searches per minute per user (in-memory limiter).
+- 2026-10-30 (P4) — **One week for every module:** `weekOf()` in `packages/contracts/src/week.ts` (Sunday 00:00 → Saturday 23:59:59.999 Asia/Kolkata; fixed +05:30). Modules C, D and E should use it for anything "this week".
+- 2026-10-30 (P4) — **Mentor ranking** exactly as the prompt (weights in `apps/api/src/modules/hub/config.ts`); hand-worked numbers in `docs/ALGORITHMS.md`. Seed order for Aarav: **Neha 0.6663, Sameer 0.5691, Arjun 0.5670, Kavita 0.4234**. `slotsThisWeek` = open slots in the next 7 days (the same window as `availability`). The ranked list is paged with an offset cursor (it is bounded by the number of mentors and must be ranked whole).
+- 2026-10-30 (P4) — **Requests:** either party may cancel (the other is notified); cancelling an accepted request reopens its slot if it is still in the future. Accept locks mentor profile → request → slot; a requested slot that is no longer open is 409 `SLOT_TAKEN` (not silently swapped). Complete only after the session has started. Increment outside 0..total is 409 `PROGRESS_OUT_OF_RANGE` (not clamped).
+- 2026-10-30 (P4) — **Resource visibility (resolves P2's open item):** `hub.resource` downloads need a hub role AND (attached to a live resource OR uploader OR admin); drivers and invigilators get 404 on every resource file. `inUse` counts every resource row, deleted ones too (admins can still review a deleted resource's file), so attached files are never deleted or swept.
+- 2026-10-30 (P4) — **Idempotency-Key** on `POST /api/hub/prep/:topicId/increment`: in-process map of in-flight/finished promises per user and key for 10 minutes (max 10,000 keys). Another single-instance limit, next to the rate limiters and the SSE broker (`ponytail:` comment in `apps/api/src/modules/hub/idempotency.ts`).
+- 2026-10-30 (P4) — Seven new demo accounts in `prisma/seed/platform.ts` (3 mentors, 4 students). Platform tests that counted recipients now derive the count from `DEMO_ACCOUNTS`.
 
 - 2026-10-30 (P3b) — **Scope (user decision mid-session): RoutePool's ported backend is not reworked.** Only what RoutePool never had was written (carpool drivers, offers, bookings, detour matching, offer costs, stats, the 22-stop graph). Pooled-auto matching, joins and fares are P3a's port unchanged. So the "one auto on one line" rule still applies to pooled autos, and riders whose routes share a stretch then split are matched by the carpool matcher only. Offer matches use RoutePool's `MatchCard` field names (`score`, `routeSimilarity`, `seatsLeft`, `pickupNode`, `womenOnly`), so its components can be reused in U2.
 - 2026-10-30 (P3b) — **Graph source:** `apps/api/scripts/rides-graph.mjs` → `apps/api/src/modules/rides/data/graph.json` (committed, Prettier-ignored).
@@ -144,7 +154,28 @@ Ported from `routepool2-react-` @ `0c57429` into `apps/api/src/modules/rides/` (
 - **Dashboard:** the rider summary's `upcomingRide` is now `{ rideType: 'pool' | 'carpool', id, … }`, totals cover both ride types, and there is a new `carpool: { seatsFilled, costRecoveredPaise } | null`.
 - **Seed:** `mentor@` (car, 3 seats) and `student2@` (bike, women-only offer) are approved carpool drivers. Each first seed creates two open offers (Borivali → SPIT at about now + 75 min, auto-accept; Goregaon → SPIT at about now + 50 min, women-only) and one completed ride yesterday with `student@` aboard (Malad → Andheri, share ₹41.21, saved ₹213.13).
 
+## Module A (hub) after P4 — what U2 and P6 must know
+
+- **Routes** (all under `/api/hub`, in `apps/api/src/modules/hub/routes.ts` and `docs/api/openapi.json`):
+  - profile: `GET/PUT /me`, `GET /students/:id` (admin, or a mentor the student asked);
+  - prep (students): `GET /prep`, `PUT /prep/topics`, `PUT /prep/goal`, `POST /prep/:topicId/increment` (send `Idempotency-Key`);
+  - mentors: `GET /mentors` (students), `GET /mentors/:id`;
+  - slots (mentors and peer mentors): `GET/POST /slots`, `DELETE /slots/:id`;
+  - requests: `POST /requests`, `GET /requests/mine`, `GET /requests/incoming?status=`, `GET /requests/:id`, `POST /requests/:id/accept|decline|complete|cancel`;
+  - resources: `GET /subjects`, `GET/POST /resources`, `DELETE /resources/:id`;
+  - admin: `GET /admin/mentors`, `GET /admin/resources?status=`.
+- **Design screens → endpoints:** Prep tracker → `GET /prep` (`tracks[].topics[]` rows, `dsa` OVERALL card, `week` goal cells "14 of 20 done, 6 left", empty state = `tracks: []` + `untracked` for "Add topics" → `PUT /prep/topics`), "+1" → `POST /prep/:topicId/increment`. Mentors → `GET /mentors` (`rank`, `name`, `department`, `reason`, `expertise`, `score`, `slotsThisWeek`, button from `myRequest`: none → "Request mentor" `POST /requests`; pending → "Requested", click again `POST /requests/:requestId/cancel`; accepted → "Accepted · Mon 15:30" from `startsAt`). Requests (mentor) → `GET /requests/incoming` (`student.name`, `student.year`, `student.branch`, `note`, `createdAt`, `student.dsaPercent` = "PREP 54%"), Accept/Decline. Resources → `GET /resources?q=&subject=` (`title`, `type`, `subject`, `uploader.name`, `sizeBytes`, `createdAt`), upload = `POST /api/files/hub.resource` then `POST /resources`, download `GET /api/files/{fileId}`. Profile → `GET/PUT /me`. Admin "Mentor ranking" → `GET /admin/mentors`; admin Resources → `GET /admin/resources`. Dashboard card → `GET /api/dashboard` hub entry (`kind` student/mentor/admin).
+- **Seed results U2 can rely on:** Aarav DSA 118/190 (62 %), 14 of 20 done this week, readiness 31; mentor order Neha 0.6663 (accepted, next Monday 15:30 IST), Sameer 0.5691, Arjun 0.5670, Kavita 0.4234; Neha's incoming: Diya pending (54 %), Kabir pending (31 %), Aarav accepted; six resources, newest first OS, DBMS, CN, DSA, OS, OS.
+- **For P6:** `hub_mentor_slots.location_stop_id` (uuid, the type of `rides_nodes.id`) is stored but not validated against rides stops yet — validate it (and offer "ride to my mentor session") in P6. The reason line says "Covers two of your weakest topics: …" when the mentor covers two of three (the design's "your two weakest" would be wrong for Graphs, the third).
+- **Activity types:** `hub.request_received`, `hub.request_accepted`, `hub.request_declined`, `hub.request_cancelled`. **Audit:** `hub.resource_deleted` (admin deletes).
+
 ## Requests for the other owner
+
+- 2026-10-30 (P4, for Person 2): please review the P4 pull request (stacked on #4, which is stacked on #3: merge those first). Shared areas it changes (all authorised for this phase except the one-line `platform.prisma` back-relation, which Prisma requires):
+  - `packages/contracts/` — new `hub/index.ts`, `week.ts` (**use `weekOf()` for any "this week" in C and E**), `activity/hub.ts`, `audit/hub.ts`, real `dashboard/hub.ts`, registry lines;
+  - `prisma/schema/platform.prisma` — `hubProfile HubProfile?` on `User`;
+  - `prisma/seed/platform.ts` — seven demo accounts.
+  - Platform tests `apps/api/test/{audit,roles,dashboard}.test.ts` now derive account counts from `DEMO_ACCOUNTS`.
 
 - 2026-10-30 (P3b, for Person 2): please review PR #4. It is **stacked on #3, so merge #3 first**. Shared areas it changes:
   - `apps/api/src/platform/` — `FilePurpose.inUse` hook in `modules/index.ts`; 409 `FILE_IN_USE` on delete and the sweep skipping claimed files in `files/index.ts`; `server.ts` passes modules to the sweep;
@@ -232,6 +263,15 @@ From the independent P1–P2 verification in P3a (the one high finding, the logi
 
 ## Open questions
 
+- decided: `platform.prisma` gets one line (`hubProfile HubProfile?` on `User`) although it was not on P4's authorised list — Prisma rejects a relation without its back-relation, and the prompt asks for `hub_profiles.user_id` FK users; every other hub table references `hub_profiles` instead (P4, unattended).
+- decided: `GET /api/hub/students/:id` added so the privacy rule ("a mentor sees a student only through a request; admins see all") has an endpoint and a test (P4, unattended).
+- decided: a requested slot that was taken is 409 `SLOT_TAKEN` on accept (the mentor picks another with `slotId`), not swapped for another time silently (P4, unattended).
+- decided: either the student or the mentor can cancel; complete only after the session started; increments outside 0..total are 409, not clamped (P4, unattended).
+- decided: "this term" = Jan–Jun or Jul–Dec IST; "near capacity" = ≥ 80 % of capacity; "new resources" = last 7 days by anyone (P4, unattended).
+- decided: admin mentor ranking uses per-topic weakness 1 − Σ solved ÷ Σ total over all students, and the union of students' interests (P4, unattended).
+- decided: search matches word prefixes with the `simple` configuration over words as written plus English stems; a query of only punctuation returns nothing (P4, unattended).
+- decided: prep routes are for role student (peer mentors are students); `GET /mentors` is for students; admins use `/admin/mentors` and `GET /mentors/:id` (P4, unattended).
+- P4: the readiness weights (0.5/0.2/0.15/0.1/0.05) and the catalogue's problem counts are judgement calls — confirm with the team before the demo.
 - P3b: should pooled autos also pool riders whose routes share a stretch and then split (as carpool offers do)? Left out on purpose (user: don't rework RoutePool's backend), so today they don't.
 - P3b: should a carpool driver also need the auto-style inspection certificate? Today carpool drivers upload the same two documents as auto drivers (licence and inspection certificate), as the prompt asked.
 - P3a: Module B's rider payment is a recorded step only (no gateway) — confirm that is enough for the demo.
@@ -243,6 +283,11 @@ From the independent P1–P2 verification in P3a (the one high finding, the logi
 
 ## Session log (newest first)
 
+- 2026-10-30 01:52–02:35 — P4 Module A: Student Hub backend (Person 1, Opus 5.5 / high, unattended).
+  - 9 `hub_` tables (2 migrations), contracts (hub schemas, shared IST week, activity, audit, dashboard).
+  - Profiles with privacy, prep tracker (row-locked increments with Idempotency-Key, weekly goal and pace, readiness, 30-day series), mentor ranking in one query, slots with an exclusion constraint, row-locked accept, resource repository with full-text + uploader-name search and file-in-use protection, admin views, dashboard summary, seed with the design's data and six padded real files.
+  - 242 API tests (58 new hub tests) + 1 web test; EXPLAIN shows both search paths on their GIN indexes.
+  - Branch `p1/p4-hub`, PR stacked on #4. Full report: `docs/sessions/P4.md`. Next: P5.
 - 2026-10-30 00:40–01:20 — P3b Rides: carpool offers, campus graph, detour matching, savings, backend only (Person 1, Opus 5.5 / high).
   - Files-in-use hook: 409 on delete, and the sweep skips claimed files.
   - 22-stop branching graph from OSRM and Nominatim, plus estimated campus paths; heap Dijkstra; LRU path cache; validation.
