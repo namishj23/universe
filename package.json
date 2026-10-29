@@ -15,7 +15,7 @@
     "dev": "concurrently -k -n api,web -c blue,green \"npm run dev -w @universe/api\" \"npm run dev -w @universe/web\"",
     "build": "npm run build -w @universe/contracts && npm run build -w @universe/api && npm run build -w @universe/web",
     "start": "npm start -w @universe/api",
-    "typecheck": "npm run typecheck --workspaces",
+    "typecheck": "npm run typecheck --workspaces && tsc -p tools/design-compare",
     "lint": "eslint . && prettier --check .",
     "format": "prettier --write .",
     "api:docs": "npm run api:docs -w @universe/api",
@@ -23,7 +23,9 @@
     "db:migrate": "prisma migrate dev",
     "db:deploy": "prisma migrate deploy",
     "db:seed": "prisma db seed",
-    "db:test:reset": "ENV_FILE=apps/api/.env.test prisma migrate reset --force"
+    "db:test:reset": "ENV_FILE=apps/api/.env.test prisma migrate reset --force",
+    "design:compare": "playwright test -c tools/design-compare/playwright.config.ts --project=compare; node tools/design-compare/report.mjs",
+    "test:visual": "playwright test -c tools/design-compare/playwright.config.ts --project=visual"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
