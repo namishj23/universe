@@ -1,0 +1,38 @@
+// P7 repro: an absolute-form request target skips the wellbeing log scrubbing (app.ts:32-33).
+// Run in a temporary clone at apps/api/test/p7/. Asserts the SAFE behaviour.
+import http from 'node:http';
+import type { AddressInfo } from 'node:net';
+import { beforeAll, expect, it, vi } from 'vitest';
+import { setupWellbeing, user, type Wb } from '../wellbeing/helpers.js';
+
+const { lines } = vi.hoisted(() => ({ lines: [] as string[] }));
+vi.mock('../../src/platform/logger.js', async () => {
+  const { pino } = await import('pino');
+  return { logger: pino({ level: 'trace' }, { write: (line: string) => void lines.push(line) }) };
+});
+
+let w: Wb;
+beforeAll(async () => {
+  w = await setupWellbeing();
+});
+
+it('P7-W1: absolute-form wellbeing requests are logged as the route pattern only', async () => {
+  const s = await user(w);
+  const server = s.app.listen(0);
+  const { port } = server.address() as AddressInfo;
+  lines.length = 0;
+  const status = await new Promise<number>((resolve, reject) => {
+    http
+      .request({ host: '127.0.0.1', port, method: 'GET', path: `http://127.0.0.1:${port}/api/wellbeing/summary?days=9`, headers: { Cookie: s.cookie } }, (res) => {
+        res.resume();
+        res.on('end', () => resolve(res.statusCode ?? 0));
+      })
+      .on('error', reject)
+      .end();
+  });
+  server.close();
+  const logged = lines.join('\n');
+  console.log(`P7-W1 status=${status}; query string in log: ${logged.includes('days=9')}; cookie redacted: ${!logged.includes(s.cookie.split('=')[1] ?? 'x')}`);
+  expect(status).toBe(200);
+  expect(logged).not.toContain('days=9');
+});

@@ -1,0 +1,39 @@
+// P7 repro: database-default timestamps vs JS-written ones (universe_test only; rolled back).
+// Run from the repo root: ENV_FILE=apps/api/.env.test npx tsx docs/audit/P7-evidence/repro/tz.ts
+import { PrismaPg } from '@prisma/adapter-pg';
+import { PrismaClient } from '../../../../apps/api/src/generated/prisma/client.js';
+
+process.loadEnvFile(process.env.ENV_FILE ?? 'apps/api/.env.test');
+const url = process.env.DATABASE_URL ?? '';
+if (!new URL(url).pathname.endsWith('_test')) throw new Error('universe_test only');
+const prisma = new PrismaClient({ adapter: new PrismaPg({ connectionString: url }) });
+
+class Rollback extends Error {}
+const min = (ms: number) => (ms / 60_000).toFixed(1);
+try {
+  await prisma.$transaction(async (tx) => {
+    const before = Date.now();
+    const user = await tx.user.create({
+      data: { email: `p7-tz-${before}@x.test`, name: 'P7 tz', passwordHash: 'x', role: 'student' },
+    });
+    const s = await tx.session.create({
+      data: { userId: user.id, tokenHash: `p7-${before}`, expiresAt: new Date(before + 3_600_000) },
+    });
+    const [db] = await tx.$queryRaw<{ now: Date; tz: string; iso: string }[]>`
+      SELECT now() AS now, current_setting('TimeZone') AS tz, now()::text AS iso`;
+    const [echo] = await tx.$queryRaw<{ v: Date }[]>`SELECT ${new Date(before)}::timestamptz AS v`;
+    console.log('session TimeZone          :', db?.tz, '| now()::text =', db?.iso);
+    console.log('JS Date.now()             :', new Date(before).toISOString());
+    console.log('users.created_at (default):', user.createdAt.toISOString(), `(${min(user.createdAt.getTime() - before)} min vs JS)`);
+    console.log('sessions.last_seen_at     :', s.lastSeenAt.toISOString(), `(${min(s.lastSeenAt.getTime() - before)} min vs JS)`);
+    console.log('sessions.expires_at (JS)  :', s.expiresAt.toISOString(), `(${min(s.expiresAt.getTime() - before)} min vs JS; expected 60.0)`);
+    console.log('SELECT now() via Prisma   :', db?.now.toISOString(), `(${min((db?.now.getTime() ?? 0) - before)} min vs JS)`);
+    console.log('JS Date echoed by SQL     :', echo?.v.toISOString(), `(${min((echo?.v.getTime() ?? 0) - before)} min vs JS)`);
+    throw new Rollback();
+  });
+} catch (e) {
+  if (!(e instanceof Rollback)) throw e;
+  console.log('rolled back');
+} finally {
+  await prisma.$disconnect();
+}

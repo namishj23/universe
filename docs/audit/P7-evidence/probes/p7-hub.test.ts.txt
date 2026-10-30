@@ -1,0 +1,35 @@
+// P7 repros for Module A (run in a temporary clone at apps/api/test/p7/). Each test asserts the
+// SAFE behaviour, so a failing test confirms the finding.
+import { beforeAll, describe, expect, it } from 'vitest';
+import { prisma } from '../../src/platform/db.js';
+import { account, setupHub, user, type Hub } from '../hub/helpers.js';
+
+let h: Hub;
+beforeAll(async () => {
+  h = await setupHub();
+}, 120_000);
+
+describe('P7 hub repros', () => {
+  it('P7-H1: a mentor loses access to a student card once the request is cancelled', async () => {
+    const neha = await account(h, 'mentor@universe.test');
+    const s = await user(h);
+    await s.http.get('/api/hub/me').expect(200);
+    const req = await s.http.post('/api/hub/requests').send({ mentorId: neha.user.id });
+    expect(req.status, JSON.stringify(req.body)).toBe(201);
+    const during = await neha.http.get(`/api/hub/students/${s.user.id}`);
+    await s.http.post(`/api/hub/requests/${(req.body as { id: string }).id}/cancel`).send({}).expect(200);
+    const after = await neha.http.get(`/api/hub/students/${s.user.id}`);
+    console.log(`P7-H1 card while pending -> ${during.status}; after cancel -> ${after.status}`);
+    expect(after.status).toBe(404);
+  });
+
+  it('P7-H2: reusing an Idempotency-Key on a different topic is not silently treated as a replay', async () => {
+    const s = await user(h);
+    await s.http.put('/api/hub/prep/topics').send({ topicIds: ['dsa-dp', 'dsa-graphs'] }).expect(200);
+    await s.http.post('/api/hub/prep/dsa-dp/increment').set('Idempotency-Key', 'k1').send({ delta: 1 }).expect(200);
+    const second = await s.http.post('/api/hub/prep/dsa-graphs/increment').set('Idempotency-Key', 'k1').send({ delta: 1 });
+    const graphs = await prisma.hubTopicProgress.findFirst({ where: { userId: s.user.id, topicId: 'dsa-graphs' } });
+    console.log(`P7-H2 second call -> ${second.status}, graphs solved=${graphs?.solved}, body topic=${JSON.stringify(second.body).slice(0, 80)}`);
+    expect(second.status === 200 ? graphs?.solved : 1).toBe(1);
+  });
+});

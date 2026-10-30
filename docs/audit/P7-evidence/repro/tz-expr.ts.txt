@@ -1,0 +1,23 @@
+// P7 repro 3: which timestamptz expressions $queryRaw returns shifted (universe_test, read-only).
+// ENV_FILE=apps/api/.env.test npx tsx docs/audit/P7-evidence/repro/tz-expr.ts
+import { PrismaPg } from '@prisma/adapter-pg';
+import { PrismaClient } from '../../../../apps/api/src/generated/prisma/client.js';
+
+process.loadEnvFile(process.env.ENV_FILE ?? 'apps/api/.env.test');
+const url = process.env.DATABASE_URL ?? '';
+if (!new URL(url).pathname.endsWith('_test')) throw new Error('universe_test only');
+const prisma = new PrismaClient({ adapter: new PrismaPg({ connectionString: url }) });
+const t = Date.now();
+const [r] = await prisma.$queryRaw<Record<string, Date>[]>`
+  SELECT now() AS now_fn, clock_timestamp() AS clock_fn, now()::timestamptz(3) AS now_typmod3,
+         '2026-10-29T22:00:00Z'::timestamptz AS literal_utc,
+         ${new Date('2026-10-29T22:00:00Z')}::timestamptz AS param_cast,
+         (SELECT max(created_at) FROM users) AS max_col,
+         (SELECT max(created_at) + interval '0 s' FROM users) AS max_col_plus,
+         (SELECT created_at FROM users ORDER BY created_at DESC LIMIT 1) AS col`;
+for (const [k, v] of Object.entries(r ?? {})) console.log(k.padEnd(14), v instanceof Date ? v.toISOString() : v);
+const [s] = await prisma.$queryRaw<{ a: string; b: string }[]>`
+  SELECT (SELECT max(created_at) FROM users)::text AS a, (SELECT created_at FROM users ORDER BY created_at DESC LIMIT 1)::text AS b`;
+console.log('as text:', s);
+console.log('JS now        ', new Date(t).toISOString(), '(literal_utc and param_cast should be 2026-10-29T22:00:00.000Z)');
+await prisma.$disconnect();

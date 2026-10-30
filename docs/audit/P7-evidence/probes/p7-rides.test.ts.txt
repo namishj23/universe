@@ -1,0 +1,83 @@
+// P7 repros for Module B (run in a temporary clone at apps/api/test/p7/). Each test asserts the
+// SAFE behaviour, so a failing test confirms the finding.
+import { beforeAll, describe, expect, it } from 'vitest';
+import { account, driverEmail, prisma, setupRides, startGroup, status, user, type Rides } from '../rides/helpers.js';
+
+let rides: Rides;
+beforeAll(async () => {
+  rides = await setupRides();
+}, 120_000);
+
+const onlyOnline = async (name: string) => {
+  await prisma.ridesDriver.updateMany({ data: { online: false } });
+  const u = await prisma.user.findUniqueOrThrow({ where: { email: driverEmail(name) } });
+  await prisma.ridesDriver.update({ where: { userId: u.id }, data: { online: true } });
+};
+
+describe('P7 rides repros', () => {
+  it('P7-R1: one rider who never boarded cannot suspend an auto with one feedback', async () => {
+    await onlyOnline('Ramesh Patil');
+    const a = await user(rides);
+    const g = await startGroup(a, 'Azad Nagar', 'Ghatkopar', 30);
+    const card = (await status(a.http.get(`/api/rides/groups/${g.id}/driver`), 200)).body as { plateNumber: string };
+    const res = await a.http.post(`/api/rides/groups/${g.id}/feedback`).send({
+      cleanliness: 1, condition: 1,
+      tags: ['dirty seats', 'meter not working', 'unsafe driving', 'poor condition', 'rash lane changes'],
+    });
+    const v = await prisma.ridesVehicle.findFirstOrThrow({ where: { plateNumber: card.plateNumber } });
+    console.log(`P7-R1 feedback before boarding -> ${res.status}; vehicle ${card.plateNumber} status=${v.status}`);
+    await prisma.ridesVehicle.update({ where: { id: v.id }, data: { status: 'active', flaggedReason: null } });
+    expect(v.status).not.toBe('suspended');
+  });
+
+  it('P7-R2: after an admin cancels a ride, its driver cannot run and complete it', async () => {
+    await onlyOnline('Priya More');
+    const priya = await account(rides, driverEmail('Priya More'));
+    const admin = await account(rides, 'admin@universe.test');
+    const rider = await user(rides);
+    const g = await startGroup(rider, 'Azad Nagar', 'Ghatkopar', 60);
+    await status(rider.http.get(`/api/rides/groups/${g.id}/driver`), 200);
+    await status(priya.http.post(`/api/rides/driver/offers/${g.id}/accept`).send({}), 200);
+    await status(admin.http.post(`/api/rides/admin/rides/${g.id}/cancel`).send({ reason: 'P7' }), 200);
+    const heading = await priya.http.post(`/api/rides/driver/trips/${g.id}/heading`).send({});
+    const complete = await priya.http.post(`/api/rides/driver/trips/${g.id}/complete`).send({});
+    const after = await prisma.ridesGroup.findUniqueOrThrow({ where: { id: g.id } });
+    console.log(`P7-R2 after admin cancel: heading -> ${heading.status}, complete -> ${complete.status}, group status=${after.status}`);
+    expect(heading.status).toBe(409);
+    expect(after.status).toBe('cancelled');
+  });
+
+  it('P7-R2b: after an admin unassigns a driver, the same driver can be assigned and accept again', async () => {
+    await onlyOnline('Priya More');
+    const priya = await account(rides, driverEmail('Priya More'));
+    const admin = await account(rides, 'admin@universe.test');
+    const rider = await user(rides);
+    const g = await startGroup(rider, 'Azad Nagar', 'Ghatkopar', 90);
+    await status(rider.http.get(`/api/rides/groups/${g.id}/driver`), 200);
+    await status(priya.http.post(`/api/rides/driver/offers/${g.id}/accept`).send({}), 200);
+    await status(admin.http.post(`/api/rides/admin/rides/${g.id}/unassign-driver`).send({ reason: 'P7' }), 200);
+    await status(rider.http.get(`/api/rides/groups/${g.id}/driver`), 200); // only Priya is online
+    const again = await priya.http.post(`/api/rides/driver/offers/${g.id}/accept`).send({});
+    console.log(`P7-R2b re-accept after unassign -> ${again.status} ${JSON.stringify(again.body)}`);
+    expect(again.status).toBe(200);
+  });
+
+  it('P7-R3: a student who is not in a pooled group does not see its members\' full names', async () => {
+    const owner = await user(rides, 'student', 'Meera Kapoorfamily');
+    await startGroup(owner, 'Azad Nagar', 'Ghatkopar', 120);
+    const stranger = await user(rides);
+    const body = JSON.stringify((await stranger.http.get('/api/rides/groups/available?limit=100').expect(200)).body);
+    console.log(`P7-R3 stranger sees surname: ${body.includes('Kapoorfamily')}; sees owner user id: ${body.includes(owner.user.id)}`);
+    expect(body).not.toContain('Kapoorfamily');
+  });
+
+  it('P7-R6: GET /admin/drivers pages past the first page', async () => {
+    const admin = await account(rides, 'admin@universe.test');
+    const first = await admin.http.get('/api/rides/admin/drivers?limit=1').expect(200);
+    const cursor = (first.body as { nextCursor: string | null }).nextCursor;
+    expect(cursor).toBeTruthy();
+    const second = await admin.http.get(`/api/rides/admin/drivers?limit=1&cursor=${encodeURIComponent(cursor ?? '')}`);
+    console.log(`P7-R6 page 2 -> ${second.status} ${JSON.stringify(second.body).slice(0, 120)}`);
+    expect(second.status).toBe(200);
+  });
+});

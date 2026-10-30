@@ -8,7 +8,7 @@ Master plan (scope, architecture, rubric): the "UniVerse — Implementation Plan
 
 | Area | Owner | Phase now | Status |
 | --- | --- | --- | --- |
-| Platform | Person 1 | P6 integration: cross-module `publicApi`, week providers, route-guard metadata + `docs/ROLES.md`, demo story seed, `demo:reset`, storyline test (U1 merged) | Done — PR open (stacked on P5; contains the `main` and U1 merges) |
+| Platform | Person 1 | P7 audit done (`docs/audit/P7-findings.md`); P6 integration: cross-module `publicApi`, week providers, route-guard metadata + `docs/ROLES.md`, demo story seed, `demo:reset`, storyline test (U1 merged) | Done — PR open (stacked on P5; contains the `main` and U1 merges) |
 | A · Student Hub | Person 1 | P4 profiles, prep tracker, mentor ranking, mentorship requests, resource repository (backend) | Done — PR open (stacked on #4) |
 | B · Ride-Pooling | Person 1 | P3b carpool offers, campus graph, detour matching, savings | Done — PR #4 open (stacked on #3) |
 | D · Digital Wellbeing | Person 1 | P5 browser-side library (`packages/wellbeing-core`) and backend: daily totals, consent, pause, see my data, export, delete | Done — PR open (stacked on P4) |
@@ -26,7 +26,7 @@ Master plan (scope, architecture, rubric): the "UniVerse — Implementation Plan
 | P4 | Module A backend: profiles, prep tracker, mentor ranking, mentorship requests, resource repository with search | Opus 5.5 / high | Done (report: `docs/sessions/P4.md`) |
 | P5 | Module D: privacy logic library (sanitise, categorise, metrics) and API for opt-in daily totals, consent, export and delete | Opus 5.5 / high | Done (report: `docs/sessions/P5.md`) |
 | P6 | Cross-module links, seed data, test scenarios, demo storyline run through the API | Opus 5.5 / high | Done (report: `docs/sessions/P6.md`) |
-| P7 | Independent read-only audit of Platform, A, B, D | Opus 5.5 / xhigh | Not started |
+| P7 | Independent read-only audit of Platform, A, B, D | Opus 5.5 / high | Done (findings: `docs/audit/P7-findings.md`, report: `docs/sessions/P7.md`) |
 | P8 | Fix audit findings | Sonnet 5.5 / high | Not started |
 | P9 | README, architecture, algorithms, docs | Sonnet 5.5 / medium | Not started |
 | U1 | Frontend shell and platform screens from the team's UI design (Opus 5.5 / high) | Opus 5.5 / high | Done (report: `docs/sessions/U1.md`) — branch `p1/u1-shell`, PR open |
@@ -371,6 +371,21 @@ Calls are validated both ways, limited to 500 ms and fail with 503 `MODULE_UNAVA
 
 **9. Week strip and seeds.** `weekItems(user, { from, to }, signal)` returns your dated items (contract `WeekProviderItem`; see the P6 decision for the copy style). If your seed needs another module's data, set `seedAfter: ['rides']`; `npm run demo:reset -- --yes` re-runs every seed from now (add your tables to `MODULE_TABLES` in `prisma/seed/reset.ts`).
 
+## P7 audit (for P8)
+
+Full findings, repro steps and evidence: `docs/audit/P7-findings.md` and `docs/audit/P7-evidence/`. Read-only phase: nothing below is fixed.
+
+- **Counts:** 0 critical, 6 high, 11 medium, 11 low. All gates green from a fresh clone (3 identical test runs, visual 214/214, 0 audit issues, no migration drift), except the root `tsc -p tsconfig.json` (P7-025, known).
+- **High, fix first in P8:**
+  - **P7-001**, platform time zone. Stored timestamps are 5 h 30 m early. This corrects P5's diagnosis: Prisma round-trips fine, while SQL-side time maths and DB-clock values are wrong. Fix: pin the pool to UTC in `apps/api/src/platform/db.ts`, then re-seed.
+  - **P7-002**, rides: one un-boarded rider suspends an auto with one 5-tag feedback.
+  - **P7-003**, rides: admin cancel or unassign leaves the driver trip live. The driver can still send "heading" on a cancelled ride, and the same driver can't re-accept (409).
+  - **P7-004**, rides: strangers see full names and drop stops of forming pooled groups.
+  - **P7-005**, rides: carpool accept skips the time window and women-only re-check after an offer edit.
+  - **P7-006**, hub: a mentor keeps reading a student's card after the request is cancelled or declined.
+- **Medium:** P7-007 to P7-017. Includes hub idempotency key not bound to the topic, `GET /rides/admin/drivers` page 2 → 500, the wellbeing absolute-URL log leak (P7-016), hub completion with no notification, and missing DB constraints in rides and hub.
+- The previous "Audit findings for P8" items below are re-checked in P7-001, P7-025 and P7-027.
+
 ## Audit findings for P8
 
 - LOW (found in P6, root config, not fixed: outside P6's authorised scope) — `prisma.config.ts:25` fails `tsc -p tsconfig.json` (the root project that covers the seed files) under `exactOptionalPropertyTypes`: `shadowDatabaseUrl: string | undefined`. No gate runs that project, so it never showed. Fix: `...(shadow && { shadowDatabaseUrl: shadow })`, and add `tsc -p tsconfig.json` to `npm run typecheck` so `prisma/seed/` is checked too.
@@ -428,6 +443,11 @@ From the independent P1–P2 verification in P3a (the one high finding, the logi
 
 ## Session log (newest first)
 
+- 2026-10-30 03:59–04:20 — P7 Independent audit, read-only (Person 1, Opus 5.5 / high, unattended).
+  - Gates from a fresh clone: all green; tests ×3 with no flake, visual 214/214, audit 0. Root tsc still fails (P7-025).
+  - CSRF probe across every unsafe route; secrets scan of the full history (clean); EXPLAIN with synthetic volume; SIGTERM with SSE and an upload in flight; CSP check on the built app.
+  - 9 probe repros confirmed 7 findings. Time-zone root cause corrected.
+  - 0 critical, 6 high, 11 medium, 11 low. Branch `p1/p7-audit`. Findings: `docs/audit/P7-findings.md`. Report: `docs/sessions/P7.md`. Next: P8 fixes.
 - 2026-10-30 03:05–04:00 — P6 Integration: one platform, demo data, test scenarios (Person 1, Opus 5.5 / high, unattended).
   - Merged `main` (no change) and U1 (shell, week endpoint, visual harness) after green gates.
   - `platform.modules.get(id)` cross-module `publicApi` (rides stops and own rides, hub sessions and goal, wellbeing opt-in study minutes), week providers for hub, rides and wellbeing, ride link to mentor sessions with `arriveBy`, matches listing your own bookings, `platform.user_created`.
