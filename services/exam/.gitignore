@@ -1,0 +1,16 @@
+.env
+*.pt
+*.mp4
+*.webm
+*.avi
+*.zip
+*.csv
+db.sqlite3
+media/
+venv/
+.venv/
+__pycache__/
+data_classification/
+datasets/
+detected_frames/
+runs/
