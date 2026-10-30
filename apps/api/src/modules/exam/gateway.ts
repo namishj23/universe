@@ -12,6 +12,7 @@ export const MAX_BODY_BYTES = 200 * 1024 * 1024;
 /** Read per request, so a test can shorten them. */
 export const TIMEOUTS = { connectMs: 2_000, headersMs: 30_000 };
 export const LIVE_MAX_MS = 2 * 60 * 60 * 1000;
+const DRAIN_MS = 5_000;
 
 const METHODS = new Set(['GET', 'POST', 'PATCH', 'DELETE']);
 const REQUEST_HEADERS = ['content-type', 'content-length', 'range', 'accept', 'if-none-match'];
@@ -72,14 +73,15 @@ export function gateway(platform: Platform, service: ServiceConfig): RequestHand
   return (req, res, next) => {
     if (!METHODS.has(req.method)) return next();
     if (!safePath(req.path)) return next(new ApiError(404, 'NOT_FOUND', 'Not found'));
-    // A refused body is not read on: reply, half-close, drain briefly (so the client sees the
-    // reply rather than a reset), then drop the socket.
+    // A refused body is drained, not forwarded: closing the socket while the client is still
+    // sending makes it see a reset instead of the reply. A client that keeps sending for more
+    // than 5 s after the reply loses the connection.
     const refuse = (err: InstanceType<typeof ApiError>) => {
-      res.setHeader('Connection', 'close');
       res.once('finish', () => {
+        const cut = setTimeout(() => req.socket.destroy(), DRAIN_MS);
+        cut.unref();
+        req.once('end', () => clearTimeout(cut));
         req.resume();
-        req.socket.end();
-        setTimeout(() => req.socket.destroy(), 1_000).unref();
       });
       next(err);
     };

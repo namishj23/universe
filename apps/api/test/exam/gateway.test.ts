@@ -177,6 +177,7 @@ describe('limits and failures', () => {
       let text = '';
       const req = httpRequest(
         {
+          agent: false, // a fresh connection each time: a refused body leaves its socket busy
           host: '127.0.0.1',
           port,
           method: 'POST',
@@ -191,9 +192,10 @@ describe('limits and failures', () => {
         },
       );
       // The server closes the socket after refusing the body: EPIPE/ECONNRESET on our side.
-      req.on('error', (err) =>
-        status ? setTimeout(() => resolve({ status, body: text }), 50) : reject(err),
-      );
+      req.on('error', (err) => {
+        if (status) setTimeout(() => resolve({ status, body: text }), 50);
+        else reject(err);
+      });
       if (!body) {
         req.end();
         return;
