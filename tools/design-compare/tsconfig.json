@@ -8,5 +8,5 @@
     "noEmit": true,
     "types": ["node"]
   },
-  "include": ["*.ts", "fixtures/*.ts", "../../packages/contracts/src/**/*.ts"]
+  "include": ["*.ts", "fixtures/*.ts", "u2/*.ts", "../smoke/*.ts", "../../packages/contracts/src/**/*.ts"]
 }

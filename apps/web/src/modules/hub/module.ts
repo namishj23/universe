@@ -49,5 +49,8 @@ function dashboardCard(data: unknown): CardContent | null {
   };
 }
 
-const hub: WebModule = { activityText, dashboardCard };
+/** Any request decision changes mentors, requests and slots: refetch the hub's queries. */
+const invalidates = Object.fromEntries(Object.keys(text).map((type) => [type, [['hub']]]));
+
+const hub: WebModule = { activityText, dashboardCard, invalidates };
 export default hub;
