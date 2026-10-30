@@ -19,15 +19,30 @@ const TITLES: Record<string, string> = {
   wellbeing: 'Wellbeing',
 };
 
+/**
+ * API answers that are a normal state, not a failure: a student or mentor without a carpool
+ * driver record gets 404 from `GET /api/rides/carpool/driver` (the Offer tab then explains how
+ * to become one). The browser logs every 4xx response as a console error.
+ */
+const EXPECTED = [/\/api\/rides\/carpool\/driver$/];
+const expected = (url: string) => EXPECTED.some((r) => r.test(url));
+
 function watch(page: Page) {
   const problems: string[] = [];
   page.on('console', (m) => {
-    if (m.type() === 'error') problems.push(`console: ${m.text()}`);
+    if (m.type() === 'error' && !expected(m.location().url)) problems.push(`console: ${m.text()}`);
   });
   page.on('pageerror', (e) => problems.push(`pageerror: ${e.message}`));
+  // Name the failing URL (the console line for a failed resource doesn't).
+  page.on('response', (r) => {
+    if (r.status() >= 400 && !expected(r.url()))
+      problems.push(`http ${r.status()} ${r.request().method()} ${r.url()}`);
+  });
   void page.addInitScript(() => {
     document.addEventListener('securitypolicyviolation', (e) =>
-      console.error(`CSP violation: ${e.violatedDirective} ${e.blockedURI}`),
+      console.error(
+        `CSP violation: ${e.violatedDirective} ${e.blockedURI} ${e.sourceFile}:${e.lineNumber}:${e.columnNumber}`,
+      ),
     );
   });
   return problems;
@@ -51,8 +66,9 @@ async function expectHealthy(page: Page, title: string) {
 
 for (const [role, email] of Object.entries(ACCOUNTS)) {
   test(`${role}: every Hub, Rides and Wellbeing tab opens cleanly`, async ({ page }) => {
-    const problems = watch(page);
     await signIn(page, email);
+    // Watched after sign-in: the signed-out /api/auth/me 401 is expected.
+    const problems = watch(page);
     const nav = page.getByRole('navigation', { name: /modules/i });
     for (const id of ['hub', 'rides', 'wellbeing']) {
       if ((await nav.locator(`a[href="/${id}"]`).count()) === 0) continue;
@@ -71,8 +87,18 @@ for (const [role, email] of Object.entries(ACCOUNTS)) {
 }
 
 test('student: import a sample day, run a focus session, today changes', async ({ page }) => {
-  const problems = watch(page);
   await signIn(page, ACCOUNTS.student);
+  // Watched after sign-in: the signed-out /api/auth/me 401 is expected.
+  const problems = watch(page);
+  // Start from no stored rows today, so the import must change the total (re-runnable).
+  const { csrfToken } = (await (await page.request.get('/api/auth/me')).json()) as {
+    csrfToken: string;
+  };
+  const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
+  const cleared = await page.request.delete(`/api/wellbeing/records?from=${today}&to=${today}`, {
+    headers: { 'X-CSRF-Token': csrfToken },
+  });
+  expect(cleared.ok()).toBe(true);
   await page.goto('/wellbeing');
   await expectHealthy(page, 'Wellbeing');
   const resume = page.getByRole('button', { name: 'Resume tracking' });
@@ -80,12 +106,13 @@ test('student: import a sample day, run a focus session, today changes', async (
     await resume.click();
     await page.getByRole('button', { name: 'Pause tracking' }).waitFor();
   }
-  const today = page.getByRole('heading', { name: 'TODAY · DAILY TOTALS' }).locator('xpath=..');
-  const total = today.locator('span').first();
+  const card = page.getByRole('heading', { name: 'TODAY · DAILY TOTALS' }).locator('xpath=..');
+  const total = card.locator('span').first();
   const before = await total.innerText();
 
   await page.getByRole('button', { name: 'Import sample events' }).click();
-  await expect(page.getByRole('status')).toContainText(/Daily totals updated|Imported/);
+  // The import toast is replaced at once by the upload's.
+  await expect(page.getByText(/Imported \d+ events|Daily totals updated/)).toBeVisible();
   const focus = page.getByRole('region', { name: 'Focus session' });
   await focus.getByRole('button', { name: 'Start' }).click();
   await focus.getByRole('button', { name: 'Stop' }).click();
@@ -122,10 +149,14 @@ test('student: find a ride, then Matches shows cards', async ({ page, browser })
   expect([201, 409]).toContain(offer.status());
   await mentor.close();
 
-  const problems = watch(page);
   await signIn(page, ACCOUNTS.student);
+  // Watched after sign-in: the signed-out /api/auth/me 401 is expected.
+  const problems = watch(page);
   await page.goto('/rides');
   await expectHealthy(page, 'Rides');
+  // With no rides yet, the empty state's action opens the form.
+  const start = page.getByRole('button', { name: 'Find a ride' });
+  if (await start.isVisible()) await start.click();
   await page.getByLabel('FROM').selectOption({ label: 'Borivali Station' });
   await page.getByLabel('TO').selectOption({ label: 'SPIT Main Gate' });
   await page.getByLabel('DATE').fill(tomorrow());
