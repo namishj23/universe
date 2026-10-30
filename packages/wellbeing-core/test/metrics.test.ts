@@ -155,11 +155,12 @@ describe('dailyTotals', () => {
 
   it('rounds so the rows sum to the rounded day total (largest remainder)', () => {
     // 40 s + 40 s + 40 s = 120 s → 2 minutes, given to the first two in category order.
+    // Back to back: overlapping slices are counted once (P7-022 d).
     const rows = dailyTotals(
       [
         slice(BASE, BASE + 40_000, 'study'),
-        slice(BASE, BASE + 40_000, 'communication'),
-        slice(BASE, BASE + 40_000, 'social'),
+        slice(BASE + 40_000, BASE + 80_000, 'communication'),
+        slice(BASE + 80_000, BASE + 120_000, 'social'),
       ],
       { categories: ['study', 'communication', 'social'] },
     );

@@ -46,8 +46,10 @@
 
   /* Type scale: every size the design uses, named by its pixel value. */
   --fs-76: 76px;
+  --fs-36: 36px;
   --fs-34: 34px;
   --fs-30: 30px;
+  --fs-28: 28px;
   --fs-22: 22px;
   --fs-20: 20px;
   --fs-19: 19px;

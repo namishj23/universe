@@ -1,5 +1,6 @@
 import type { Page, Route } from '@playwright/test';
 import * as F from './fixtures/index.ts';
+import { respondU2 } from './u2/index.ts';
 
 export type Screen = 'login' | 'dashboard' | 'inbox' | 'admin-users' | 'admin-audit';
 export type State = 'normal' | 'loading' | 'empty' | 'error';
@@ -16,6 +17,13 @@ const SCREEN_PATHS: Record<Screen, RegExp[]> = {
 
 const json = (route: Route, body: unknown, status = 200) =>
   route.fulfill({ status, contentType: 'application/json', body: JSON.stringify(body) });
+const jsonBody = (route: Route): unknown => {
+  try {
+    return route.request().postDataJSON() as unknown;
+  } catch {
+    return null; // multipart or empty
+  }
+};
 const apiError = (route: Route, status: number, code: string, message: string) =>
   json(route, { error: { code, message, requestId: F.ERROR_REQUEST_ID } }, status);
 
@@ -58,6 +66,8 @@ export async function installMocks(
         body: `retry: 600000\nevent: unread-count\ndata: ${JSON.stringify({ count: state === 'empty' ? 0 : F.unread(role) })}\n\n`,
       });
     if (path === '/api/modules') return json(route, F.modules(role));
+    const u2 = respondU2(role, method, url, jsonBody(route));
+    if (u2) return json(route, u2.body, u2.status ?? 200);
     if (path === '/api/admin/users' && method === 'POST') return json(route, F.created, 201);
     if (path === '/api/activity/announcements' && method === 'POST')
       return json(route, { recipients: 7 });

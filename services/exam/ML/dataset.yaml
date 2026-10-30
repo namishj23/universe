@@ -1,0 +1,11 @@
+path: C:/Users/shrut/Desktop/Exam_surveillancess/Exam_surveillance
+
+train: data/train/images
+val: data/val/images
+
+names:
+  0: normal
+  1: suspicious
+  2: mobile
+  3: cheat_passing
+  4: abnormal

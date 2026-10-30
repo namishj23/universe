@@ -1,0 +1,223 @@
+/* Module D: values from the prototype's Wellbeing screen (UniVerse App.dc.html). */
+.contents {
+  display: contents;
+}
+
+.meta {
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: var(--fs-11);
+}
+
+/* Privacy bar: always visible under the header. */
+.bar {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border: 1.5px solid var(--line-strong);
+  border-radius: 8px;
+  background: var(--surface);
+}
+
+.status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--fs-14);
+  font-weight: 600;
+}
+
+.dot {
+  flex: none;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--muted);
+}
+
+.dotOk {
+  background: var(--ok);
+}
+
+.dotWarn {
+  background: var(--warn);
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.bar .btn {
+  height: 32px;
+  padding: 0 12px;
+  font-size: var(--fs-13);
+}
+
+.notice {
+  margin: 0;
+  color: var(--muted);
+  font-size: var(--fs-12-5);
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  align-items: start;
+  gap: 12px;
+}
+
+.big {
+  font-family: var(--font-mono);
+  font-size: var(--fs-36);
+  font-weight: 500;
+  letter-spacing: -0.03em;
+}
+
+.compare {
+  color: var(--ink2);
+  font-size: var(--fs-13);
+}
+
+.cats {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.cat {
+  display: grid;
+  grid-template-columns: minmax(0, 110px) minmax(40px, 1fr) 52px;
+  align-items: center;
+  gap: 10px;
+  font-size: var(--fs-13);
+}
+
+.off {
+  opacity: 0.5;
+}
+
+.catValue {
+  font-family: var(--font-mono);
+  font-size: var(--fs-11-5);
+  text-align: right;
+}
+
+.foot {
+  padding-top: 10px;
+  border-top: 1px solid var(--line);
+  color: var(--muted);
+  font-size: var(--fs-12-5);
+  line-height: 1.45;
+}
+
+/* "See my data" drawer table and the device tables. */
+.table {
+  display: flex;
+  flex-direction: column;
+  border: 1.5px solid var(--line-strong);
+  border-radius: 8px;
+  background: var(--surface);
+  overflow: hidden;
+}
+
+.thead,
+.tr {
+  display: grid;
+  grid-template-columns: var(--cols);
+  align-items: center;
+  gap: 10px;
+}
+
+.thead {
+  padding: 8px 12px;
+  border-bottom: 1.5px solid var(--line-strong);
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: var(--fs-10-5);
+  font-weight: 600;
+}
+
+.tr {
+  padding: 6px 12px;
+  border-bottom: 1px solid var(--line);
+  font-family: var(--font-mono);
+  font-size: var(--fs-12);
+}
+
+.right {
+  text-align: right;
+}
+
+.cell {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+}
+
+.text {
+  margin: 0;
+  color: var(--ink2);
+  font-size: var(--fs-13-5);
+  line-height: 1.45;
+}
+
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.stat {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.statLabel {
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: var(--fs-10-5);
+  font-weight: 600;
+}
+
+.statValue {
+  font-family: var(--font-mono);
+  font-size: var(--fs-22);
+  font-weight: 500;
+  letter-spacing: -0.03em;
+}
+
+.addRule {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 140px auto;
+  align-items: end;
+  gap: 8px;
+}
+
+.tableSelect {
+  height: 28px;
+  font-size: var(--fs-12);
+}
+
+.file {
+  font-size: var(--fs-12-5);
+}

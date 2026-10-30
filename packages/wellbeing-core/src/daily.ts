@@ -24,6 +24,33 @@ export interface DailyOptions {
   timeZone?: string;
   /** Categories the user counts; others are left out entirely. */
   categories?: readonly Category[];
+  /** Earliest local date kept (the server's retention: today − `retentionDays`). */
+  minDate?: string;
+  /** Latest local date kept (the server refuses future dates). */
+  maxDate?: string;
+}
+
+/** The most minutes one day can hold; the server refuses more (`DAY_OVER_LIMIT`). */
+export const DAY_MINUTES = 1440;
+
+/** `YYYY-MM-DD` minus `days` calendar days. */
+export function addDays(date: string, days: number): string {
+  return new Date(Date.parse(`${date}T00:00:00Z`) + days * 86_400_000).toISOString().slice(0, 10);
+}
+
+/**
+ * Overlapping slices (two sessions over the same minutes) would count time twice: each instant
+ * goes to the earliest-starting slice that covers it (ties keep input order).
+ */
+export function mergeOverlaps(slices: readonly Slice[]): Slice[] {
+  const out: Slice[] = [];
+  let covered = -Infinity;
+  for (const s of [...slices].sort((a, b) => a.from - b.from)) {
+    const from = Math.max(s.from, covered);
+    if (s.to > from) out.push({ ...s, from });
+    covered = Math.max(covered, s.to);
+  }
+  return out;
 }
 
 const MINUTE = 60_000;
@@ -84,8 +111,7 @@ export function dailyTotals(slices: readonly Slice[], options: DailyOptions = {}
   const timeZone = options.timeZone ?? DEFAULT_TIME_ZONE;
   const counted = CATEGORIES.filter((c) => (options.categories ?? DEFAULT_COUNTED).includes(c));
   const days = new Map<string, Map<Category, number>>();
-  for (const s of slices) {
-    if (!counted.includes(s.category)) continue;
+  for (const s of mergeOverlaps(slices.filter((x) => counted.includes(x.category)))) {
     for (let a = s.from; a < s.to;) {
       const b = Math.min(s.to, nextMidnight(a, timeZone));
       const date = localDate(a, timeZone);
@@ -97,11 +123,19 @@ export function dailyTotals(slices: readonly Slice[], options: DailyOptions = {}
   }
 
   const rows: DailyRow[] = [];
-  for (const date of [...days.keys()].sort()) {
+  const kept = [...days.keys()].filter(
+    (d) => (!options.minDate || d >= options.minDate) && (!options.maxDate || d <= options.maxDate),
+  );
+  for (const date of kept.sort()) {
     const day = days.get(date) ?? new Map<Category, number>();
     const ms = counted.map((c) => day.get(c) ?? 0);
-    const target = Math.round(ms.reduce((a, b) => a + b, 0) / MINUTE);
+    // A 25-hour (DST) day can still exceed the cap after merging; trim the largest categories.
+    const target = Math.min(DAY_MINUTES, Math.round(ms.reduce((a, b) => a + b, 0) / MINUTE));
     const minutes = ms.map((x) => Math.floor(x / MINUTE));
+    for (let over = minutes.reduce((a, b) => a + b, 0) - target; over > 0; over--) {
+      const i = minutes.indexOf(Math.max(...minutes));
+      minutes[i] = (minutes[i] ?? 0) - 1;
+    }
     const order = counted
       .map((_, i) => i)
       .sort((i, j) => ((ms[j] ?? 0) % MINUTE) - ((ms[i] ?? 0) % MINUTE) || i - j);

@@ -1,0 +1,132 @@
+/* Rides match card (README §5 Matches). */
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: transparent;
+  cursor: pointer;
+}
+
+.selected {
+  border: 1.5px solid var(--line-strong);
+  background: var(--surface);
+}
+
+.head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--ink);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.head:disabled {
+  cursor: default;
+}
+
+.who {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.name {
+  font-size: var(--fs-15);
+  font-weight: 600;
+}
+
+.sub {
+  color: var(--muted);
+  font-weight: 400;
+}
+
+.route {
+  color: var(--ink2);
+  font-family: var(--font-mono);
+  font-size: var(--fs-11);
+}
+
+.scoreBox {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+}
+
+.score {
+  font-family: var(--font-mono);
+  font-size: var(--fs-28);
+  font-weight: 500;
+  letter-spacing: -0.03em;
+  line-height: 1;
+}
+
+.scoreLabel {
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: var(--fs-10);
+}
+
+.breakdown {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: 4px 12px;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  background: var(--raised);
+  font-family: var(--font-mono);
+  font-size: var(--fs-11-5);
+}
+
+.line {
+  display: contents;
+}
+
+.term {
+  color: var(--ink2);
+}
+
+.note {
+  color: var(--muted);
+}
+
+.points {
+  text-align: right;
+}
+
+.stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  font-family: var(--font-mono);
+  font-size: var(--fs-11-5);
+}
+
+.foot {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+}
+
+.status {
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: var(--fs-11);
+  font-weight: 600;
+}
+
+.action.action {
+  height: 32px;
+  padding: 0 14px;
+  font-size: var(--fs-13);
+}

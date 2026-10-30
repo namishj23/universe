@@ -36,14 +36,16 @@ export async function request(
   { method = 'GET', body, signal, headers: extra }: Options = {},
 ) {
   const headers: Record<string, string> = { ...extra };
-  if (body !== undefined) headers['Content-Type'] = 'application/json';
+  // FormData (uploads) sets its own multipart Content-Type with the boundary.
+  const form = body instanceof FormData;
+  if (body !== undefined && !form) headers['Content-Type'] = 'application/json';
   if (method !== 'GET' && csrfToken) headers['X-CSRF-Token'] = csrfToken;
 
   const res = await fetch(path, {
     method,
     headers,
     credentials: 'same-origin',
-    ...(body !== undefined && { body: JSON.stringify(body) }),
+    ...(body !== undefined && { body: form ? body : JSON.stringify(body) }),
     ...(signal && { signal }),
   });
   if (res.ok) return res;

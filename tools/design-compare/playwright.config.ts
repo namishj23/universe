@@ -25,6 +25,7 @@ export default defineConfig({
   projects: [
     { name: 'compare', testMatch: 'compare.spec.ts' },
     { name: 'visual', testMatch: ['visual.spec.ts', 'a11y.spec.ts'] },
+    { name: 'u2', testMatch: 'u2-compare.spec.ts' },
   ],
   webServer: [
     {
