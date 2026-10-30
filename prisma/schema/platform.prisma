@@ -139,3 +139,14 @@ model File {
   @@index([deletedAt], map: "files_deleted_idx", where: raw("deleted_at IS NOT NULL"))
   @@map("files")
 }
+
+/// Idempotency keys of calls from companion services (`/internal/<module>/...`), kept 7 days.
+model PlatformServiceEvent {
+  module         String
+  idempotencyKey String   @map("idempotency_key")
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  @@id([module, idempotencyKey])
+  @@index([createdAt])
+  @@map("platform_service_events")
+}

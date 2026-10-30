@@ -29,6 +29,7 @@ import {
   UpdateUserRequest,
   WeekQuery,
   WeekResponse,
+  exam,
 } from '@universe/contracts';
 import { basePath, type ModuleDefinition } from './modules/index.js';
 
@@ -336,5 +337,22 @@ export function buildOpenApiDocument(modules: readonly ModuleDefinition[]) {
       },
     },
     paths: { ...platformPaths, ...modulePaths },
+    // Not routes of this API: the platform forwards them to a companion service when it is
+    // configured (docs/integration/exam-service.md), after its own session, role, CSRF,
+    // password-change and rate-limit checks.
+    'x-external-services': {
+      exam: {
+        basePath: '/api/exam',
+        upstream: '${EXAM_SERVICE_URL}/exam',
+        installedWhen: 'EXAM_SERVICE_URL and SERVICE_TOKEN_EXAM are set',
+        roles: ['invigilator', 'admin'],
+        contract: 'docs/integration/exam-service.md',
+        errors: {
+          '503': 'MODULE_UNAVAILABLE: the service is down or slow',
+          '413': 'FILE_TOO_LARGE: body over 200 MB',
+        },
+        paths: exam.EXAM_GATEWAY_PATHS,
+      },
+    },
   });
 }

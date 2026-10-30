@@ -1,15 +1,17 @@
+import type { Request, Response } from 'express';
 import type { Logger } from 'pino';
 import type { input as ZodInput, output as ZodOutput, ZodType } from 'zod';
 import * as contracts from '@universe/contracts';
 import {
   publicApiRegistry,
+  type ModuleId,
   type PublicApi,
   type PublicApiId,
   type PublicApiSpec,
   type PublicApiSpecs,
 } from '@universe/contracts';
 import { env } from '../../config/env.js';
-import { pushEvent } from '../activity/broker.js';
+import { pushEvent, trackResponse } from '../activity/broker.js';
 import { emit, transaction } from '../activity/service.js';
 import { audit } from '../audit/index.js';
 import { authOf, requireRole } from '../auth/guards.js';
@@ -19,6 +21,7 @@ import { ApiError, asyncHandler } from '../http.js';
 import { logger } from '../logger.js';
 import { decodeCursor, encodeCursor, newestFirst, olderThan, toPage } from '../paging.js';
 import { schedule } from '../scheduler.js';
+import { claimServiceEvent, serviceConfigs, type ServiceConfig } from '../services.js';
 import type { ModuleDefinition } from './index.js';
 
 /** Every cross-module call gets this long before it fails with 503 `MODULE_UNAVAILABLE`. */
@@ -67,6 +70,21 @@ export interface Platform {
    * limited to 500 ms and fails with 503 `MODULE_UNAVAILABLE`; pass `{ actor: user, ... }`.
    */
   readonly modules: { get<M extends PublicApiId>(id: M): PublicApi<M> | undefined };
+  /**
+   * A module's companion service (`EXAM_SERVICE_URL` + `SERVICE_TOKEN_EXAM`), or `undefined`
+   * when it is not configured. A module asks only for its own service.
+   */
+  readonly services: { get(id: ModuleId): ServiceConfig | undefined };
+  /**
+   * Long-lived non-SSE responses (a proxied video stream): closed on that session's logout, the
+   * user's deactivation, shutdown, or after `maxMs` (capped at 2 hours).
+   */
+  readonly streams: { track(req: Request, res: Response, opts?: { maxMs?: number }): void };
+  /**
+   * Idempotency for service calls: `claim(tx, module, key)` is true the first time a key is
+   * seen (keys are kept 7 days), false for a repeat. Call it in the same transaction as the write.
+   */
+  readonly serviceEvents: { readonly claim: typeof claimServiceEvent };
 }
 
 /** What a module implements: parsed input in, its answer out (parsed again by the platform). */
@@ -92,6 +110,7 @@ const loggers = new Map<string, Logger>();
 /** Builds the frozen platform object. `overrides` lets a test swap parts. */
 export function createPlatform(overrides: Partial<Platform> = {}): Platform {
   const apis = new Map<string, object>();
+  const services = serviceConfigs();
   const log = logger.child({ module: 'platform' });
 
   /** The caller's view of one module's functions: validated, time-limited, never throwing raw. */
@@ -151,6 +170,14 @@ export function createPlatform(overrides: Partial<Platform> = {}): Platform {
     modules: Object.freeze({
       get: <M extends PublicApiId>(id: M) => apis.get(id) as PublicApi<M> | undefined,
     }),
+    services: Object.freeze({ get: (id: ModuleId) => services[id] }),
+    streams: Object.freeze({
+      track(req: Request, res: Response, opts: { maxMs?: number } = {}) {
+        const { user, sessionId } = authOf(req);
+        trackResponse(user.id, sessionId, res, opts.maxMs);
+      },
+    }),
+    serviceEvents: Object.freeze({ claim: claimServiceEvent }),
     ...overrides,
   });
   installers.set(p, (modules) => {

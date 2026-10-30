@@ -77,6 +77,14 @@ export interface ModuleDefinition {
   filePurposes?: readonly FilePurpose[];
   /** OpenAPI paths for this module's routes, relative to `/api/<id>` (e.g. `/rides/{id}`). */
   openapi?: ZodOpenApiPathsObject;
+  /**
+   * Routes the module's companion service calls back on, mounted at `/internal/<id>` outside
+   * `/api`: no session and no CSRF, but loopback only, the service token
+   * (`SERVICE_TOKEN_<ID>`), a rate limit and a 64 kB JSON body. Only when the service is set up.
+   */
+  internalRoutes?: (router: Router) => void;
+  /** The app's JSON parser skips `/api/<id>`, so the module can stream request bodies. */
+  rawBody?: boolean;
 }
 
 const fn = z.custom<(...args: never[]) => unknown>(
@@ -113,6 +121,8 @@ const Definition = z
       )
       .optional(),
     openapi: z.record(z.string().startsWith('/'), z.unknown()).optional(),
+    internalRoutes: fn.optional(),
+    rawBody: z.boolean().optional(),
   })
   .strict();
 
@@ -164,8 +174,11 @@ export function validateModules(found: { folder: string; value: unknown }[]): Mo
 // Same relative path from src/platform/modules (dev, tests) and dist/platform/modules (built).
 const MODULES_DIR = new URL('../../modules/', import.meta.url);
 
-/** The default export of a module folder. */
-export type ModuleFactory = (platform: Platform) => ModuleDefinition;
+/**
+ * The default export of a module folder. `null` = not installed here (for example its companion
+ * service is not configured): the module is absent from `/api/modules` and its routes are 404.
+ */
+export type ModuleFactory = (platform: Platform) => ModuleDefinition | null;
 
 export interface LoadOptions {
   dir?: URL;
@@ -202,7 +215,8 @@ export async function loadModules({
       problems.push(`${folder}: must default-export a factory (platform) => definition`);
       continue;
     }
-    found.push({ folder, value: (mod.default as ModuleFactory)(platform) });
+    const value = (mod.default as ModuleFactory)(platform);
+    if (value !== null) found.push({ folder, value });
   }
   if (problems.length > 0)
     throw new Error(`Invalid module definitions:\n${problems.map((p) => `  - ${p}`).join('\n')}`);

@@ -7,6 +7,7 @@ import helmet from 'helmet';
 import type { SerializedRequest, SerializedResponse } from 'pino';
 import { pinoHttp } from 'pino-http';
 import swaggerUi from 'swagger-ui-express';
+import type { ModuleId } from '@universe/contracts';
 import { env } from './config/env.js';
 import { activityRoutes } from './platform/activity/routes.js';
 import { adminUserRoutes } from './platform/admin/users.js';
@@ -21,19 +22,22 @@ import { errorHandler, notFound, requestId } from './platform/http.js';
 import { logger } from './platform/logger.js';
 import { moduleListRoutes, mountModules, type ModuleDefinition } from './platform/modules/index.js';
 import { buildOpenApiDocument } from './platform/openapi.js';
+import { mountInternalRoutes, serviceConfigs, type ServiceConfig } from './platform/services.js';
 
 // Same relative path from src/ (dev) and dist/ (built).
 const webDist = fileURLToPath(new URL('../../web/dist/', import.meta.url));
 
-// Wellbeing requests are logged as method + route pattern only: dates and categories in the
-// path, the query string, params and headers never reach a log (Express matches paths
-// case-insensitively, so the test is too). pino-http serialises `req` when the request
-// arrives, before routing, so the matched pattern is added when the response finishes.
-const WELLBEING = /^\/api\/wellbeing(?:[/?#]|$)/i;
-const isWellbeing = (req: Request) => WELLBEING.test(req.originalUrl);
+// Wellbeing requests (and service calls on /internal) are logged as method + route pattern
+// only: dates and categories in the path, the query string, params and headers never reach a
+// log (Express matches paths case-insensitively, so the test is too). pino-http serialises
+// `req` when the request arrives, before routing, so the matched pattern is added when the
+// response finishes.
+const SCRUBBED = /^\/(api\/wellbeing|internal)(?:[/?#]|$)/i;
+const isWellbeing = (req: Request) => SCRUBBED.test(req.originalUrl);
 const routeOf = (req: Request) => {
   const route = req.route as { path?: unknown } | undefined;
-  return `/api/wellbeing${typeof route?.path === 'string' ? route.path : '/*'}`;
+  const base = /^\/internal/i.test(req.originalUrl) ? req.baseUrl.toLowerCase() : '/api/wellbeing';
+  return `${base || '/internal'}${typeof route?.path === 'string' ? route.path : '/*'}`;
 };
 const withRoute = (req: Request, val: object) =>
   isWellbeing(req) ? { ...val, route: routeOf(req) } : val;
@@ -53,6 +57,8 @@ const requestLogOptions = {
 export interface AppOptions {
   /** From `loadModules()` at startup; tests pass fixtures. */
   modules?: readonly ModuleDefinition[];
+  /** Companion services (default: from the environment); tests point them at a fake. */
+  services?: Partial<Record<ModuleId, ServiceConfig>>;
 }
 
 /**
@@ -65,7 +71,7 @@ export interface MountedRouter {
   guards?: RequestHandler[];
 }
 
-export function createApp({ modules = [] }: AppOptions = {}): Express {
+export function createApp({ modules = [], services = serviceConfigs() }: AppOptions = {}): Express {
   const app = express();
   app.disable('x-powered-by');
   app.set('trust proxy', env.TRUST_PROXY);
@@ -82,6 +88,9 @@ export function createApp({ modules = [] }: AppOptions = {}): Express {
   );
   app.use(cors({ origin: env.WEB_ORIGINS, credentials: true }));
 
+  // Service → platform calls (`/internal/<id>`): their own token, limits and 64 kB JSON parser.
+  mountInternalRoutes(app, modules, services);
+
   // The built web app (npm start): static files and SPA fallback for every non-/api path.
   // Uploaded files live in STORAGE_DIR, outside the repo, so this never serves them.
   if (existsSync(webDist)) {
@@ -89,7 +98,15 @@ export function createApp({ modules = [] }: AppOptions = {}): Express {
     app.get(/^(?!\/api(\/|$))/, (_req, res) => res.sendFile(`${webDist}index.html`));
   }
 
-  app.use(express.json({ limit: '100kb' }));
+  // Modules with `rawBody` (the exam gateway) stream request bodies, so they are not parsed here.
+  // Express matches paths case-insensitively, so this test is too.
+  const raw = modules.filter((m) => m.rawBody).map((m) => `/api/${m.id}`);
+  const json = express.json({ limit: '100kb' });
+  app.use((req, res, next) => {
+    const path = req.path.toLowerCase();
+    if (raw.some((p) => path === p || path.startsWith(`${p}/`))) return next();
+    json(req, res, next);
+  });
   app.use(cookieParser());
   app.use(loadSession);
   app.use(csrfProtection);

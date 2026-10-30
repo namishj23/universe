@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { ActivityEvent } from '../activity/index.js';
 import { PublicUser } from '../auth.js';
 import { ModuleId } from '../modules.js';
+import { ExamDashboardSummary } from './exam.js';
 import { HubDashboardSummary } from './hub.js';
 import { RidesDashboardSummary } from './rides.js';
 import { WellbeingDashboardSummary } from './wellbeing.js';
@@ -15,6 +16,7 @@ export const dashboardSummaryRegistry: Partial<Record<ModuleId, z.ZodType>> = {
   hub: HubDashboardSummary,
   rides: RidesDashboardSummary,
   wellbeing: WellbeingDashboardSummary,
+  exam: ExamDashboardSummary,
 };
 
 export const DashboardModuleEntry = z
@@ -36,6 +38,11 @@ export const DashboardResponse = z
   .meta({ id: 'DashboardResponse' });
 export type DashboardResponse = z.infer<typeof DashboardResponse>;
 
-export { HubDashboardSummary, RidesDashboardSummary, WellbeingDashboardSummary };
+export {
+  ExamDashboardSummary,
+  HubDashboardSummary,
+  RidesDashboardSummary,
+  WellbeingDashboardSummary,
+};
 
 export * from './week.js';
