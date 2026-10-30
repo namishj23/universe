@@ -11,7 +11,7 @@ import s from './Login.module.css';
 const INDEX = [
   ['A', 'Student Hub', 'students · mentors'],
   ['B', 'Rides', 'students · mentors'],
-  ['D', 'Wellbeing', 'only you'],
+  ['C', 'Wellbeing', 'only you'],
   ['E', 'Exam Review', 'invigilators'],
 ] as const;
 

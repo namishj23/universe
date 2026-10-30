@@ -46,9 +46,9 @@ export const AREA: Record<Area, { code: string; label: string; eyebrow: string; 
     title: 'Observatory',
   },
   wellbeing: {
-    code: 'D',
+    code: 'C',
     label: 'Wellbeing',
-    eyebrow: 'D · PRIVACY-AWARE DIGITAL WELLBEING',
+    eyebrow: 'C · PRIVACY-AWARE DIGITAL WELLBEING',
     title: 'Wellbeing',
   },
   exam: {
