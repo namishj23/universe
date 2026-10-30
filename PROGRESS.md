@@ -8,6 +8,7 @@ Master plan (scope, architecture, rubric): the "UniVerse — Implementation Plan
 
 | Area | Owner | Phase now | Status |
 | --- | --- | --- | --- |
+| Web A · B · D | Person 1 | U2 module screens: Hub (all roles), Rides (students and mentors), Wellbeing | Done — PR open (`p1/u2-modules`) |
 | Platform | Person 1 | P7 audit done (`docs/audit/P7-findings.md`); P6 integration: cross-module `publicApi`, week providers, route-guard metadata + `docs/ROLES.md`, demo story seed, `demo:reset`, storyline test (U1 merged) | Done — PR open (stacked on P5; contains the `main` and U1 merges) |
 | A · Student Hub | Person 1 | P4 profiles, prep tracker, mentor ranking, mentorship requests, resource repository (backend) | Done — PR open (stacked on #4) |
 | B · Ride-Pooling | Person 1 | P3b carpool offers, campus graph, detour matching, savings | Done — PR #4 open (stacked on #3) |
@@ -30,11 +31,21 @@ Master plan (scope, architecture, rubric): the "UniVerse — Implementation Plan
 | P8 | Fix audit findings | Sonnet 5.5 / high | Not started |
 | P9 | README, architecture, algorithms, docs | Sonnet 5.5 / medium | Not started |
 | U1 | Frontend shell and platform screens from the team's UI design (Opus 5.5 / high) | Opus 5.5 / high | Done (report: `docs/sessions/U1.md`) — branch `p1/u1-shell`, PR open |
-| U2 | Frontend screens for A, B, D from the team's UI design | Sonnet 5.5 / high | Waiting for UI |
+| U2 | Frontend screens for A, B, D from the team's UI design | Opus 5.5 / high | Done (report: `docs/sessions/U2.md`) — branch `p1/u2-modules`, PR open. Rides driver/admin screens cut (user) |
+| U3 | Full design matrix, visual baselines, behaviour and a11y tests for U2's screens | — | Not started (see "For U3") |
 
 Checkpoints with Person 2: merge to `main` at Hour 5 and Hour 7. Feature freeze at Hour 9.
 
 ## Decisions (newest first)
+
+- 2026-10-30 (U2) — **Scope (user decision mid-session): Rides is the student/mentor portal only.** Driver (Trips, Earnings) and admin (Overview, Drivers, Vehicles, Rides) screens were removed from U2; those roles see "Coming in the next build" on `/rides`. Add them later if there is time.
+- 2026-10-30 (U2) — **Shared widgets** (`apps/web/src/shell/ui/Widgets.tsx`): Card, CardLabel, Switch (`role="switch"`), Stepper, ProgressBar, GoalGrid, BarChart, KpiCard; plus `StopGraph.tsx` and `MatchCard.tsx` from Rides. New size tokens `--fs-36` (Prep OVERALL, Wellbeing TODAY) and `--fs-28` (match score), both from the prototype.
+- 2026-10-30 (U2) — **Live updates through the one stream:** `WebModule.invalidates` (`shell/modules.ts`) maps stored activity types to query keys; `ActivityProvider` invalidates them when an event arrives. Hub refreshes `['hub']` on `hub.request_*`; Rides maps its booking/offer/group types. No polling anywhere.
+- 2026-10-30 (U2) — **`request()` accepts FormData** (`platform/api.ts`): no JSON Content-Type, the CSRF header as usual. Used by hub resource uploads.
+- 2026-10-30 (U2) — **CSP and Zod:** Zod 4 probes `new Function` when object schemas are built (module load); the CSP blocks eval, so every page load logged a `script-src` violation (also before U2). `apps/web/public/zod-config.js`, a classic script before the bundle, sets `globalThis.__zod_globalConfig = { jitless: true }`. A module entry can't do it: Rolldown merges entries and doesn't keep execution order across a shared chunk.
+- 2026-10-30 (U2) — **Wellbeing on this device:** sanitised events, rules and focus sessions in IndexedDB `uv-wellbeing-<userId>` (`modules/wellbeing/local.ts`), in-memory with a one-line notice when IndexedDB fails. Only `{ date, category, minutes }` rows and settings reach the server (a test checks every body and URL). Wellbeing queries use `gcTime: 0` and are cleared on sign-out. "Delete everything" also clears the device store.
+- 2026-10-30 (U2) — **wellbeing-core P7-022 (d):** `dailyTotals` merges overlapping slices, caps each day at 1,440 minutes and drops dates outside `minDate`/`maxDate` (the caller passes today − retention from settings); tests in `test/daily.test.ts`.
+- 2026-10-30 (U2) — **Quick design check:** `tools/design-compare/u2/<module>.ts` (screens + route mocks parsed with the contracts) and `u2-compare.spec.ts` (`npx playwright test -c tools/design-compare/playwright.config.ts --project=u2`), results in `docs/sessions/U2-compare/`. Pixel helpers moved to `pixels.ts`. Smoke check: `tools/smoke/` (real app on 4100).
 
 - 2026-10-30 (P6) — **Cross-module interface (binding): `platform.modules.get(id)`.** A module definition may declare `publicApi`: read-only async functions whose input/output schemas live in `packages/contracts/src/<module>/public.ts` and are listed in `publicApiRegistry` (`packages/contracts/src/publicApi.ts`); a module must implement exactly its registry entry (checked at load). The platform keeps a per-platform registry filled by `loadModules` (`installModules`), so `get` resolves at call time (hub is built before rides and wellbeing) and returns `undefined` for a module that is not installed. Every call parses the input (a bad input is the caller's bug: plain 500), runs with a 500 ms `AbortSignal`, parses the output, and turns any failure or timeout into 503 `MODULE_UNAVAILABLE` (logged). Every input carries `actor: { id, role }` (extra fields such as a full `PublicUser` are stripped); the provider decides what the actor may see and never returns rows of its tables. Exposed: rides `findStop`, `searchStops`, `upcomingForUser`; hub `sessionsForUser`, `weeklyGoal`; wellbeing `studyMinutesThisWeek`.
 - 2026-10-30 (P6) — **Week items** (`weekItems` in each definition, U1's contract): rides from `upcomingForUser` (confirmed seats and pooled groups solid; requested seats, searching requests and forming groups dashed; driven offers "Driving from X · n of m seats"); hub student sessions ("Mentor session, <mentor> · accepted"), the Saturday all-day "Prep goal ends, N left" (students with tracked topics), mentor "N mentorship requests · waiting" at now, "Session with <student> · confirmed", pending requests that name a slot "· tentative" (dashed); wellbeing (owner) "Tracking paused" at `paused_since` and "Weekly summary" Sunday 09:00 when on or paused. Hrefs: `/hub/prep`, `/hub/mentors`, `/hub/requests`, `/rides/offers/<id>`, `/rides/groups/<id>`, `/rides/matches?requestId=<id>`, `/wellbeing`.
@@ -238,7 +249,52 @@ Ported from `routepool2-react-` @ `0c57429` into `apps/api/src/modules/rides/` (
 - **Demo data** (`docs/TEST-SCENARIOS.md` "Demo data at a glance"): Diya drives a 3-seat car (women-only off); Sneha is the women-only rider; Kabir and Ishita are approved carpool drivers; `aditya.rane@universe.test` is the inactive account. Neha's 08:30 from Malad is the **day after tomorrow** (not tomorrow), so Ishita, who drives her own ride tomorrow, is never in two cars on one morning. Aarav's seat request on it shows in his week as a dashed "requested" item.
 - **Storyline:** `apps/api/test/storyline.test.ts` is the live demo script; it re-books Neha's Monday slot (cancel, then request it) because the seed already has that session accepted and one live request per student and mentor is a database rule.
 
+## Web modules after U2 — what U3, P8 and Person 2 must know
+
+- **Routes:** Hub `/hub/{prep,mentors,resources,profile}` (student), `/hub/{requests,resources,profile,slots}` (mentor), `/hub/{resources,ranking}` (admin); `/hub` redirects to the role's first tab. Rides (student, mentor) `/rides` (Find a ride, also `?to=&date=&arriveBy=` from the hub ride link), `/rides/matches?requestId=`, `/rides/offer`, `/rides/pools`, `/rides/savings`, `/rides/groups/:id`, `/rides/offers/:id`. Wellbeing `/wellbeing`.
+- **Lazy chunks (gzip):** hub 10.1 kB, rides 12.9 kB, wellbeing 11.8 kB (+ 0.9–1.9 kB CSS each; sample days ~1 kB each, loaded on demand). Shared vendor chunk 77.6 kB, shell 107.7 kB.
+- **P8's contract changes:** all rides calls are in `apps/web/src/modules/rides/api.ts`. P7-018: change `assignDriver` to `POST /groups/:id/driver` (one marked line); `driverCard` stays the read-only GET. P7-004 and P7-012: nothing to change, the UI reads no non-member `userId`/full name and only the stops/times the server returns.
+
+### For U3
+
+| Designed screen | Role | Quick check (1440, light, normal) |
+| --- | --- | --- |
+| Hub · Prep tracker | student | 0.001% |
+| Hub · Mentors | student | 0% |
+| Hub · Resources | student | 0% |
+| Hub · Profile | student | 0% (undrawn PLACEMENT GOALS card masked) |
+| Hub · Requests | mentor | 0.006% (Slots tab and "Mark completed" masked) |
+| Rides · Find a ride | student | 0.015% |
+| Rides · Matches | student | 0.759% (trip line lacks "· around 08:10": no endpoint returns one request) |
+| Rides · Offer a ride | student | 0.222% (VEHICLE read-only style; "+" disabled at 3) |
+| Wellbeing | student | 0% (Focus and Rules cards masked) |
+
+| Undrawn screen | Built from (reference) |
+| --- | --- |
+| Hub · mentor Slots tab + New slot modal | Prep tracker table + Admin New user modal |
+| Hub · admin Mentor ranking table | Admin Users table |
+| Hub · Profile PLACEMENT GOALS / MENTOR PROFILE card | Profile card |
+| Hub · Prep FOCUS · FROM WELLBEING card | Prep OVERALL card |
+| Hub · request, add topics, upload, delete and cancel modals; student card drawer | designed modal; See my data drawer |
+| Rides · Auto pools, group detail, chat, feedback | Matches (match card) |
+| Rides · Savings | Observatory KPI cards and chart |
+| Rides · offer depart/complete/cancel, offer detail | Offer a ride |
+| Wellbeing · FOCUS SESSION and RULES cards | Wellbeing cards |
+| Wellbeing · drawer "ONLY ON THIS DEVICE" section | See my data drawer |
+
+- **Deleted placeholder baselines:** none existed (U1 never baselined the module placeholders), so none were deleted. `states.test.tsx`'s placeholder test now uses `/observatory`.
+- U3 still has to do: the full matrix (roles × themes × states × 1440/390) under 0.5%, visual baselines for every new screen and modal, behaviour tests, axe.
+
 ## Requests for the other owner
+
+- 2026-10-30 (U2, for Person 2): please review the U2 pull request. Shared areas it changes: `apps/web/src/shell/` (`ui/Widgets.tsx`, `ui/StopGraph.tsx`, `ui/MatchCard.tsx`, `--fs-36`/`--fs-28` tokens, `WebModule.invalidates` + `ActivityProvider`), `apps/web/src/platform/api.ts` (FormData), `apps/web/public/zod-config.js` + `index.html` (CSP fix), `packages/wellbeing-core` (P7-022 d), `tools/design-compare/` (u2 registry, `pixels.ts`), `.prettierignore`. For your screens: reuse `Card`, `KpiCard`, `BarChart`, `Switch` and the `invalidates` map (section "How to add your module's screens").
+- 2026-10-30 (U2, backend gaps for P8 or the next phase; web works around none of them with fake data):
+  - rides `GET /api/rides/requests/:id` (pickup, drop, `pickupTime`) for the Matches trip line after a reload, and `GET /api/rides/requests/mine` for "● searching, no match yet" rides;
+  - rides `OfferMatch.seats` (total seats, for "1 of 3 seats left"), `OfferBooking.score`, optional driver year/branch on a match;
+  - rides a CO₂ estimate in `RidesStatsReport` (Savings shows none);
+  - rides `GET /api/rides/carpool/driver` answers 404 when there is no record (a normal state that the browser logs as an error); `{ driver: null }` would be cleaner;
+  - rides UI not built: carpool driver application, rider self-boarding and pay steps, all driver and admin screens (user decision);
+  - hub `MentorCard.myRequest` could carry `rideLink` (the web now joins `GET /requests/mine`); a stop picker for new slots (web can add it from `/rides/graph`).
 
 - 2026-10-30 (P6, for Person 2): please review the P6 pull request (stacked on P5; it contains the merges of `main` and U1). Shared areas it changes, all authorised for this phase: `apps/api/src/platform/` (`publicApi` + `platform.modules`, `seedAfter`/`seedModules`, `RoleGuard`/`anyRole` on platform routes, `routeTable.ts`, module guards on `app.locals.mounted`, `platform.user_created` on account creation), `packages/contracts/` (`actor.ts`, `publicApi.ts`, `rides|hub|wellbeing/public.ts`, `arriveBy`, `OfferMatch.booking`, `rideLink`, `focusStudyMinutesThisWeek`, `platform.user_created`), `prisma/seed/` (`run.ts`, `story.ts`, `reset.ts`, `demo-reset.ts`, inactive account, welcome text), root `package.json` (`demo:reset`, `docs:roles`), `apps/web/src/modules/{hub,wellbeing}/module.ts`. **For your modules:** expose read-only functions to others with `publicApi` (add your schemas to `publicApiRegistry`), call others with `platform.modules.get(id)` inside handlers (never import another module), add `weekItems` for the week strip, and `seedAfter` if your seed needs another module's data. `npm run docs:roles` then lists your routes; the guard test needs every route behind `requireAuth` with role metadata (your module's `roles` already count). When you add `observatory`/`exam`, add your steps to the storyline's marked hook (`it.todo` in `apps/api/test/storyline.test.ts`).
 
@@ -280,7 +336,18 @@ Full guide: `docs/design/DESIGN-SYSTEM.md` sections 8–9.
 - **Dashboard card:** `dashboardCard(summaryData, user) => { big, text, status?, tone? } | null` from your `dashboardSummaryRegistry` schema; `null` shows the placeholder.
 - **Week items:** backend `weekItems(user, { from, to }, signal)` in your module definition (contract above).
 - **Shared components and states:** `PageHeader` with `AREA.<id>` eyebrow/title and `module="<id>"`, then `Loading`, `Empty`, `ErrorBox`, `Table`, `Chips`, `Modal`, `Drawer`, `useToast`. Live data: `useActivity().subscribe('<id>.<event>', fn)`.
+- **New in U2:** shared `Card`/`CardLabel`, `KpiCard` and `BarChart` (Observatory's KPI and chart style already exist), `Switch`, `Stepper`, `ProgressBar`, `MatchCard`; `WebModule.invalidates` (`{ 'exam.flag_raised': [['exam', 'flags']] }`) refreshes your queries when a stored activity event arrives; put every call in `apps/web/src/modules/<id>/api.ts` with keys `['<id>', …]` and the query `signal`; mutations show `ApiRequestError.message`.
+- **Exam Review:** the always-visible banner is like Wellbeing's privacy bar (render it outside the state switch, see `modules/wellbeing/Page.tsx`); flags list + detail like Hub Requests + the student drawer; never the words "cheating" or "misconduct".
+- **Observatory:** `KpiCard` grid + `BarChart` (`height={150}`) + `Table`; every energy/carbon figure labelled "estimate" (see `modules/rides/Savings.tsx`).
+- **Quick check:** add `tools/design-compare/u2/<id>.ts` (screens + `respond` mocks) and list it in `u2/index.ts`.
 - **Checks:** add your screens to `tools/design-compare/` (`matrix.ts`, `prototype.ts` driving, fixtures validated with your contracts), then `npm run design:compare` and `npm run test:visual -- --update-snapshots`.
+
+## README vs OpenAPI differences found in U2
+
+- Hub Prep grid: README `1fr | 300px`, prototype `flex 1 1 480px / 1 1 260px` (prototype followed). Wellbeing grid: README `1fr | 1fr | 300px`, prototype `repeat(auto-fit, minmax(280px, 1fr))`.
+- Hub admin "Mentor ranking": prototype reuses mentor cards; built as the `GET /admin/mentors` table the prompt asks for. The README names no endpoints for the request modal (`GET /mentors/:id` `openSlots`) or the ride line (`GET /requests/mine` `rideLink`).
+- Rides: trip steps are heading → board → complete (no "arrived"); a match has `seatsLeft` but no seat total ("1 seat left"); drivers are first names without year/branch ("Diya · driving"); a join request has no score.
+- Wellbeing: delete turns tracking **off** (P5), the design says "pauses".
 
 ## README vs OpenAPI differences found in U1
 
@@ -402,6 +469,20 @@ From the independent P1–P2 verification in P3a (the one high finding, the logi
 
 ## Open questions
 
+- decided: Rides for driver and admin shows "Coming in the next build"; only the student/mentor portal is built (user decision, U2).
+- decided: Hub's undrawn tabs go after the designed ones (mentor: Requests · Resources · Profile · Slots) (U2, unattended).
+- decided: "Upload PDF" opens a modal for title, subject and type, which `POST /resources` requires; the prototype uploads with no form (U2, unattended).
+- decided: the optimistic `+1` changes only the clicked row; OVERALL and the goal take the server's numbers when it answers (U2, unattended).
+- decided: the ride link is read from `GET /requests/mine` and joined to the mentor card by request id, because `MentorCard.myRequest` has no `rideLink` (U2, unattended).
+- decided: native selects are the "searchable" stop selects (typing jumps by name; short names are name prefixes); only drivable stops are listed (U2, unattended).
+- decided: PICKUP AROUND defaults to 08:10 (LEAVING 08:30), today if still ahead, else tomorrow (U2, unattended).
+- decided: the stop graph draws each match's legs with a client-side shortest path over road edges, for drawing only; scores are never recomputed (`ponytail:` in `rides/graph.ts`) (U2, unattended).
+- decided: Offer a ride shows the driver's soonest live offer; a student without a carpool record sees an explanation, no apply form (U2, unattended).
+- decided: "Import sample events" moves the sample day to end now and stores its session so it counts toward today; a user's own file keeps its times (U2, unattended).
+- decided: focus sessions count only stored or imported events (a page can't see other tabs); Start needs tracking on; uploads recompute every finished session on this device so a day's rows are replaced whole (U2, unattended).
+- decided: the "share study minutes with the Hub" switch sits in the Focus card (the design doesn't draw it) (U2, unattended).
+- decided: the smoke's wellbeing flow first deletes the student's rows for today (`DELETE /records?from=today&to=today`) so it can be re-run on `universe_u1`; `demo:reset` refuses any database but `universe`/`universe_test` (U2, unattended).
+
 - decided: Neha's 08:30 from Malad is the day after tomorrow, not tomorrow, so Ishita (eligible driver for Aarav tomorrow, and accepted on Neha's ride) is never in two cars on one morning (P6, unattended).
 - decided: the hidden-by-time match is Neha's kept Borivali → SPIT offer moved to tomorrow 07:55 (15 minutes early); the design's "pickup 08:25" can't be hidden by time because the matcher's SQL window already drops departures after 08:20 (P6, unattended).
 - decided: Diya's ride starts at Dahisar 08:02 (pickup at Borivali 08:10) with Rahul aboard, so the design's "1 of 3 seats left" is real (P6, unattended).
@@ -443,6 +524,12 @@ From the independent P1–P2 verification in P3a (the one high finding, the logi
 
 ## Session log (newest first)
 
+- 2026-10-30 07:55–08:55 — U2 Hub, Rides and Wellbeing screens from the design (Person 1, Opus 5.5 / high).
+  - Shared widgets, `invalidates` live-update map, FormData uploads, `--fs-36`/`--fs-28`, U2 compare registry; three builders in parallel (Hub, Rides, Wellbeing), integrated and committed one module at a time.
+  - Hub for every role (+ mentor Slots, admin ranking); Rides student/mentor portal (+ Auto pools, group chat, Savings), driver/admin cut by the user; Wellbeing with IndexedDB device store, Focus and Rules cards; P7-022 (d).
+  - Found and fixed a CSP `script-src eval` violation on every page load (Zod JIT probe).
+  - Quick check 0–0.76% per designed screen; 328 API + 58 web + 91 library tests; visual 214/214; smoke 6/6; audit 0; chunks 10–13 kB gzip.
+  - Branch `p1/u2-modules`. Full report: `docs/sessions/U2.md`. Next: U3 (and P8).
 - 2026-10-30 03:59–04:20 — P7 Independent audit, read-only (Person 1, Opus 5.5 / high, unattended).
   - Gates from a fresh clone: all green; tests ×3 with no flake, visual 214/214, audit 0. Root tsc still fails (P7-025).
   - CSRF probe across every unsafe route; secrets scan of the full history (clean); EXPLAIN with synthetic volume; SIGTERM with SSE and an upload in flight; CSP check on the built app.
