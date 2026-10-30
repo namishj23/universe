@@ -120,7 +120,11 @@ export const FeedbackRequest = z
   .object({
     cleanliness: z.number().int().min(1).max(5),
     condition: z.number().int().min(1).max(5),
-    tags: z.array(ComplaintTag).max(5).optional(),
+    tags: z
+      .array(ComplaintTag)
+      .max(5)
+      .refine((t) => new Set(t).size === t.length, 'Each tag at most once')
+      .optional(),
   })
   .strict();
 export const ReportRequest = z

@@ -822,9 +822,12 @@ module.exports = function riders(c, services) {
   // Repeated complaints flag the vehicle for inspection; enough of them take it off the road.
   async function addFeedback(userId, groupId, body) {
     const input = R.FeedbackRequest.parse(body);
-    await memberOrNotFound(groupId, userId);
+    const member = await memberOrNotFound(groupId, userId);
     const g = await prisma.ridesGroup.findUniqueOrThrow({ where: { id: groupId } });
     if (!g.vehicleId) throw c.badRequest('No driver has been assigned to this ride yet');
+    // Only a rider who was in the vehicle, once the ride has started, can rate it (P7-002).
+    if (!member.boardedAt || (g.status !== 'completed' && g.pickupAt.getTime() > Date.now()))
+      throw new p.http.ApiError(409, 'NOT_BOARDED', 'You can rate a ride once you have boarded it');
     const vehicle = await p.transaction(async (tx) => {
       await tx.$queryRaw`SELECT id FROM rides_vehicles WHERE id = ${g.vehicleId}::uuid FOR UPDATE`;
       const exists = await tx.ridesVehicleFeedback.findUnique({

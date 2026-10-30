@@ -62,10 +62,10 @@ function serviceStatus(v, now) {
 function complaintStatus(feedback, now) {
   const since = now - rules.complaintWindowDays * DAY_MS;
   const recent = feedback.filter((f) => f.createdAt.getTime() >= since);
-  const complaints = recent.reduce(
-    (n, f) => n + f.tags.filter((t) => rules.complaintTags.includes(t)).length,
-    0,
-  );
+  // Riders, not tags: one rider's feedback counts once, however many tags it carries (P7-002).
+  const complaints = new Set(
+    recent.filter((f) => f.tags.some((t) => rules.complaintTags.includes(t))).map((f) => f.userId),
+  ).size;
   const ratings = recent.flatMap((f) => [f.cleanliness, f.condition]);
   return {
     complaints,
