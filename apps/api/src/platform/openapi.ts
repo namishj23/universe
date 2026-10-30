@@ -29,6 +29,7 @@ import {
   UpdateUserRequest,
   WeekQuery,
   WeekResponse,
+  ERROR_CODES,
   exam,
 } from '@universe/contracts';
 import { basePath, type ModuleDefinition } from './modules/index.js';
@@ -337,6 +338,7 @@ export function buildOpenApiDocument(modules: readonly ModuleDefinition[]) {
       },
     },
     paths: { ...platformPaths, ...modulePaths },
+    'x-error-codes': ERROR_CODES,
     // Not routes of this API: the platform forwards them to a companion service when it is
     // configured (docs/integration/exam-service.md), after its own session, role, CSRF,
     // password-change and rate-limit checks.

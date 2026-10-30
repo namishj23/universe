@@ -74,6 +74,9 @@ module.exports = function admin(c, services) {
 
   // Call off a ride: the group is cancelled and every rider's request with it, so nobody is
   // left thinking they have a seat. Members hear it through the activity feed.
+  // Trip states that are still running; admin cancel/unassign closes them (P7-003).
+  const LIVE_TRIP = ['accepted', 'heading', 'started'];
+
   async function cancelRide(adminUser, groupId, body, requestId) {
     const { reason } = R.ReasonRequest.parse(body);
     const graph = await c.loadGraph();
@@ -92,6 +95,10 @@ module.exports = function admin(c, services) {
         data: { status: 'cancelled' },
       });
       await tx.ridesGroup.update({ where: { id: groupId }, data: { status: 'cancelled' } });
+      await tx.ridesDriverTrip.updateMany({
+        where: { groupId, status: { in: LIVE_TRIP } },
+        data: { status: 'cancelled' },
+      });
       await audit(
         tx,
         adminUser.id,
@@ -141,6 +148,10 @@ module.exports = function admin(c, services) {
           driverFemaleRequested: false,
           driverAcceptedAt: null,
         },
+      });
+      await tx.ridesDriverTrip.updateMany({
+        where: { groupId, status: { in: LIVE_TRIP } },
+        data: { status: 'unassigned' },
       });
       await audit(
         tx,
