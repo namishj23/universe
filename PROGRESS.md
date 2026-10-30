@@ -27,7 +27,7 @@ Master plan (scope, architecture, rubric): the "UniVerse — Implementation Plan
 | P5 | Module D: privacy logic library (sanitise, categorise, metrics) and API for opt-in daily totals, consent, export and delete | Opus 5.5 / high | Done (report: `docs/sessions/P5.md`) |
 | P6 | Cross-module links, seed data, test scenarios, demo storyline run through the API | Opus 5.5 / high | Done (report: `docs/sessions/P6.md`) |
 | P7 | Independent read-only audit of Platform, A, B, D | Opus 5.5 / high | Done (findings: `docs/audit/P7-findings.md`, report: `docs/sessions/P7.md`) |
-| P8 | Fix audit findings + exam-service gateway (Tier 0) | Opus 5.5 / high | In progress (branch `p1/p8-fixes`) |
+| P8 | Fix audit findings + exam-service gateway (Tier 0) | Opus 5.5 / high | Partly done (report: `docs/sessions/P8.md`): gateway + all HIGH fixed; mediums/lows deferred |
 | P9 | README, architecture, algorithms, docs | Sonnet 5.5 / medium | Not started |
 | U1 | Frontend shell and platform screens from the team's UI design (Opus 5.5 / high) | Opus 5.5 / high | Done (report: `docs/sessions/U1.md`) — branch `p1/u1-shell`, PR open |
 | U2 | Frontend screens for A, B, D from the team's UI design | Sonnet 5.5 / high | Waiting for UI |
@@ -389,6 +389,13 @@ Calls are validated both ways, limited to 500 ms and fail with 503 `MODULE_UNAVA
 
 **9. Week strip and seeds.** `weekItems(user, { from, to }, signal)` returns your dated items (contract `WeekProviderItem`; see the P6 decision for the copy style). If your seed needs another module's data, set `seedAfter: ['rides']`; `npm run demo:reset -- --yes` re-runs every seed from now (add your tables to `MODULE_TABLES` in `prisma/seed/reset.ts`).
 
+## P8 fixes
+
+- **Fixed:** the Tier 0 exam gateway; P7-001, 002, 003, 004, 005, 006, 008, 023. Tests: `apps/api/test/{exam,platform}/`, `test/rides/p7-audit.test.ts`, `test/rides/offer-recheck.test.ts`, `test/hub/p7-audit.test.ts`, `test/health.test.ts`.
+- **Deferred (15-minute deadline):** P7-007, 009–022, 024–028.
+- **Contract changes for U2:** P7-004, `RidesMatch.members` has no `userId`/`rideRequestId`, and non-members see first names only. P7-006 also changed `MentorshipRequest.student`, which is now `StudentCard | { id, name }`.
+- `demo:reset` and `db:seed` were re-run on `universe` after the UTC fix.
+
 ## P7 audit (for P8)
 
 Full findings, repro steps and evidence: `docs/audit/P7-findings.md` and `docs/audit/P7-evidence/`. Read-only phase: nothing below is fixed.
@@ -460,6 +467,8 @@ From the independent P1–P2 verification in P3a (the one high finding, the logi
 - P2: is 200 MB per user enough for exam clips (Person 2)? `STORAGE_QUOTA_MB` is one setting for everyone.
 
 ## Session log (newest first)
+
+- 2026-10-30 08:06–10:45 — P8 Exam gateway + HIGH audit fixes (Person 1, Opus 5.5 / high, unattended; laptop sleep mid-run, then a hard deadline). Branch `p1/p8-fixes`. Report: `docs/sessions/P8.md`. Next: P8b for the deferred findings.
 
 - 2026-10-30 03:59–04:20 — P7 Independent audit, read-only (Person 1, Opus 5.5 / high, unattended).
   - Gates from a fresh clone: all green; tests ×3 with no flake, visual 214/214, audit 0. Root tsc still fails (P7-025).
