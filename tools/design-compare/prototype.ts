@@ -42,6 +42,7 @@ export async function openPrototype(
   page: Page,
   base: string,
   opts: { role: DemoRole | null; screen: Screen; state: State; theme: Theme },
+  navigate?: (page: Page) => Promise<void>,
 ) {
   await freezeClock(page);
   const css = localFontsCss(base);
@@ -82,6 +83,11 @@ export async function openPrototype(
     if (role !== 'student') {
       await page.getByRole('button', { name: /viewing as/ }).click();
       await page.getByRole('button', { name: new RegExp(`^${NAMES[role]}`) }).click();
+    }
+    if (navigate) {
+      await navigate(page);
+      await settle(page);
+      return;
     }
     const nav = {
       dashboard: 'Dashboard',

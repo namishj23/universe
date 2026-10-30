@@ -22,6 +22,11 @@ export interface WebModule {
   activityText?: Record<string, (payload: unknown, event: ActivityEvent) => string>;
   /** The dashboard card for this module's summary data; null shows the placeholder card. */
   dashboardCard?: (data: unknown, user: PublicUser) => CardContent | null;
+  /**
+   * Live updates: the query keys to invalidate when a stored activity event of this type
+   * arrives on the stream (`ActivityProvider`). Keys start with the module id.
+   */
+  invalidates?: Partial<Record<string, readonly (readonly unknown[])[]>>;
 }
 
 type Area = ModuleId | 'admin' | 'platform';
