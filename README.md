@@ -40,7 +40,27 @@ done
 psql -d universe -c 'SELECT extensions.postgis_version();'
 ```
 
+Recommended (all three databases): store and compute times in UTC. The API pins every connection to UTC itself, so this only makes `psql` and other tools agree with it:
+
+```bash
+for db in universe universe_test universe_shadow; do psql -d "$db" -c "ALTER DATABASE $db SET timezone TO 'UTC';"; done
+```
+
 `CREATE EXTENSION postgis` needs a superuser; on Homebrew that is your macOS user, which `psql -d postgres` connects as. The `extensions` schema must be owned by `universe` in all three databases (`AUTHORIZATION universe`): the rides migration also creates `btree_gist` there as `universe`. `prisma.config.ts` uses `universe_shadow` on the same server unless `SHADOW_DATABASE_URL` is set.
+
+#### Exam Review (Module E, optional)
+
+Module E runs as its own Django service in `services/exam/` (contract: `docs/integration/exam-service.md`) with its own database and role, which have no rights on `universe`:
+
+```bash
+psql -d postgres <<'SQL'
+CREATE ROLE universe_exam LOGIN PASSWORD 'choose-another-strong-password';
+CREATE DATABASE universe_exam OWNER universe_exam;
+REVOKE ALL ON DATABASE universe FROM universe_exam;
+SQL
+```
+
+Then set both `EXAM_SERVICE_URL=http://127.0.0.1:8000` and `SERVICE_TOKEN_EXAM` (`openssl rand -base64 32`, the same value in the service's env) in `apps/api/.env`, and start the service as `services/exam/README.md` says (it listens on 127.0.0.1 only, with `waitress`). With either variable unset, Exam Review is simply not installed: it is absent from the navigation and `/api/exam/*` is 404.
 
 ### 3. Environment files
 
@@ -166,5 +186,6 @@ API tests refuse to run unless `DATABASE_URL` in `apps/api/.env.test` points at 
 | Role-based access | Implemented on every route; `docs/ROLES.md` is generated from the guards |
 | Demo data | Seeded, time-relative and consistent across modules; `npm run demo:reset` |
 | Web: Hub, Rides, Wellbeing, Observatory, Exam screens | Placeholder "Coming in the next build" (U2 / Person 2) |
-| Observatory: energy and carbon figures | Person 2 (not started). When built, every energy and carbon number is an **estimate** |
-| Exam monitoring | Person 2 (not started) |
+| Observatory (Module C) | **Dropped** by team decision |
+| Exam Review (Module E): platform gateway | Implemented: `/api/exam/*` forwarded to the exam service after the platform's session, role, CSRF, password-change and rate-limit checks (streamed bodies, 200 MB limit, header allow-list, 503 when down); internal activity, audit and live-progress routes for the service |
+| Exam Review: the service (clips, flags for human review) | Being built in `services/exam/` (phase E1). Flags are for human review only; nothing is decided automatically |
