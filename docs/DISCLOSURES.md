@@ -23,3 +23,18 @@
 | Check scripts | `scripts/check*.js` | Rewritten as Vitest tests (`apps/api/test/rides/`) |
 
 **Not reused (replaced by the platform):** emailed one-time-code sign-in, staff password sign-in, JWT tokens, `ADMIN_EMAILS`, the mailer, the in-memory mock store (`USE_MOCK_DB`), Module B's own Prisma client, error handler, raw-body document upload and admin action log. `backend/.env` was never read or copied.
+
+### Module E · Exam Review (exam service, `services/exam/`)
+
+| Part | Source / licence | How it was used |
+| --- | --- | --- |
+| Ultralytics YOLOv8 library and the `yolov8n.pt` / `yolov8n-pose.pt` weights (release v8.2.0) | Ultralytics, AGPL-3.0 | Person and phone detection, pose keypoints for head turns. Weights are downloaded into `ML_DIR`, never committed |
+| PyTorch, torchvision | BSD-3-Clause | Runtime for the models (CPU, Apple MPS or CUDA) |
+| OpenCV (`opencv-python`) | Apache-2.0 | Reading clips, drawing and encoding snapshots |
+| Django, Django REST framework, drf-spectacular | BSD-3-Clause | The service's web framework and API |
+| waitress | ZPL-2.1 | Production WSGI server on 127.0.0.1 |
+| Kaggle "ExamCheating" image dataset | Kaggle dataset licence | Used only to train the optional, off-by-default posture classifier (`exam_behaviour_cls.pt`); never shipped or committed |
+| Four Pexels sample clips (6672346, 6672245, 6672192, 6672378) | Pexels licence (staged with actors) | Demo and hand-checked sample only; not committed |
+| A classmate's original exam-monitoring project | Reused with permission | Starting point for the detection idea; heavily changed |
+| Person 2's adaptation (`393f5fb`, `7c60584`) | Team code | Detection logic (`FrameAnalyzer`, IoU tracker, head baselines, zone and phone attribution) kept; restructured into this service in E1 |
+| Claude Code (Claude Opus 5.5) | AI assistant | Wrote the E1 restructuring, API, tests and docs under Person 1's direction |

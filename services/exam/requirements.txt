@@ -1,0 +1,17 @@
+# Exam service (Module E). Exact pins that install on macOS (arm64/x86_64) and Windows, Python 3.11.
+# Checked with pip-audit: no known vulnerabilities (2026-10-30).
+#
+# PyTorch: plain `pip install -r requirements.txt` gives the CPU build on Windows and the
+# CPU + Apple GPU (MPS) build on macOS. For an NVIDIA GPU on Windows, install torch and
+# torchvision first from the CUDA wheel index, then this file (see README, "Windows + NVIDIA").
+Django==5.2.18
+djangorestframework==3.18.3
+drf-spectacular==0.30.0
+waitress==3.0.2
+psycopg[binary]==3.3.6
+torch==2.15.0
+torchvision==0.29.2
+ultralytics==8.4.193
+opencv-python==5.0.0.93
+numpy==2.4.6
+pillow==13.0.0
