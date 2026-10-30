@@ -147,6 +147,11 @@ describe('prep API', () => {
       s.http.post(`/api/hub/prep/${topic}/increment`).send({ delta });
     const first = hub.IncrementResponse.parse((await inc('res-review', 1).expect(200)).body);
     expect(first.topic).toMatchObject({ solved: 1, total: 1, percent: 100 });
+    // The UPDATE sets updated_at = now() (database clock): it reads back as now (P7-001).
+    const row = await prisma.hubTopicProgress.findFirstOrThrow({
+      where: { userId: s.user.id, topicId: 'res-review' },
+    });
+    expect(Math.abs(row.updatedAt.getTime() - Date.now())).toBeLessThan(2_000);
     expect(first.week.done).toBe(1);
     expectError(await inc('res-review', 1), 409, 'PROGRESS_OUT_OF_RANGE'); // above total
     await inc('res-review', -1).expect(200);

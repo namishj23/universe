@@ -147,6 +147,10 @@ The API contract is `docs/api/openapi.json` (OpenAPI 3.1). With `npm run dev` ru
 
 API tests refuse to run unless `DATABASE_URL` in `apps/api/.env.test` points at a database whose name ends in `_test`.
 
+## Known limitations
+
+- **Times stored before P8 on an existing `universe` database are 5 h 30 m early** (P7-001: connections used the Mac's IST session time zone). The API now pins every connection to UTC, and `npm run demo:reset -- --yes && npm run db:seed` re-creates all demo data correctly. Rows the reset does not touch — users' `created_at`/`last_login_at`, sessions and the append-only audit log — keep the old shift on a local dev database; the audit log is deliberately not rewritten (its trigger forbids it). Existing sessions may expire early: sign in again. A fresh setup is not affected.
+
 ## Architecture
 
 > **Placeholder (P9):** monorepo layout, request pipeline, sessions and CSRF, activity feed and SSE, link to `docs/ARCHITECTURE.md`.
