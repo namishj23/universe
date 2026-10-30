@@ -1,6 +1,6 @@
 import { existsSync } from 'node:fs';
 import { readdir } from 'node:fs/promises';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { Router, type Express } from 'express';
 import { z } from 'zod';
 import type { ZodOpenApiPathsObject } from 'zod-openapi';
@@ -156,7 +156,8 @@ export async function loadModules({
       problems.push(`${folder}: no index.ts or index.js`);
       continue;
     }
-    const mod = (await import(entry)) as { default?: unknown };
+    // A file URL, not a path: on Windows `import('D:\\...')` fails (ERR_UNSUPPORTED_ESM_URL_SCHEME).
+    const mod = (await import(pathToFileURL(entry).href)) as { default?: unknown };
     if (typeof mod.default !== 'function') {
       problems.push(`${folder}: must default-export a factory (platform) => definition`);
       continue;
