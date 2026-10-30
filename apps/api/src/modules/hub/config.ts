@@ -13,6 +13,8 @@ export const config = {
     windowDays: 7,
     nextSlots: 3,
   },
+  /** A mentor still sees a student's card this long after their session was completed. */
+  cardDaysAfterCompletion: 14,
   /** Accept without a slot books the earliest open slot at least this far away. */
   acceptLeadMinutes: 60,
   /** A repeated Idempotency-Key from the same user is ignored for this long. */

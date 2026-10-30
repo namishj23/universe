@@ -1,5 +1,6 @@
 import type { PublicUser } from '@universe/contracts';
 import type { Platform } from '../../platform/modules/index.js';
+import { config } from './config.js';
 
 /** The interactive-transaction client `platform.transaction` hands to its callback. */
 export type Tx = Parameters<Parameters<Platform['transaction']>[0]>[0];
@@ -78,3 +79,27 @@ export function violates(err: unknown, constraint: string): boolean {
   };
   return walk(err);
 }
+
+/**
+ * Whether a mentor may see the student's live card through this request (P7-006): while it is
+ * pending or accepted, or for 14 days after the session was completed. Closed requests show
+ * the student's name only.
+ */
+export const cardVisibleWhere = (now = new Date()) => ({
+  OR: [
+    { status: { in: ['pending', 'accepted'] } },
+    {
+      status: 'completed',
+      completedAt: { gte: new Date(now.getTime() - config.cardDaysAfterCompletion * 86_400_000) },
+    },
+  ],
+});
+export const cardVisible = (
+  r: { status: string; completedAt: Date | null },
+  now = Date.now(),
+): boolean =>
+  r.status === 'pending' ||
+  r.status === 'accepted' ||
+  (r.status === 'completed' &&
+    r.completedAt !== null &&
+    r.completedAt.getTime() >= now - config.cardDaysAfterCompletion * 86_400_000);
