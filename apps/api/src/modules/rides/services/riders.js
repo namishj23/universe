@@ -158,6 +158,8 @@ module.exports = function riders(c, services) {
 
   // ── Views of groups ───────────────────────────────────────────────────────────────────
   const riderOf = (m) => ({ userId: m.userId, name: m.name, dropNodeId: m.dropNodeId });
+  // Someone outside the group sees members by first name only, as carpool offers do (P7-004).
+  const asStranger = (m) => ({ ...m, name: c.firstNameOf(m.name) });
   const farthestOf = (members) => members.reduce((a, b) => (b.distanceM > a.distanceM ? b : a));
 
   const memberRow = (m, f, i, graph, userId, extra = {}) => ({
@@ -182,9 +184,10 @@ module.exports = function riders(c, services) {
     { joinAs = false, joinBlockedReason = null } = {},
   ) {
     const far = farthestOf(members);
-    const riders = members.map(riderOf);
-    if (joinAs) riders.push({ userId, name: 'You', dropNodeId: far.dropNodeId });
     const mine = members.find((m) => m.userId === userId);
+    const shown = mine ? members : members.map(asStranger);
+    const riders = shown.map(riderOf);
+    if (joinAs) riders.push({ userId, name: 'You', dropNodeId: far.dropNodeId });
     const now = Date.now();
     return {
       id: g.id,
@@ -197,7 +200,7 @@ module.exports = function riders(c, services) {
       dropName: graph.stop(far.dropNodeId).name,
       pickupTime: g.pickupAt.toISOString(),
       seatsLeft: cfg.matching.maxGroupSize - members.length,
-      members: members.map((m) => ({
+      members: shown.map((m) => ({
         name: m.name,
         initials: c.initialsOf(m.name),
         dropName: graph.stop(m.dropNodeId).name,
@@ -376,7 +379,7 @@ module.exports = function riders(c, services) {
         continue;
       }
       const all = [
-        ...ms,
+        ...ms.map(asStranger),
         {
           userId,
           requestId: target.id,
@@ -401,7 +404,15 @@ module.exports = function riders(c, services) {
         pickupNode: graph.stop(g.pickupNodeId),
         memberRideRequestIds: all.map((m) => m.requestId),
         fare: f,
-        members: all.map((m, i) => memberRow(m, f, i, graph, userId)),
+        // No user or request ids of other riders; memberRideRequestIds stays (join needs it).
+        members: all.map((m, i) => {
+          const {
+            userId: _user,
+            rideRequestId: _request,
+            ...row
+          } = memberRow(m, f, i, graph, userId);
+          return row;
+        }),
       });
     }
     results.sort((a, b) => b.score - a.score || a.pickupTime.localeCompare(b.pickupTime));

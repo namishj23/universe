@@ -1,10 +1,12 @@
 // The P7 audit's rides repros (docs/audit/P7-evidence/probes/p7-rides.test.ts.txt), kept as
 // permanent regression tests for the P8 fixes. Each asserts the safe behaviour.
 import { beforeAll, describe, expect, it } from 'vitest';
+import { rides as R } from '@universe/contracts';
 import {
   account,
   driverEmail,
   prisma,
+  request,
   setupRides,
   startGroup,
   status,
@@ -106,6 +108,21 @@ describe('P7 rides repros', () => {
       (await stranger.http.get('/api/rides/groups/available?limit=100').expect(200)).body,
     );
     expect(body).not.toContain('Kapoorfamily');
+    expect(body).toContain('Meera');
+    expect(body).not.toContain(owner.user.id);
+    // The matches for a stranger's own request: first names, no user or request ids.
+    const req = await request(stranger, 'Azad Nagar', 'Ghatkopar', 121);
+    const matches = (await stranger.http.get(`/api/rides/matches?rideRequestId=${req.id}`).expect(200))
+      .body as R.RidesMatches;
+    const g = matches.groups.find((m) => m.members.some((x) => x.name === 'Meera'));
+    expect(g).toBeDefined();
+    const text = JSON.stringify(matches);
+    expect(text).not.toContain('Kapoorfamily');
+    expect(text).not.toContain(owner.user.id);
+    for (const m of g!.members) expect(m).not.toHaveProperty('userId');
+    // A member keeps the full view.
+    const mine = JSON.stringify((await owner.http.get('/api/rides/groups/mine').expect(200)).body);
+    expect(mine).toContain('Meera Kapoorfamily');
   });
 
   it('P7-R6: GET /admin/drivers pages past the first page', async () => {

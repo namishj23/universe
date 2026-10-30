@@ -282,9 +282,11 @@ export const RidesMatch = z
     distanceM: Metres,
     seatsLeft: z.number().int(),
     pickupNode: StopRef,
+    /** Opaque: pass back unchanged to `POST /groups/join`. */
     memberRideRequestIds: z.array(Id),
     fare: FareBreakup,
-    members: z.array(MemberRow),
+    /** Other riders by first name, without user or request ids (P8, P7-004). */
+    members: z.array(MemberRow.omit({ userId: true, rideRequestId: true })),
   })
   .meta({ id: 'RidesMatch' });
 

@@ -447,7 +447,13 @@ module.exports = function drivers(c, services) {
       await tx.ridesDriverTrip.upsert({
         where: { groupId_driverId: { groupId, driverId: userId } },
         create: { groupId, driverId: userId, ...accepted },
-        update: { ...accepted, declinedAt: null, headingAt: null, startedAt: null, completedAt: null },
+        update: {
+          ...accepted,
+          declinedAt: null,
+          headingAt: null,
+          startedAt: null,
+          completedAt: null,
+        },
       });
       const members = await tx.ridesGroupMember.findMany({
         where: { groupId },
