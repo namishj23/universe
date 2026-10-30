@@ -4,7 +4,17 @@ import globals from 'globals';
 import tseslint from 'typescript-eslint';
 
 export default tseslint.config(
-  { ignores: ['**/dist/**', '**/coverage/**', 'apps/api/src/generated/**'] },
+  {
+    ignores: [
+      '**/dist/**',
+      '**/coverage/**',
+      'apps/api/src/generated/**',
+      // Claude Design's handoff bundle: reference material, not our code.
+      'docs/design/**',
+      '**/test-results/**',
+      '**/playwright-report/**',
+    ],
+  },
   js.configs.recommended,
   ...tseslint.configs.recommendedTypeChecked,
   {

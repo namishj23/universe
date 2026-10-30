@@ -1,14 +1,20 @@
 import { existsSync } from 'node:fs';
 import { readdir } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
-import { Router, type Express } from 'express';
+import { Router, type Express, type RequestHandler } from 'express';
 import { z } from 'zod';
 import type { ZodOpenApiPathsObject } from 'zod-openapi';
-import { ModuleId, Role, type ModuleInfo, type PublicUser } from '@universe/contracts';
-import { authOf, requireAuth, requireRole } from '../auth/guards.js';
-import { platform as sharedPlatform, type Platform } from './platform.js';
+import {
+  ModuleId,
+  publicApiRegistry,
+  Role,
+  type ModuleInfo,
+  type PublicUser,
+} from '@universe/contracts';
+import { anyRole, authOf, requireAuth, requireRole } from '../auth/guards.js';
+import { installModules, platform as sharedPlatform, type Platform } from './platform.js';
 
-export type { Platform } from './platform.js';
+export type { Platform, PublicApiImpl } from './platform.js';
 
 /** A stored file as a purpose's `authorizeRead` sees it. */
 export interface StoredFile {
@@ -48,8 +54,26 @@ export interface ModuleDefinition {
   router: Router;
   /** Data for `GET /api/dashboard`; must match `dashboardSummaryRegistry[id]` in contracts. */
   dashboardSummary?: (user: PublicUser, signal: AbortSignal) => Promise<unknown>;
+  /**
+   * Dated items for the dashboard's week strip (`GET /api/dashboard/week`): the user's items
+   * in `[from, to)`, matching `WeekProviderOutput` in contracts. Same 1.5 s budget as the
+   * summary; respect `signal`.
+   */
+  weekItems?: (
+    user: PublicUser,
+    range: { from: Date; to: Date },
+    signal: AbortSignal,
+  ) => Promise<unknown>;
+  /**
+   * Read-only functions other modules may call (`platform.modules.get(id)`): exactly the ones
+   * `publicApiRegistry[id]` in contracts lists. Each gets parsed input and an AbortSignal
+   * (500 ms); decide what `input.actor` may see, and never hand out rows of your tables.
+   */
+  publicApi?: Record<string, (input: never, signal: AbortSignal) => Promise<unknown>>;
   /** Demo data, run by `npm run db:seed` after the platform seed. Must be idempotent. */
   seed?: () => Promise<void>;
+  /** Modules whose seed must run before this one's (e.g. hub's slots name rides stops). */
+  seedAfter?: readonly ModuleId[];
   filePurposes?: readonly FilePurpose[];
   /** OpenAPI paths for this module's routes, relative to `/api/<id>` (e.g. `/rides/{id}`). */
   openapi?: ZodOpenApiPathsObject;
@@ -71,7 +95,10 @@ const Definition = z
       'must be an Express Router',
     ),
     dashboardSummary: fn.optional(),
+    weekItems: fn.optional(),
+    publicApi: z.record(z.string(), fn).optional(),
     seed: fn.optional(),
+    seedAfter: z.array(ModuleId).optional(),
     filePurposes: z
       .array(
         z
@@ -107,6 +134,20 @@ export function validateModules(found: { folder: string; value: unknown }[]): Mo
     if (other)
       problems.push(`${folder}: id "${id}" (base path /api/${id}) is already used by ${other}`);
     seen.set(id, folder);
+    const specs = (publicApiRegistry as Record<string, Record<string, unknown> | undefined>)[id];
+    const offered = Object.keys(parsed.data.publicApi ?? {}).sort();
+    if (offered.length > 0 && !specs)
+      problems.push(`${folder}: publicApi needs an entry in publicApiRegistry (contracts)`);
+    else if (
+      offered.length > 0 &&
+      offered.join() !==
+        Object.keys(specs ?? {})
+          .sort()
+          .join()
+    )
+      problems.push(
+        `${folder}: publicApi must implement exactly ${Object.keys(specs ?? {}).join(', ')}`,
+      );
     for (const p of parsed.data.filePurposes ?? []) {
       if (!p.id.startsWith(`${id}.`))
         problems.push(`${folder}: file purpose ${p.id} must start with "${id}."`);
@@ -165,7 +206,34 @@ export async function loadModules({
   }
   if (problems.length > 0)
     throw new Error(`Invalid module definitions:\n${problems.map((p) => `  - ${p}`).join('\n')}`);
-  return validateModules(found);
+  const modules = validateModules(found);
+  installModules(platform, modules);
+  return modules;
+}
+
+/**
+ * Runs every module's seed once, each after the modules in its `seedAfter` (then by id).
+ * Used by `npm run db:seed`, `npm run demo:reset` and tests.
+ */
+export async function seedModules(
+  modules: readonly ModuleDefinition[],
+  onSeeded: (id: ModuleId) => void = () => {},
+): Promise<void> {
+  const byId = new Map(modules.map((m) => [m.id, m]));
+  const done = new Set<string>();
+  const visit = async (m: ModuleDefinition, path: readonly string[]): Promise<void> => {
+    if (done.has(m.id)) return;
+    if (path.includes(m.id)) throw new Error(`seedAfter cycle: ${[...path, m.id].join(' → ')}`);
+    for (const dep of m.seedAfter ?? []) {
+      const before = byId.get(dep);
+      if (before) await visit(before, [...path, m.id]);
+    }
+    done.add(m.id);
+    if (!m.seed) return;
+    await m.seed();
+    onSeeded(m.id);
+  };
+  for (const m of [...modules].sort((a, b) => a.id.localeCompare(b.id))) await visit(m, []);
 }
 
 /** The modules a role may use, in navigation order. */
@@ -174,15 +242,25 @@ export const visibleModules = (modules: readonly ModuleDefinition[], role: Role)
 
 export const basePath = (m: Pick<ModuleDefinition, 'id'>) => `/api/${m.id}`;
 
-/** Mounts each module behind the outer guard, so a module can never forget it. */
-export function mountModules(app: Express, modules: readonly ModuleDefinition[]): void {
-  for (const m of modules) app.use(basePath(m), requireAuth, requireRole(...m.roles), m.router);
+/**
+ * Mounts each module behind the outer guard, so a module can never forget it. Returns the
+ * guards per base path for the route table (`docs/ROLES.md`).
+ */
+export function mountModules(
+  app: Express,
+  modules: readonly ModuleDefinition[],
+): { prefix: string; router: Router; guards: RequestHandler[] }[] {
+  return modules.map((m) => {
+    const guards = [requireAuth, requireRole(...m.roles)];
+    app.use(basePath(m), ...guards, m.router);
+    return { prefix: basePath(m), router: m.router, guards };
+  });
 }
 
 /** `GET /api/modules`: what the UI's navigation shows for the signed-in role. */
 export function moduleListRoutes(modules: readonly ModuleDefinition[]): Router {
   const router = Router();
-  router.get('/', requireAuth, (req, res) => {
+  router.get('/', requireAuth, anyRole, (req, res) => {
     const body: ModuleInfo[] = visibleModules(modules, authOf(req).user.role).map((m) => ({
       id: m.id,
       label: m.label,

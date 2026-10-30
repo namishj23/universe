@@ -85,21 +85,27 @@ All use the `SEED_DEMO_PASSWORD` from `apps/api/.env`.
 | Email | Name | Role |
 | --- | --- | --- |
 | student@universe.test | Aarav Mehta | student |
-| student2@universe.test | Diya Kulkarni | student |
-| mentor@universe.test | Prof. Neha Iyer | mentor |
+| student2@universe.test | Diya Kulkarni | student (carpool driver: car, 3 seats; women-only rides off) |
+| mentor@universe.test | Prof. Neha Iyer | mentor (carpool driver: car, 3 seats) |
 | invigilator@universe.test | Rohan Desai | invigilator |
 | admin@universe.test | Admin Office | admin |
 | sameer.joshi@universe.test, kavita.nair@universe.test, arjun.menon@universe.test | Dr. Sameer Joshi, Prof. Kavita Nair, Prof. Arjun Menon | mentor (Student Hub: slots, Kavita has 5 mentees) |
-| kabir.shah@universe.test, ishita.rao@universe.test, sneha.patil@universe.test, rahul.verma@universe.test | Kabir Shah, Ishita Rao, Sneha Patil, Rahul Verma | student (Student Hub sample data) |
+| kabir.shah@universe.test, ishita.rao@universe.test | Kabir Shah, Ishita Rao | student (Student Hub sample data; carpool drivers, cars with 3 seats) |
+| sneha.patil@universe.test | Sneha Patil | student (female rider with women-only rides on) |
+| rahul.verma@universe.test | Rahul Verma | student |
+| aditya.rane@universe.test | Aditya Rane | student, **inactive** (shows the INACTIVE state; cannot sign in) |
 | priya.more@drivers.universe.test (and the other six roster drivers, `first.last@drivers.universe.test`) | Priya More | driver (auto, online, documents approved) |
 | kiran.pawar@drivers.universe.test | Kiran Pawar | driver (licence expiring in ~10 days, no vehicle) |
 | ganesh.salunkhe@drivers.universe.test | Ganesh Salunkhe | driver (no documents, no vehicle) |
 
-`student@` (Aarav) also has a wellbeing week matching the design (tracking paused two hours before the seed, today 3 h 32 m, 7-day average 4 h 24 m).
+The seed tells one story, relative to the time you run it (details in `docs/TEST-SCENARIOS.md`, "Demo data"):
+- **Aarav (`student@`)**, week strip: today "Tracking paused"; tomorrow 08:10 Borivali → SPIT with Diya driving (confirmed) and a 17:30 return still searching; the Saturday prep-goal deadline (6 left); Sunday 09:00 weekly summary; Monday 15:30 mentor session with Prof. Neha Iyer at SPIT Main Gate, with a ride link. Inbox: the admin's "Library open until 23:00 through exam week." (2 hours ago), Diya's and Neha's acceptances (earlier today, unread), last week's wellbeing summary and the welcome (read). Wellbeing: today 3 h 32 m, 7-day average 4 h 24 m.
+- **Rides:** Aarav's 08:10 request matches Diya (joined, 1 of 3 seats left), Kabir and Ishita (eligible), and hides Neha's 07:55 (outside ±10 min). Neha drives 08:30 from Malad the day after tomorrow (Ishita accepted; Kabir and Aarav requesting). Kabir drives to SPIT Main Gate on Monday, arriving about 15:07. One completed shared ride yesterday feeds Aarav's savings. Pooled autos: two forming groups and one open request.
+- **Reset:** `npm run demo:reset -- --yes` empties every hub, rides and wellbeing table and the activity feed (never users, sessions or the audit log) and seeds again, so the story starts from now. It refuses unless the database is on `localhost`/`127.0.0.1` and is `universe` with `NODE_ENV=development` (or `universe_test` with `NODE_ENV=test`); without `--yes` it only prints what it would delete.
 
-`student2` is the female demo rider with women-only groups on. The seed also adds two forming ride groups and one open request relative to the time you run it.
+The web app has the platform screens (sign-in, forced and voluntary password change, dashboard "Your week", inbox, admin users and audit log) built from the team's Claude Design handoff; module screens arrive in U2, and every feature is reachable through the API (see `docs/api/openapi.json`). Set `VITE_DEMO_MODE=true` (e.g. in `apps/web/.env.local`) to list these accounts on the sign-in screen: a click fills the email only, never a password.
 
-The web app is a placeholder until the team's UI design arrives (phases U1–U2); every feature is reachable through the API (see `docs/api/openapi.json`).
+To run a second copy of the repo beside the first, put `WEB_PORT` and `API_PORT` in `apps/web/.env.local` (the dev server's port and the API it proxies to).
 
 ### Tests and checks
 
@@ -109,7 +115,13 @@ npm run typecheck
 npm run lint
 npm run db:test:reset  # optional: drop and re-create universe_test's tables from migrations
 npm run api:docs       # regenerate docs/api/openapi.json after changing routes (a test checks it)
+npm run docs:roles     # regenerate docs/ROLES.md (who may call each route) from the route guards (a test checks it)
+npm run demo:reset -- --yes  # start the demo story again from now (local databases only)
+npm run test:visual    # web screenshots vs committed baselines (route-mocked; no API needed)
+npm run design:compare # prototype vs build pixel comparison -> docs/sessions/U1-compare/
 ```
+
+First time only: `npx playwright install chromium`. Visual baselines are macOS Chromium; after a deliberate UI change run `npm run test:visual -- --update-snapshots` and review every changed image. The design rules are in `docs/design/DESIGN-SYSTEM.md`.
 
 The API contract is `docs/api/openapi.json` (OpenAPI 3.1). With `npm run dev` running, browse it at http://localhost:4000/api/docs (not served in production).
 
@@ -136,13 +148,23 @@ API tests refuse to run unless `DATABASE_URL` in `apps/api/.env.test` points at 
 | Rides: auto-rickshaw tariff (Rs 27 first 1.5 km, Rs 18/km, x1.2) | Implemented with fixed Mumbai demo rates |
 | Rides: drivers and vehicles | Seeded roster of 7 autos and 9 driver accounts; driver assignment, accept/decline, trip steps, document review implemented |
 | Rides: driver documents and inspection photos | Implemented uploads and review; the seeded documents are placeholder PDFs |
-| Rides: payment | Simulated: records that the rider finished the payment step and the method; no money moves |
-| Rides: driver ETA | Simulated: random 3–8 minutes at assignment |
+| Rides: payment | **Simulated**: records that the rider finished the payment step and the method; no money moves |
+| Rides: driver ETA | **Simulated**: random 3–8 minutes at assignment |
+| Rides: ride to a mentor session (`arriveBy`) | Implemented: pickup time = arrival time minus the shortest-path driving time on the stop graph (an estimate from average speeds) |
 | Rides: group chat | Implemented (stored, live over SSE) |
 | Hub: profiles, placement goals, prep tracker with weekly goal, readiness and 30-day progress | Implemented (backend; screens in U2). The prep catalogue's problem counts are demo sizes |
 | Hub: mentor ranking, slots and mentorship requests | Implemented: ranking from prep weakness, interests, free slots and load; row-locked accept; activity events |
 | Hub: resource repository with search | Implemented: uploads checked from the bytes, full-text plus uploader-name search, soft delete. The six seeded files are generated title pages padded to the design's sizes |
-| Wellbeing: browsing events, sanitising, rules, focus sessions, metrics | Implemented as a browser-side library (`packages/wellbeing-core`), tested with three synthetic sample days; the UI and IndexedDB storage come in U2. There is no browser extension: events come from the sample files (import demo) |
+| Wellbeing: browsing events, sanitising, rules, focus sessions, metrics | Implemented as a browser-side library (`packages/wellbeing-core`), tested with three synthetic sample days; the UI and IndexedDB storage come in U2. **Simulated input:** there is no browser extension; browsing events come from the sample files (import demo) |
+| Wellbeing → Student Hub: focus study minutes | Implemented, opt-in: the hub shows this week's study minutes only when the student turns sharing on; nothing else leaves Wellbeing |
 | Wellbeing: daily totals, consent per category, pause, see my data, export, delete | Implemented (backend; screens in U2). The server stores only one total in minutes per category per day and the settings |
 | Wellbeing: weekly summary, retention | Implemented (hourly job; notification text only, no numbers) |
-| Observatory, Exam monitoring | Person 2 (not started) |
+| Web: platform screens (sign-in, password change, dashboard, inbox, admin) | Implemented against the real API, light and dark, 360px and up |
+| Web: dashboard week strip | Implemented (`GET /api/dashboard/week`) with items from Hub, Rides and Wellbeing |
+| Web: dashboard cards for Hub, Rides, Wellbeing; inbox wording | Implemented from each module's summary and activity contracts |
+| Cross-module links (`platform.modules.get`) | Implemented: read-only, validated, 500 ms limit; a missing module never breaks another |
+| Role-based access | Implemented on every route; `docs/ROLES.md` is generated from the guards |
+| Demo data | Seeded, time-relative and consistent across modules; `npm run demo:reset` |
+| Web: Hub, Rides, Wellbeing, Observatory, Exam screens | Placeholder "Coming in the next build" (U2 / Person 2) |
+| Observatory: energy and carbon figures | Person 2 (not started). When built, every energy and carbon number is an **estimate** |
+| Exam monitoring | Person 2 (not started) |

@@ -215,6 +215,8 @@ export const OfferMatch = z
     costSharePaise: Paise,
     soloFarePaise: Paise,
     savingsPaise: Paise,
+    /** Your seat on this offer for this request (the design's REQUESTED / JOINED cards), else null. */
+    booking: z.object({ id: Id, status: z.enum(['requested', 'accepted']) }).nullable(),
   })
   .meta({ id: 'RidesOfferMatch' });
 

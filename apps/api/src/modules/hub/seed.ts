@@ -403,7 +403,13 @@ export async function seedHub(p: Platform): Promise<void> {
   }
 
   // Slots and requests (only for a mentor with no slots yet).
-  const slot = (mentorId: string, start: Date, status: 'open' | 'booked', label: string) =>
+  const slot = (
+    mentorId: string,
+    start: Date,
+    status: 'open' | 'booked',
+    label: string,
+    locationStopId: string | null = null,
+  ) =>
     db.hubMentorSlot.create({
       data: {
         mentorId,
@@ -411,8 +417,17 @@ export async function seedHub(p: Platform): Promise<void> {
         endsAt: new Date(start.getTime() + 60 * 60_000),
         status,
         locationLabel: label,
+        locationStopId,
       },
     });
+  // Aarav's Monday session is at a campus stop a car can reach, so it gets a ride link (P6).
+  // Rides seeds first (`seedAfter`); without the rides module the slot has no stop.
+  const campusStop = async (actorId: string) =>
+    (
+      await p.modules
+        .get('rides')
+        ?.searchStops({ actor: { id: actorId, role: 'mentor' }, q: 'SPIT Main Gate' })
+    )?.find((x) => x.name === 'SPIT Main Gate' && x.drivable)?.id ?? null;
   for (const m of MENTORS) {
     const mentorId = id(m.email);
     if ((await db.hubMentorSlot.count({ where: { mentorId } })) > 0) continue;
@@ -422,38 +437,79 @@ export async function seedHub(p: Platform): Promise<void> {
         : m.department === 'IT'
           ? 'IT lab 2'
           : 'Room 304, Computer dept';
+    const open = [];
     for (const [days, at] of OPEN_SLOTS[m.email] ?? [])
-      await slot(mentorId, istAt(now, days, at), 'open', room);
+      open.push(await slot(mentorId, istAt(now, days, at), 'open', room));
 
     if (m.email === 'mentor@universe.test') {
       const aarav = id('student@universe.test');
-      const monday = await slot(mentorId, istAt(now, nextMonday(now), '15:30'), 'booked', room);
-      for (const s of [aarav, id('student2@universe.test'), id('kabir.shah@universe.test')])
-        await ensureProfile(db, s);
-      await db.hubMentorshipRequest.createMany({
-        data: [
-          {
-            studentId: id('student2@universe.test'),
-            mentorId,
-            note: 'Need help with interval DP before placements.',
-            createdAt: new Date(now.getTime() - 5 * 3_600_000),
+      const diya = id('student2@universe.test');
+      const kabir = id('kabir.shah@universe.test');
+      const monday = await slot(
+        mentorId,
+        istAt(now, nextMonday(now), '15:30'),
+        'booked',
+        'Room 304, Computer dept (SPIT Main Gate)',
+        await campusStop(mentorId),
+      );
+      for (const s of [aarav, diya, kabir]) await ensureProfile(db, s);
+      // Diya's pending request names Neha's first open slot (the mentor's "tentative" item).
+      const requests = [
+        {
+          studentId: diya,
+          name: 'Diya Kulkarni',
+          slotId: open[0]?.id ?? null,
+          note: 'Need help with interval DP before placements.',
+          createdAt: new Date(now.getTime() - 5 * 3_600_000),
+        },
+        {
+          studentId: kabir,
+          name: 'Kabir Shah',
+          slotId: null,
+          note: 'Would like a weekly check-in on graphs.',
+          createdAt: new Date(now.getTime() - 3 * DAY),
+        },
+      ];
+      // The inbox events these requests would have sent (the story seed dates them).
+      for (const { name, ...r } of requests) {
+        const created = await db.hubMentorshipRequest.create({ data: { ...r, mentorId } });
+        const slotStart = open.find((o) => o.id === r.slotId)?.startsAt;
+        await p.emit({
+          recipients: mentorId,
+          actorId: r.studentId,
+          module: 'hub',
+          type: 'hub.request_received',
+          payload: {
+            requestId: created.id,
+            studentName: name,
+            note: r.note,
+            startsAt: slotStart ? slotStart.toISOString() : null,
           },
-          {
-            studentId: id('kabir.shah@universe.test'),
-            mentorId,
-            note: 'Would like a weekly check-in on graphs.',
-            createdAt: new Date(now.getTime() - 3 * DAY),
-          },
-          {
-            studentId: aarav,
-            mentorId,
-            slotId: monday.id,
-            status: 'accepted',
-            note: 'DP and graphs, mock interview practice.',
-            createdAt: new Date(now.getTime() - 2 * DAY),
-            decidedAt: new Date(now.getTime() - DAY),
-          },
-        ],
+        });
+      }
+      const accepted = await db.hubMentorshipRequest.create({
+        data: {
+          studentId: aarav,
+          mentorId,
+          slotId: monday.id,
+          status: 'accepted',
+          note: 'DP and graphs, mock interview practice.',
+          createdAt: new Date(now.getTime() - 2 * DAY),
+          decidedAt: new Date(now.getTime() - 4 * 3_600_000),
+        },
+      });
+      await p.emit({
+        recipients: aarav,
+        actorId: mentorId,
+        module: 'hub',
+        type: 'hub.request_accepted',
+        payload: {
+          requestId: accepted.id,
+          mentorName: 'Prof. Neha Iyer',
+          startsAt: monday.startsAt.toISOString(),
+          endsAt: monday.endsAt.toISOString(),
+          locationLabel: monday.locationLabel,
+        },
       });
     }
     if (m.email === 'kavita.nair@universe.test') {

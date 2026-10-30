@@ -1,0 +1,79 @@
+.header {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 16px;
+}
+
+.baseline {
+  align-items: baseline;
+}
+
+.titles {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.eyebrow {
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: var(--fs-11);
+  font-weight: 600;
+}
+
+.eyebrowHue {
+  color: var(--mod);
+}
+
+.h1 {
+  margin: 0;
+  font-size: var(--fs-34);
+  font-weight: 700;
+  letter-spacing: -0.03em;
+}
+
+.meta {
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: var(--fs-12);
+}
+
+.tile {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 4px;
+  background: var(--mod-fill);
+  color: var(--onfill);
+  font-family: var(--font-mono);
+  font-size: var(--fs-11);
+  font-weight: 600;
+}
+
+.dot {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: currentcolor;
+}
+
+.ok {
+  color: var(--ok);
+}
+
+.warn {
+  color: var(--warn);
+}
+
+.neutral {
+  color: var(--muted);
+}
+
+.err {
+  color: var(--err);
+}

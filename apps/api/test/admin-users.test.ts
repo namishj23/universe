@@ -14,6 +14,7 @@ import { connectedUserIds } from '../src/platform/activity/broker.js';
 import { verifyPassword } from '../src/platform/auth/password.js';
 import { prisma } from '../src/platform/db.js';
 import { as, login, seed, userId } from './helpers.js';
+import { INACTIVE_ACCOUNT } from '../../../prisma/seed/platform.js';
 
 const UserPage = pageOf(AdminUser);
 const codeOf = (body: unknown) => ApiErrorBody.parse(body).error.code;
@@ -107,7 +108,10 @@ describe('list', () => {
     expect(first.items).toHaveLength(2);
     const second = await search({ limit: '100', cursor: first.nextCursor ?? '' });
     expect(first.items.length + second.items.length).toBe(all);
-    expect((await search({ active: 'false' })).items).toEqual([]);
+    // Only the seed's one inactive demo account (the INACTIVE state in the design).
+    expect((await search({ active: 'false' })).items.map((u) => u.email)).toEqual([
+      INACTIVE_ACCOUNT.email,
+    ]);
   });
 });
 

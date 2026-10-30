@@ -1,5 +1,13 @@
 import type { Logger } from 'pino';
+import type { input as ZodInput, output as ZodOutput, ZodType } from 'zod';
 import * as contracts from '@universe/contracts';
+import {
+  publicApiRegistry,
+  type PublicApi,
+  type PublicApiId,
+  type PublicApiSpec,
+  type PublicApiSpecs,
+} from '@universe/contracts';
 import { env } from '../../config/env.js';
 import { pushEvent } from '../activity/broker.js';
 import { emit, transaction } from '../activity/service.js';
@@ -11,6 +19,10 @@ import { ApiError, asyncHandler } from '../http.js';
 import { logger } from '../logger.js';
 import { decodeCursor, encodeCursor, newestFirst, olderThan, toPage } from '../paging.js';
 import { schedule } from '../scheduler.js';
+import type { ModuleDefinition } from './index.js';
+
+/** Every cross-module call gets this long before it fails with 503 `MODULE_UNAVAILABLE`. */
+export const PUBLIC_CALL_TIMEOUT_MS = 500;
 
 /**
  * Everything a module may use from the platform, handed to its factory
@@ -48,13 +60,76 @@ export interface Platform {
    * tests call it with a frozen clock instead of waiting for a timer.
    */
   readonly schedule: typeof schedule;
+  /**
+   * Another module's read-only functions (its `publicApi`), or `undefined` when that module is
+   * not installed. Resolve it when you need it (inside a handler), not in your factory: modules
+   * are built in folder order. Every call is validated against `publicApiRegistry` in contracts,
+   * limited to 500 ms and fails with 503 `MODULE_UNAVAILABLE`; pass `{ actor: user, ... }`.
+   */
+  readonly modules: { get<M extends PublicApiId>(id: M): PublicApi<M> | undefined };
+}
+
+/** What a module implements: parsed input in, its answer out (parsed again by the platform). */
+export type PublicApiImpl<M extends PublicApiId> = {
+  readonly [F in keyof PublicApiSpecs<M>]: PublicApiSpecs<M>[F] extends PublicApiSpec
+    ? (
+        input: ZodOutput<PublicApiSpecs<M>[F]['input']>,
+        signal: AbortSignal,
+      ) => Promise<ZodInput<PublicApiSpecs<M>[F]['output']>>
+    : never;
+};
+
+type Impl = (input: unknown, signal: AbortSignal) => Promise<unknown>;
+const installers = new WeakMap<Platform, (modules: readonly ModuleDefinition[]) => void>();
+
+/** Makes the modules' `publicApi` reachable through `platform.modules.get` (loadModules). */
+export function installModules(p: Platform, modules: readonly ModuleDefinition[]): void {
+  installers.get(p)?.(modules);
 }
 
 const loggers = new Map<string, Logger>();
 
 /** Builds the frozen platform object. `overrides` lets a test swap parts. */
 export function createPlatform(overrides: Partial<Platform> = {}): Platform {
-  return Object.freeze({
+  const apis = new Map<string, object>();
+  const log = logger.child({ module: 'platform' });
+
+  /** The caller's view of one module's functions: validated, time-limited, never throwing raw. */
+  function wrap(id: PublicApiId, impl: Record<string, Impl>, label: string) {
+    const specs = publicApiRegistry[id] as Record<string, { input: ZodType; output: ZodType }>;
+    const unavailable = () =>
+      new ApiError(503, 'MODULE_UNAVAILABLE', `${label} is not available right now. Try again.`);
+    return Object.freeze(
+      Object.fromEntries(
+        Object.entries(specs).map(([name, spec]) => {
+          const fn = impl[name]!;
+          const call = async (input: unknown) => {
+            const parsed = spec.input.safeParse(input);
+            // A caller's bug, not a user error: a 500 with the details only in the log.
+            if (!parsed.success)
+              throw new Error(`${id}.${name}: invalid input`, { cause: parsed.error });
+            const signal = AbortSignal.timeout(PUBLIC_CALL_TIMEOUT_MS);
+            let onAbort = () => {};
+            const aborted = new Promise<never>((_, reject) => {
+              onAbort = () => reject(new Error(`${id}.${name} timed out`));
+              signal.addEventListener('abort', onAbort, { once: true });
+            });
+            try {
+              return spec.output.parse(await Promise.race([fn(parsed.data, signal), aborted]));
+            } catch (err) {
+              log.warn({ err, target: id, fn: name }, 'cross-module call failed');
+              throw unavailable();
+            } finally {
+              signal.removeEventListener('abort', onAbort);
+            }
+          };
+          return [name, call];
+        }),
+      ),
+    );
+  }
+
+  const p: Platform = Object.freeze({
     prisma,
     transaction,
     emit,
@@ -73,8 +148,18 @@ export function createPlatform(overrides: Partial<Platform> = {}): Platform {
       if (!child) loggers.set(moduleId, (child = logger.child({ module: moduleId })));
       return child;
     },
+    modules: Object.freeze({
+      get: <M extends PublicApiId>(id: M) => apis.get(id) as PublicApi<M> | undefined,
+    }),
     ...overrides,
   });
+  installers.set(p, (modules) => {
+    apis.clear();
+    for (const m of modules)
+      if (m.publicApi && m.id in publicApiRegistry)
+        apis.set(m.id, wrap(m.id as PublicApiId, m.publicApi as Record<string, Impl>, m.label));
+  });
+  return p;
 }
 
 let shared: Platform | undefined;

@@ -1,0 +1,116 @@
+.filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.search {
+  flex: 1;
+  min-width: 240px;
+}
+
+.name {
+  font-size: var(--fs-14);
+  font-weight: 600;
+}
+
+.nameButton {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--ink);
+  font-size: var(--fs-14);
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+}
+
+.nameButton:hover {
+  text-decoration: underline;
+}
+
+.email {
+  color: var(--ink2);
+  font-family: var(--font-mono);
+  font-size: var(--fs-12);
+  overflow-wrap: anywhere;
+}
+
+.role {
+  font-family: var(--font-mono);
+  font-size: var(--fs-12);
+}
+
+.status {
+  font-family: var(--font-mono);
+  font-size: var(--fs-11);
+  font-weight: 600;
+}
+
+.seen {
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: var(--fs-11-5);
+}
+
+.inactive {
+  opacity: 0.65;
+}
+
+.time,
+.action {
+  font-family: var(--font-mono);
+  font-size: var(--fs-12);
+}
+
+.action {
+  font-weight: 600;
+}
+
+.actor {
+  font-size: var(--fs-13-5);
+}
+
+.target {
+  color: var(--ink2);
+  font-size: var(--fs-13);
+}
+
+.request {
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: var(--fs-11);
+}
+
+.footnote {
+  color: var(--muted);
+  font-size: var(--fs-12-5);
+}
+
+.secret {
+  padding: 12px;
+  border: 1.5px dashed var(--line-strong);
+  border-radius: 6px;
+  background: var(--surface);
+  font-family: var(--font-mono);
+  font-size: var(--fs-16);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  overflow-wrap: anywhere;
+}
+
+.meta {
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: var(--fs-12);
+}
+
+.manageRow {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+}
+
+.grow {
+  flex: 1;
+}

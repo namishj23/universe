@@ -2,7 +2,7 @@
 // Matches the design: tracking paused two hours ago, today 3 h 32 m (Study 1 h 35 m,
 // Communication 52 m, Social 38 m, Entertainment 27 m), the previous six days averaging
 // 264 minutes (4 h 24 m), Other not counted. Nothing for admins.
-import { istDate } from '@universe/contracts';
+import { istDate, istDayStart, weekOf, WEEKLY_SUMMARY_TEXT } from '@universe/contracts';
 import type { Platform } from '../../platform/modules/index.js';
 import { addDays } from './service.js';
 
@@ -26,7 +26,10 @@ export async function seedWellbeing(p: Platform, now: Date = new Date()): Promis
   const user = await p.prisma.user.findUnique({ where: { email: 'student@universe.test' } });
   if (!user) return;
   const today = istDate(now);
-  const pausedSince = new Date(Math.floor((now.getTime() - 2 * HOUR) / HOUR) * HOUR);
+  // Paused on the hour two hours ago, but never before today began (the week strip shows it today).
+  const pausedSince = new Date(
+    Math.max(istDayStart(now).getTime(), Math.floor((now.getTime() - 2 * HOUR) / HOUR) * HOUR),
+  );
   const rows = [
     ...PREVIOUS_DAYS.flatMap((total, i) =>
       split(total).map((r) => ({ date: addDays(today, i - 6), ...r })),
@@ -53,5 +56,20 @@ export async function seedWellbeing(p: Platform, now: Date = new Date()): Promis
       FROM unnest(${rows.map((r) => r.date)}::text[]::date[], ${rows.map((r) => r.category)}::text[],
                   ${rows.map((r) => r.minutes)}::int[]) AS x(d, c, m)
       ON CONFLICT (user_id, date, category) DO UPDATE SET minutes = EXCLUDED.minutes, updated_at = now()`;
+  });
+  // Last week's summary was sent (the design's inbox), as the job does: a marker row so it is
+  // never sent twice, and the notification (dated by the story seed).
+  const lastWeek = addDays(weekOf(now).startDate, -7);
+  await p.transaction(async (tx, emit) => {
+    const [marker] = await tx.$queryRaw<{ user_id: string }[]>`
+      INSERT INTO wb_weekly_summaries (user_id, week_start) VALUES (${user.id}::uuid, ${lastWeek}::date)
+      ON CONFLICT (user_id, week_start) DO NOTHING RETURNING user_id`;
+    if (marker)
+      await emit({
+        recipients: user.id,
+        module: 'wellbeing',
+        type: 'wellbeing.weekly_summary',
+        payload: { message: WEEKLY_SUMMARY_TEXT },
+      });
   });
 }

@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { InternalHref } from '../dashboard/week.js';
 import { Role } from '../role.js';
 
 // Module A · Student Hub (Person 1). Request schemas are strict (unknown fields, including the
@@ -164,6 +165,11 @@ export const PrepView = z
     week: WeekGoal,
     /** Cumulative solved over tracked topics at the end of each of the last 30 IST days. */
     series: z.array(z.object({ date: Day, solved: Count })).length(30),
+    /**
+     * Minutes of focused study this week from Wellbeing, present only when the student has
+     * turned sharing on there (and counts study). Nothing else from Wellbeing reaches the hub.
+     */
+    focusStudyMinutesThisWeek: Count.optional(),
   })
   .meta({ id: 'HubPrepView' });
 
@@ -344,6 +350,11 @@ export const MentorshipRequest = z
     slot: Slot.nullable(),
     mentor: z.object({ id: Id, name: z.string(), department: z.string().nullable() }),
     student: StudentCard,
+    /**
+     * Accepted sessions at a stop a car can reach: opens Rides to arrive 15 minutes early,
+     * `/rides?to=<stopId>&date=YYYY-MM-DD&arriveBy=HH:MM` (IST). Null otherwise.
+     */
+    rideLink: z.object({ href: InternalHref }).nullable(),
   })
   .meta({ id: 'HubMentorshipRequest' });
 
@@ -432,3 +443,6 @@ export type Resource = z.infer<typeof Resource>;
 export type Track = z.infer<typeof Track>;
 export type ResourceType = z.infer<typeof ResourceType>;
 export type RequestStatus = z.infer<typeof RequestStatus>;
+
+/** Read-only functions for other modules (`platform.modules.get('hub')`). */
+export * as pub from './public.js';

@@ -1,7 +1,7 @@
-// Each owner area adds its own seed: Platform here, modules through `seed()` in their ModuleDefinition.
+// Each owner area adds its own seed: Platform here, modules through `seed()` in their
+// ModuleDefinition, then the cross-module story (story.ts).
 import { prisma } from '../../apps/api/src/platform/db.js';
-import { loadModules } from '../../apps/api/src/platform/modules/index.js';
-import { seedPlatform } from './platform.js';
+import { runSeed } from './run.js';
 
 if (process.env.NODE_ENV === 'production') {
   console.error('Refusing to seed: NODE_ENV is production.');
@@ -14,12 +14,7 @@ if (password.length < 12) {
 }
 
 try {
-  await seedPlatform(prisma, password);
-  for (const module of await loadModules()) {
-    if (!module.seed) continue;
-    await module.seed();
-    console.log(`Seeded ${module.id}.`);
-  }
+  await runSeed(password, console.log);
   console.log('Seed complete.');
 } finally {
   await prisma.$disconnect();

@@ -1,0 +1,140 @@
+/*
+ * Design tokens: the exact values from the Claude Design handoff
+ * (docs/design/universe-ui-mockup-design/.../UniVerse App.dc.html). This is the only file
+ * allowed to hold raw colours, font families and font sizes (Stylelint enforces it).
+ * The theme is `data-theme` on <html>, set by ThemeProvider from the system or the toggle.
+ */
+:root {
+  --bg: #ebe9e3;
+  --surface: #f6f5f1;
+  --raised: #fff;
+  --ink: #1b1d1f;
+  --ink2: #45494e;
+  --muted: #55595e;
+  --faint: #7d8186;
+  --line: #cfccc3;
+  --line-strong: #1b1d1f;
+  --hover: #dedbd3;
+  --inv-bg: #1b1d1f;
+  --inv-fg: #ebe9e3;
+  --inv-raised: #2c2f33;
+  --inv-muted: #a9adb2;
+  --onfill: #fff;
+  --skel: #dcd9d1;
+  --ha: oklch(0.46 0.14 268);
+  --ha-fill: oklch(0.52 0.14 268);
+  --hb: oklch(0.44 0.09 200);
+  --hb-fill: oklch(0.52 0.1 200);
+  --hc: oklch(0.46 0.15 340);
+  --hc-fill: oklch(0.52 0.15 340);
+  --hd: oklch(0.44 0.13 300);
+  --hd-fill: oklch(0.5 0.13 300);
+  --he: oklch(0.44 0.08 235);
+  --he-fill: oklch(0.5 0.09 235);
+  --ok: #1d5a2a;
+  --ok-bg: #dcefdf;
+  --warn: #7a4f06;
+  --warn-bg: #f6e6c4;
+  --err: #9b2418;
+  --err-bg: #f7dcd6;
+  --link: #2f3f9a;
+  --scrim: rgb(20 21 22 / 45%);
+
+  /* Type: Familjen Grotesk for UI text, Reddit Mono only for numbers, labels, codes, times. */
+  --font-sans: 'Familjen Grotesk', sans-serif;
+  --font-mono: 'Reddit Mono', monospace;
+
+  /* Type scale: every size the design uses, named by its pixel value. */
+  --fs-76: 76px;
+  --fs-34: 34px;
+  --fs-30: 30px;
+  --fs-22: 22px;
+  --fs-20: 20px;
+  --fs-19: 19px;
+  --fs-18: 18px;
+  --fs-16: 16px;
+  --fs-15: 15px;
+  --fs-14-5: 14.5px;
+  --fs-14: 14px;
+  --fs-13-5: 13.5px;
+  --fs-13: 13px;
+  --fs-12-5: 12.5px;
+  --fs-12: 12px;
+  --fs-11-5: 11.5px;
+  --fs-11: 11px;
+  --fs-10-5: 10.5px;
+  --fs-10: 10px;
+  --fs-9-5: 9.5px;
+}
+
+:root[data-theme='dark'] {
+  --bg: #141516;
+  --surface: #1c1d1f;
+  --raised: #232527;
+  --ink: #ecebe6;
+  --ink2: #c6c5bf;
+  --muted: #a6a59f;
+  --faint: #86857f;
+  --line: #34363a;
+  --line-strong: #7c7e82;
+  --hover: #2a2c2f;
+  --inv-bg: #ecebe6;
+  --inv-fg: #141516;
+  --inv-raised: #d7d5ce;
+  --inv-muted: #55595e;
+  --onfill: #141516;
+  --skel: #2a2c2f;
+  --ha: oklch(0.76 0.11 268);
+  --ha-fill: oklch(0.72 0.12 268);
+  --hb: oklch(0.78 0.09 200);
+  --hb-fill: oklch(0.74 0.1 200);
+  --hc: oklch(0.76 0.13 340);
+  --hc-fill: oklch(0.72 0.14 340);
+  --hd: oklch(0.76 0.11 300);
+  --hd-fill: oklch(0.72 0.12 300);
+  --he: oklch(0.76 0.07 235);
+  --he-fill: oklch(0.72 0.08 235);
+  --ok: #8fd6a0;
+  --ok-bg: #1f3324;
+  --warn: #f0b44c;
+  --warn-bg: #3a2e17;
+  --err: #f29a8c;
+  --err-bg: #3d1f1a;
+  --link: #a9b6ff;
+}
+
+/* Module hues: any element with data-mod gets --mod (text) and --mod-fill (fills). */
+[data-mod='hub'] {
+  --mod: var(--ha);
+  --mod-fill: var(--ha-fill);
+}
+
+[data-mod='rides'] {
+  --mod: var(--hb);
+  --mod-fill: var(--hb-fill);
+}
+
+[data-mod='observatory'] {
+  --mod: var(--hc);
+  --mod-fill: var(--hc-fill);
+}
+
+[data-mod='wellbeing'] {
+  --mod: var(--hd);
+  --mod-fill: var(--hd-fill);
+}
+
+[data-mod='exam'] {
+  --mod: var(--he);
+  --mod-fill: var(--he-fill);
+}
+
+[data-mod='admin'] {
+  --mod: var(--ink2);
+  --mod-fill: var(--ink);
+}
+
+[data-mod='platform'] {
+  --mod: var(--muted);
+  --mod-fill: var(--ink);
+}

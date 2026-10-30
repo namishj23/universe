@@ -35,6 +35,12 @@ export const AuditQuery = z
     cursor: z.string().min(1).max(200).optional(),
     limit: z.coerce.number().int().min(1).max(100).default(20),
     action: z.string().min(1).max(100).optional(),
+    /** Every action of one area: `auth` matches `auth.login`, `auth.logout`, … */
+    actionPrefix: z
+      .string()
+      .regex(/^[a-z]+$/)
+      .max(30)
+      .optional(),
     actorId: z.uuid().optional(),
     targetType: z.string().min(1).max(50).optional(),
     targetId: z.string().min(1).max(100).optional(),

@@ -38,9 +38,19 @@ export const DEMO_ACCOUNTS: readonly { email: string; name: string; role: Role }
   })),
 ];
 
+/** Shows the INACTIVE state in admin Users; can't sign in (kept out of DEMO_ACCOUNTS). */
+export const INACTIVE_ACCOUNT = {
+  email: 'aditya.rane@universe.test',
+  name: 'Aditya Rane',
+  role: 'student',
+} as const;
+
+/** The design's first inbox line. */
+export const WELCOME_TEXT = 'Welcome to UniVerse.';
+
 /**
- * Idempotent: upserts by email, clears any sign-in lockout, and adds one welcome announcement
- * to an account that has none.
+ * Idempotent: upserts by email, clears any sign-in lockout, adds one welcome announcement to an
+ * account that has none, and keeps the inactive demo account inactive.
  */
 export async function seedPlatform(db: Db, password: string): Promise<void> {
   await db.loginThrottle.deleteMany({
@@ -61,8 +71,14 @@ export async function seedPlatform(db: Db, password: string): Promise<void> {
         recipients: user.id,
         module: 'platform',
         type: 'platform.announcement',
-        payload: { message: `Welcome to UniVerse, ${account.name}! Your activity appears here.` },
+        payload: { message: WELCOME_TEXT },
       });
     }
   }
+  const passwordHash = await hashPassword(password);
+  await db.user.upsert({
+    where: { email: INACTIVE_ACCOUNT.email },
+    create: { ...INACTIVE_ACCOUNT, passwordHash, isActive: false },
+    update: { ...INACTIVE_ACCOUNT, isActive: false },
+  });
 }

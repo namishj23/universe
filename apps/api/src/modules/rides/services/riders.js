@@ -120,7 +120,12 @@ module.exports = function riders(c, services) {
     if (pickupNodeId === dropNodeId)
       throw c.badRequest('Pickup and drop resolve to the same stop - pick two different places');
 
-    const pickupMs = Date.parse(input.pickupTime);
+    const path = graph.from(pickupNodeId).pathTo(dropNodeId);
+    if (!path) throw c.badRequest('No known route between the selected stops');
+    // arriveBy: leave early enough to reach the drop on the shortest path (whole minutes).
+    const pickupMs = input.arriveBy
+      ? Math.floor((Date.parse(input.arriveBy) - path.durationS * 1000) / 60_000) * 60_000
+      : Date.parse(input.pickupTime);
     // 1 min grace so "now" from the client isn't rejected by clock skew.
     if (pickupMs < Date.now() - 60_000) throw c.badRequest('Pickup time must be in the future');
 
@@ -138,8 +143,6 @@ module.exports = function riders(c, services) {
     if (duplicate?.status === 'matched') throw await alreadyInGroupError(duplicate, userId, graph);
     if (duplicate) return requestView(duplicate, graph);
 
-    const path = graph.from(pickupNodeId).pathTo(dropNodeId);
-    if (!path) throw c.badRequest('No known route between the selected stops');
     const created = await prisma.ridesRequest.create({
       data: {
         userId,

@@ -71,6 +71,7 @@ auditRoutes.get(
             ...(q.targetType && { targetType: q.targetType }),
             ...(q.targetId && { targetId: q.targetId }),
           },
+          q.actionPrefix ? { action: { startsWith: `${q.actionPrefix}.` } } : {},
           q.from ? { createdAt: { gte: new Date(q.from) } } : {},
           q.to ? { createdAt: { lt: new Date(q.to) } } : {},
         ],

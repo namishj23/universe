@@ -3,6 +3,7 @@
 import { hub } from '@universe/contracts';
 import type { Platform } from '../../platform/modules/index.js';
 import { config } from './config.js';
+import { rideLinkFor, type Integration } from './integration.js';
 import type { PrepService } from './prep.js';
 import {
   ensureProfile,
@@ -22,7 +23,7 @@ const requestInclude = {
   mentor: { select: { mentorDepartment: true, user: { select: { name: true } } } },
 } as const;
 
-export function requestService(p: Platform, prep: PrepService) {
+export function requestService(p: Platform, prep: PrepService, links: Integration) {
   const E = errors(p);
   const { olderThan, toPage, newestFirst } = p.paging;
 
@@ -86,6 +87,7 @@ export function requestService(p: Platform, prep: PrepService) {
     const input = hub.CreateSlotRequest.parse(body);
     const startsAt = new Date(input.startsAt);
     if (startsAt.getTime() <= Date.now()) throw E.bad('A slot must start in the future.');
+    if (input.locationStopId) await links.assertStop(user, input.locationStopId);
     try {
       const slot = await p.transaction(async (tx) => {
         await requireMentor(tx, user);
@@ -131,12 +133,20 @@ export function requestService(p: Platform, prep: PrepService) {
   const loadRequest = (db: Db, id: string) =>
     db.hubMentorshipRequest.findUnique({ where: { id }, include: requestInclude });
 
-  async function views(db: Db, rows: Row[]): Promise<hub.MentorshipRequest[]> {
-    const cards = await prep.studentCards(
-      db,
-      rows.map((r) => r.studentId),
-    );
+  async function views(db: Db, rows: Row[], user: User): Promise<hub.MentorshipRequest[]> {
+    const linked = (r: Row) => (r.status === 'accepted' && r.slot?.locationStopId) || null;
+    const [cards, drivable] = await Promise.all([
+      prep.studentCards(
+        db,
+        rows.map((r) => r.studentId),
+      ),
+      links.drivableStops(
+        user,
+        rows.flatMap((r) => linked(r) ?? []),
+      ),
+    ]);
     return rows.map((r) => {
+      const stopId = linked(r);
       const student = cards.get(r.studentId);
       if (!student) throw new Error(`student ${r.studentId} missing`);
       return {
@@ -148,10 +158,12 @@ export function requestService(p: Platform, prep: PrepService) {
         slot: r.slot ? toSlot(r.slot) : null,
         mentor: { id: r.mentorId, name: r.mentor.user.name, department: r.mentor.mentorDepartment },
         student,
+        rideLink:
+          stopId && r.slot && drivable.has(stopId) ? rideLinkFor(stopId, r.slot.startsAt) : null,
       };
     });
   }
-  const view = async (db: Db, row: Row) => (await views(db, [row]))[0]!;
+  const view = async (db: Db, row: Row, user: User) => (await views(db, [row], user))[0]!;
 
   /** A request the caller is a party to (admins see all); anyone else gets 404. */
   async function get(user: User, params: unknown) {
@@ -159,7 +171,7 @@ export function requestService(p: Platform, prep: PrepService) {
     const row = await loadRequest(p.prisma, id);
     if (!row || (user.role !== 'admin' && user.id !== row.studentId && user.id !== row.mentorId))
       throw E.notFound();
-    return view(p.prisma, row);
+    return view(p.prisma, row, user);
   }
 
   const openSlotOf = async (tx: Tx, mentorId: string, slotId: string) => {
@@ -223,7 +235,7 @@ export function requestService(p: Platform, prep: PrepService) {
       });
       const row = await loadRequest(p.prisma, id);
       if (!row) throw E.notFound();
-      return view(p.prisma, row);
+      return view(p.prisma, row, user);
     } catch (err) {
       if (violates(err, 'hub_requests_one_live_key'))
         throw E.conflict(
@@ -243,7 +255,7 @@ export function requestService(p: Platform, prep: PrepService) {
       include: requestInclude,
     });
     const page = toPage(rows, q.limit, (r) => r);
-    return { items: await views(p.prisma, page.items), nextCursor: page.nextCursor };
+    return { items: await views(p.prisma, page.items, user), nextCursor: page.nextCursor };
   }
 
   async function incoming(user: User, query: unknown) {
@@ -256,7 +268,7 @@ export function requestService(p: Platform, prep: PrepService) {
       include: requestInclude,
     });
     const page = toPage(rows, q.limit, (r) => r);
-    return { items: await views(p.prisma, page.items), nextCursor: page.nextCursor };
+    return { items: await views(p.prisma, page.items, user), nextCursor: page.nextCursor };
   }
 
   /**

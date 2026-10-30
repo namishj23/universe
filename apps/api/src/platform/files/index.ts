@@ -11,7 +11,7 @@ import { z } from 'zod';
 import type { FileRecord } from '@universe/contracts';
 import { env } from '../../config/env.js';
 import type { File } from '../../generated/prisma/client.js';
-import { authOf, requireAuth } from '../auth/guards.js';
+import { anyRole, authOf, requireAuth } from '../auth/guards.js';
 import { prisma, type Db } from '../db.js';
 import { ApiError, asyncHandler, IdParam } from '../http.js';
 import { logger } from '../logger.js';
@@ -245,7 +245,7 @@ export function fileRoutes(modules: readonly ModuleDefinition[]): Router {
   });
 
   const router = Router();
-  router.use(requireAuth);
+  router.use(requireAuth, anyRole);
 
   router.post(
     '/:purpose',

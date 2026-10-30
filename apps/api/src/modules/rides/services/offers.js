@@ -932,7 +932,10 @@ module.exports = function offers(c, services) {
     const q = R.OfferMatchesQuery.parse(query);
     const request = await prisma.ridesRequest.findUnique({ where: { id: q.requestId } });
     if (!request || request.userId !== userId) throw c.notFound('Ride request not found');
-    if (request.status !== 'open') throw c.badRequest('This request is no longer open');
+    // A request that found its seat (matched) still lists matches, so the rider sees the car
+    // they are in next to the alternatives (P6).
+    if (!['open', 'matched'].includes(request.status))
+      throw c.badRequest('This request is no longer open');
     const [profile, g] = await Promise.all([c.ensureProfile(userId), c.loadGraph()]);
     const relax = q.relaxPreference === 'true';
     const female = isFemale(profile);
@@ -1025,11 +1028,65 @@ module.exports = function offers(c, services) {
         costSharePaise: share,
         soloFarePaise: request.soloFarePaise,
         savingsPaise: Math.max(0, request.soloFarePaise - share),
+        booking: null,
       });
     }
-    // Deterministic: eligible first, then score, earlier departure, id.
+    // Offers this request already asked for or joined (the SQL above leaves them out), from
+    // the booking's stored plan figures. Pooled autos are not offers, so a request matched to
+    // a group just lists these (none) and the candidates.
+    const booked = await prisma.ridesOfferBooking.findMany({
+      where: { requestId: request.id, status: { in: ['requested', 'accepted'] } },
+      include: {
+        offer: {
+          include: {
+            driver: { include: { user: { select: { name: true } } } },
+            vehicle: { select: { vehicleType: true } },
+          },
+        },
+      },
+    });
+    for (const b of booked) {
+      const o = b.offer;
+      const ev = evaluatePlan(g.sp, o, stopsOf(o));
+      const nodePath = ev?.nodePath ?? o.basePath;
+      const minutesApart =
+        Math.round((Math.abs(b.plannedPickupAt.getTime() - desired) / MIN) * 10) / 10;
+      const s = score({
+        sharedM: sharedMetres(passengerPath.nodeIds, nodePath, g.edgeM),
+        passengerM: passengerPath.distanceM,
+        routeM: ev?.distanceM ?? o.baseDistanceM,
+        minutesApart,
+        bufferMinutes: cfg.matching.bufferMinutes,
+        weights,
+      });
+      results.push({
+        offerId: o.id,
+        eligible: true,
+        reason: null,
+        reasonText: null,
+        ...s,
+        weights: { routeSimilarity: weights.route, timeFit: weights.time },
+        minutesApart,
+        addedDetourMetres: b.addedDetourM,
+        pickupAt: b.plannedPickupAt.toISOString(),
+        departAt: o.departAt.toISOString(),
+        seatsLeft: Math.max(0, o.seats - o.peakOnboard),
+        driverFirstName: c.firstNameOf(o.driver.user.name),
+        vehicleType: o.vehicle.vehicleType,
+        womenOnly: o.womenOnly,
+        pickupNode: g.stop(b.pickupNodeId),
+        dropNode: g.stop(b.dropNodeId),
+        route: nodePath.map((id) => g.stop(id).name),
+        costSharePaise: b.costSharePaise,
+        soloFarePaise: b.soloFarePaise,
+        savingsPaise: Math.max(0, b.soloFarePaise - b.costSharePaise),
+        booking: { id: b.id, status: b.status },
+      });
+    }
+    // Deterministic: your own bookings first, then eligible, score, earlier departure, id.
     results.sort(
       (a, b) =>
+        Number(Boolean(b.booking)) - Number(Boolean(a.booking)) ||
         Number(b.eligible) - Number(a.eligible) ||
         b.score - a.score ||
         a.departAt.localeCompare(b.departAt) ||

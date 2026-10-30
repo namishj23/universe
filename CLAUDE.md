@@ -90,6 +90,7 @@ Honesty
 4. Never delete data, drop tables, force-push, rewrite history or change another owner's files without asking first.
 5. Fix root causes. No temporary workarounds, no disabled tests, no `any` to silence the type checker, no `// @ts-ignore`.
 6. Backend first: until the team's UI design arrives (phases U1–U2), sessions build no screens, styling or layout. Front-end logic that already exists in `apps/web/src/platform/` is kept for reuse.
+   - UI work replicates the Claude Design handoff exactly. Values and copy come from `docs/design/`; only tokens and shared components are used; `npm run test:visual` and the design-compare harness must pass; screens the design does not draw follow `docs/design/DESIGN-SYSTEM.md` and name their reference screen.
 7. End the session by:
    - updating `PROGRESS.md` (phase status, decisions, issues, requests, next step) with exact file paths;
    - updating this `CLAUDE.md` only if a rule or the stack changed;

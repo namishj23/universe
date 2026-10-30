@@ -9,7 +9,8 @@
     "start": "NODE_ENV=${NODE_ENV:-production} node --env-file-if-exists=.env dist/server.js",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "api:docs": "tsx --conditions=@universe/source --env-file-if-exists=.env scripts/write-openapi.ts"
+    "api:docs": "tsx --conditions=@universe/source --env-file-if-exists=.env scripts/write-openapi.ts",
+    "docs:roles": "tsx --conditions=@universe/source --env-file-if-exists=.env scripts/write-roles.ts"
   },
   "dependencies": {
     "@prisma/adapter-pg": "7.10.1",

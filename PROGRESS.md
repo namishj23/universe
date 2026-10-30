@@ -8,7 +8,7 @@ Master plan (scope, architecture, rubric): the "UniVerse — Implementation Plan
 
 | Area | Owner | Phase now | Status |
 | --- | --- | --- | --- |
-| Platform | Person 1 | P3a (module factories, `driver` role, login-lockout fix) | Done — PR open to `main` (needs Person 2 review: shared areas) |
+| Platform | Person 1 | P6 integration: cross-module `publicApi`, week providers, route-guard metadata + `docs/ROLES.md`, demo story seed, `demo:reset`, storyline test (U1 merged) | Done — PR open (stacked on P5; contains the `main` and U1 merges) |
 | A · Student Hub | Person 1 | P4 profiles, prep tracker, mentor ranking, mentorship requests, resource repository (backend) | Done — PR open (stacked on #4) |
 | B · Ride-Pooling | Person 1 | P3b carpool offers, campus graph, detour matching, savings | Done — PR #4 open (stacked on #3) |
 | D · Digital Wellbeing | Person 1 | P5 browser-side library (`packages/wellbeing-core`) and backend: daily totals, consent, pause, see my data, export, delete | Done — PR open (stacked on P4) |
@@ -25,16 +25,28 @@ Master plan (scope, architecture, rubric): the "UniVerse — Implementation Plan
 | P3b | Rides: driver offers, campus graph, detour matching, savings (Opus 5.5 / high) | Opus 5.5 / high | Done (report: `docs/sessions/P3b.md`) |
 | P4 | Module A backend: profiles, prep tracker, mentor ranking, mentorship requests, resource repository with search | Opus 5.5 / high | Done (report: `docs/sessions/P4.md`) |
 | P5 | Module D: privacy logic library (sanitise, categorise, metrics) and API for opt-in daily totals, consent, export and delete | Opus 5.5 / high | Done (report: `docs/sessions/P5.md`) |
-| P6 | Cross-module links, seed data, test scenarios, demo storyline run through the API | Sonnet 5.5 / medium | Not started |
+| P6 | Cross-module links, seed data, test scenarios, demo storyline run through the API | Opus 5.5 / high | Done (report: `docs/sessions/P6.md`) |
 | P7 | Independent read-only audit of Platform, A, B, D | Opus 5.5 / xhigh | Not started |
 | P8 | Fix audit findings | Sonnet 5.5 / high | Not started |
 | P9 | README, architecture, algorithms, docs | Sonnet 5.5 / medium | Not started |
-| U1 | Frontend shell from the team's UI design | Sonnet 5.5 / high | Waiting for UI |
+| U1 | Frontend shell and platform screens from the team's UI design (Opus 5.5 / high) | Opus 5.5 / high | Done (report: `docs/sessions/U1.md`) — branch `p1/u1-shell`, PR open |
 | U2 | Frontend screens for A, B, D from the team's UI design | Sonnet 5.5 / high | Waiting for UI |
 
 Checkpoints with Person 2: merge to `main` at Hour 5 and Hour 7. Feature freeze at Hour 9.
 
 ## Decisions (newest first)
+
+- 2026-10-30 (P6) — **Cross-module interface (binding): `platform.modules.get(id)`.** A module definition may declare `publicApi`: read-only async functions whose input/output schemas live in `packages/contracts/src/<module>/public.ts` and are listed in `publicApiRegistry` (`packages/contracts/src/publicApi.ts`); a module must implement exactly its registry entry (checked at load). The platform keeps a per-platform registry filled by `loadModules` (`installModules`), so `get` resolves at call time (hub is built before rides and wellbeing) and returns `undefined` for a module that is not installed. Every call parses the input (a bad input is the caller's bug: plain 500), runs with a 500 ms `AbortSignal`, parses the output, and turns any failure or timeout into 503 `MODULE_UNAVAILABLE` (logged). Every input carries `actor: { id, role }` (extra fields such as a full `PublicUser` are stripped); the provider decides what the actor may see and never returns rows of its tables. Exposed: rides `findStop`, `searchStops`, `upcomingForUser`; hub `sessionsForUser`, `weeklyGoal`; wellbeing `studyMinutesThisWeek`.
+- 2026-10-30 (P6) — **Week items** (`weekItems` in each definition, U1's contract): rides from `upcomingForUser` (confirmed seats and pooled groups solid; requested seats, searching requests and forming groups dashed; driven offers "Driving from X · n of m seats"); hub student sessions ("Mentor session, <mentor> · accepted"), the Saturday all-day "Prep goal ends, N left" (students with tracked topics), mentor "N mentorship requests · waiting" at now, "Session with <student> · confirmed", pending requests that name a slot "· tentative" (dashed); wellbeing (owner) "Tracking paused" at `paused_since` and "Weekly summary" Sunday 09:00 when on or paused. Hrefs: `/hub/prep`, `/hub/mentors`, `/hub/requests`, `/rides/offers/<id>`, `/rides/groups/<id>`, `/rides/matches?requestId=<id>`, `/wellbeing`.
+- 2026-10-30 (P6) — **Ride link and `arriveBy`:** accepted sessions whose slot stop a car can reach (`findStop(...).drivable`) get `rideLink: { href: '/rides?to=<stopId>&date=YYYY-MM-DD&arriveBy=HH:MM' }` (IST, 15 minutes before the session; `RIDE_LEAD_MINUTES` in `hub/integration.ts`), else `rideLink: null`. `POST /api/rides/requests` takes `arriveBy` instead of `pickupTime` (exactly one): pickup = arriveBy − the shortest-path driving time between the two stops, floored to the minute. Pooled matching, joins and fares are unchanged.
+- 2026-10-30 (P6) — **Slots validate their stop** through `rides.findStop`: unknown stop, or no rides module, is 422 `STOP_NOT_FOUND` (secure default: a stop that can't be checked is refused; slots without a stop are unaffected).
+- 2026-10-30 (P6) — **Focus minutes in the hub:** `GET /api/hub/prep` and the student dashboard summary include `focusStudyMinutesThisWeek` only when `wellbeing.studyMinutesThisWeek` returns a number (actor = user, sharing on, study counted); a failure or missing module just omits it. Nothing else from wellbeing reaches the hub; mentors never see it.
+- 2026-10-30 (P6) — **Carpool matches list the request's own bookings** (additive): `GET /api/rides/offers/matches` also accepts a `matched` request and returns the offers it already requested or joined first, with `booking: { id, status }` (null on the others), from the booking's stored plan figures, so U2 can draw the design's JOINED / REQUESTED cards. Before, those offers were left out and a matched request was 400.
+- 2026-10-30 (P6) — **Route-guard metadata:** `requireRole(...)` returns a `RoleGuard` carrying `roles`; `anyRole` (= every role) marks routes any signed-in user may call (auth me/logout/change-password, activity, modules, dashboard, files); `mountModules` returns the module guards for `app.locals.mounted`. `apps/api/src/platform/routeTable.ts` reads the guards (outer ∩ router-level `use` ∩ route) → `docs/ROLES.md` (`npm run docs:roles`). `test/route-guards.test.ts` fails on a route without `requireAuth` (except `POST /api/auth/login` and `/api/health/*`), without role metadata, or a stale `ROLES.md`.
+- 2026-10-30 (P6) — **Seeding:** `seedAfter` on definitions (hub after rides: its Monday slot names the SPIT Main Gate stop found with `rides.searchStops`) and one `seedModules()` used by the seed, `demo:reset` and tests; `prisma/seed/run.ts` = platform → modules → `story.ts`. The story seed sends the admin announcement and dates Aarav's inbox; it only re-dates or deletes rows this seed run created, so re-running changes nothing.
+- 2026-10-30 (P6) — **`npm run demo:reset`** (`prisma/seed/demo-reset.ts`, `reset.ts`): refuses unless the host is `localhost`/`127.0.0.1` and (`NODE_ENV=development` + `universe`) or (`NODE_ENV=test` + `universe_test`); prints the rows it would delete; needs `--yes`. Deletes every `Hub*`/`Rides*`/`Wb*` table (children first, one transaction; a test checks the list covers every such Prisma model) and `activity_events`; soft-deletes module files (the hourly sweep removes the bytes); never touches users, sessions, the login throttle or `audit_log`; then runs the seed.
+- 2026-10-30 (P6) — **New activity type `platform.user_created`** (to every active admin when an admin creates an account, with a `message`): the design's admin inbox has it; every other inbox line the design and the problem statement need already existed.
+- 2026-10-30 (P6) — **Hub sessions query** is one query per side (as student, as mentor) instead of an `OR`, so each seeks its index (`EXPLAIN` in the P6 report).
 
 - 2026-10-30 (P5) — **Privacy architecture (binding):** raw browsing events, domains, rules and focus-session detail never leave the browser. They are processed by `packages/wellbeing-core` (dependency-free TypeScript, `@universe/source` export condition, Vite alias in `apps/web`, Vitest alias in `apps/api`). The server stores only `wb_settings` (tracking, counted categories, retention, hub-share flag) and `wb_daily_totals` (minutes per user, day, category), plus `wb_weekly_summaries` markers. Only the owner (student or mentor) reaches any of it; admins, drivers and invigilators get 403 on every route, including through admin tools.
 - 2026-10-30 (P5) — **No wellbeing audit entries and no wellbeing values in logs.** The platform request logger (`apps/api/src/app.ts`) logs `/api/wellbeing/*` requests as `req: { id, method }`, `res: { statusCode }` and the matched `route` pattern (added when the response finishes, because pino-http serialises `req` before routing): no path parameters, query string or headers. The module's routes replace any unexpected error with a message-free one before the platform logs it (`scrub()` in `routes.ts`). Tests capture every log line and check.
@@ -47,6 +59,31 @@ Checkpoints with Person 2: merge to `main` at Hour 5 and Hour 7. Feature freeze 
 - 2026-10-30 (P5) — **Data model** (`prisma/schema/wellbeing.prisma`, migration `20261029211549_p5_wellbeing`): `wb_settings(user_id)` FK users ON DELETE CASCADE, created on first use; `wb_daily_totals (user_id, date, category)` PK (serves the user's date ranges) + `date` index (retention) FK → `wb_settings`; `wb_weekly_summaries (user_id, week_start)` PK. CHECKs: tracking list, `paused_since` set exactly when paused, categories ⊆ the five (≤ 5), retention 7–365, category list, minutes 0–1440. One back-relation line on `User` (`wbSettings`), as P4 did.
 - 2026-10-30 (P5) — **Delete everything** deletes every `wb_daily_totals` and `wb_weekly_summaries` row and sets tracking `off` (the design's empty state "Nothing stored · tracking off"); settings stay. The design's text says "tracking pauses" — U2 should show "off". Needs `{ "confirm": "DELETE" }`.
 - 2026-10-30 (P5) — `studyMinutesThisWeek({ actorId, userId }, now?)` is a method of the wellbeing service (`apps/api/src/modules/wellbeing/service.ts`), not exposed on the module definition yet: a number only when `actorId === userId`, sharing is on **and** study is counted; else null. P6 wires it through the platform.
+
+- 2026-10-30 (U1) — **Exact replication of the Claude Design handoff** (`docs/design/`).
+  - `tools/design-compare/` (Playwright + pixelmatch) renders the prototype and the route-mocked build at Thu 29 Oct 2026 22:14 IST and measures each screen × role × theme × state × viewport.
+  - `npm run test:visual` locks the build in with 204 committed baselines (macOS Chromium) plus axe in Chromium.
+  - Stylelint allows raw colours, fonts and sizes only in `apps/web/src/shell/theme/tokens.css`.
+  - Rules in `docs/design/DESIGN-SYSTEM.md`; the CLAUDE.md rule is added.
+- 2026-10-30 (U1) — **390px cannot match the prototype:** it has no media queries. The build follows the README's rule for under 1024px (top bar + Menu drawer, stacked layouts, the week strip and tables scroll inside their cards). Comparisons at 390 are reported as expected differences (user approved).
+- 2026-10-30 (U1) — **Data layer:** TanStack Query 5 on `platform/api.ts` (`api()` gained a `headers` option). Retries only network errors and 5xx, 2 retries; every query passes its `signal`; the cache is cleared on sign-out. `auth.tsx` carries `mustChangePassword` and `passwordChanged()`; `RequireAuth` redirects every route to `/change-password` while it is true.
+- 2026-10-30 (U1) — **Live activity:** `ActivityProvider` (`apps/web/src/shell/activity/`) holds one `EventSource` per tab inside the signed-in shell.
+  - Events are de-duplicated by id and written into the feed query cache; the unread count comes from the stream's `unread-count`, adjusted at once by optimistic reads.
+  - `subscribe(name, fn)` delivers ephemeral events such as `rides.chat`.
+  - After 3 errors in a row, or a refused stream: one `/api/auth/me` (401 signs out once through the API client), otherwise a 1 s → 30 s backoff.
+- 2026-10-30 (U1) — **Components:** `apps/web/src/shell/ui/`: Button, Field/Input/Select/Textarea/Hint/FormError, Chips, Segmented, TabLinks, Table/Row/LoadMore, PageHeader/HeaderMeta/CodeTile/StatusDot, Loading/Empty/ErrorBox, Modal/Drawer (Radix `radix-ui` 1.8), Toast. Radix's Dialog returns focus only to its own Trigger, so `Overlay.tsx` returns focus to the opener itself.
+- 2026-10-30 (U1) — **Theme storage:** `data-theme` on `<html>` from `prefers-color-scheme`, overridden by the sidebar toggle in `localStorage` `uv-theme` (try/catch). Fonts are self-hosted with `@fontsource`.
+- 2026-10-30 (U1) — **Demo flag:** `VITE_DEMO_MODE=true` (the committed `apps/web/.env.visual` sets it for the harness) lists the four demo accounts on the login screen; a click fills the email only. Login errors: 400/401 show "Email or password is incorrect.", 429 shows the server's message, network/5xx show "Couldn't reach UniVerse. Try again."
+- 2026-10-30 (U1) — **Week endpoint contract** (`packages/contracts/src/dashboard/week.ts`):
+  - Request: `GET /api/dashboard/week?from=YYYY-MM-DD`, header `X-Timezone` (IANA name, default Asia/Kolkata).
+  - Response: `{ from, timeZone, days[7]: { date, items: { module, time: 'HH:MM' | allDay: true, title, status?: { label, tone: ok|warn|neutral }, confirmed, href }[] }, modules: { id, status: ok|error|timeout }[] }`. `status` is an object because the design colours it apart from `confirmed` ("waiting" is amber but solid).
+  - Provider: `ModuleDefinition.weekItems(user, { from, to }, signal)` returns `{ at (ISO with offset), allDay?, title, status?, confirmed, href (internal path) }[]` (max 50). The platform adds `module`, places items on their local day, formats times, sorts (all day, time, module order, title) and drops items outside `[from, to)`. Each provider has a 1.5 s timeout; a bad output makes that module `error`.
+  - No module providers yet (P6).
+- 2026-10-30 (U1) — **Audit `actionPrefix`** query (`auth` matches `auth.*`) for the admin screen's chips: `startsWith` → `LIKE 'auth.%'`, served from `audit_log_list_idx` with a filter (en_US collation can't range-seek LIKE).
+- 2026-10-30 (U1) — **Web module discovery by folder:** `apps/web/src/modules/<id>/module.ts` (eager, small: `activityText`, `dashboardCard`) and `Page.tsx` (lazy, its own chunk) via `import.meta.glob`. A listed module without a folder shows "Coming in the next build"; a module the role isn't listed for is 403. Code letters, eyebrows and titles per id are design facts in `shell/modules.ts` (`AREA`).
+- 2026-10-30 (U1) — **Inbox wording:** a module's `activityText` wins. Lower-case text follows the actor's name ("accepted you on…"); a capitalised sentence stands alone. Without it, the payload's `message`, else the humanised type. Text is always rendered as text. Rides has wording for all its activity types.
+- 2026-10-30 (U1) — **Admin extras not drawn by the design:** clicking a user's name opens "Manage user" (change role, reset password showing the temporary password once, same modal style). `driver` is in the role filter and the New user role list. The admin's announcement card stays visible when the inbox is empty.
+- 2026-10-30 (U1) — **Ports for a second copy:** `apps/web/vite.config.ts` reads `WEB_PORT` / `API_PORT` from `apps/web/.env.local` (defaults 5173 / 4000); this copy uses 5273 / 4100.
 
 - 2026-10-30 (P4) — **Hub data model** (`prisma/schema/hub.prisma`, migrations `20261029202837_p4_hub` and `20261029210500_p4_hub_search_words`): every table `hub_`; `hub_profiles(user_id)` is created on first use and every other hub reference to a person points at it, so `User` gets **one** back-relation (`hubProfile`, the only line changed in `platform.prisma`; Prisma refuses one-sided relations). CHECKs on enum-like text, array sizes and item lengths (an IMMUTABLE `hub_items_ok()` helper), ranges and slot length. `hub_topic_progress` stores a copy of the topic's total with a composite FK `(topic_id, total_items) → hub_topics ON UPDATE CASCADE`, so a CHECK bounds `solved` and the copy can't go stale. Resource file ids have no FK to `files` (rides' reason: the sweep hard-deletes rows).
 - 2026-10-30 (P4) — **No-drift tricks:** Prisma compares partial-index predicates and generated-column expressions as text, so `hub.prisma` copies PostgreSQL's normalised forms (`status = ANY (ARRAY['pending'::text, 'accepted'::text])`, the `dbgenerated(...)` of the `search` column). The generated `tsvector` is declared `Unsupported("tsvector")? @default(dbgenerated(...))` with `@@index(type: Gin)`; `migrate diff` is empty on dev and test.
@@ -164,7 +201,7 @@ Ported from `routepool2-react-` @ `0c57429` into `apps/api/src/modules/rides/` (
 - **Tables:** `rides_offers` (plan as JSON, plus the plan totals, peak onboard and costs) and `rides_offer_bookings` (unique offer + passenger; planned pickup, in-vehicle metres, cost share, solo fare).
 - **Migrations:** `20261029191650_p3b_rides_offers` and `20261029192926_p3b_file_reference_indexes`.
 - **Dashboard:** the rider summary's `upcomingRide` is now `{ rideType: 'pool' | 'carpool', id, … }`, totals cover both ride types, and there is a new `carpool: { seatsFilled, costRecoveredPaise } | null`.
-- **Seed:** `mentor@` (car, 3 seats) and `student2@` (bike, women-only offer) are approved carpool drivers. Each first seed creates two open offers (Borivali → SPIT at about now + 75 min, auto-accept; Goregaon → SPIT at about now + 50 min, women-only) and one completed ride yesterday with `student@` aboard (Malad → Andheri, share ₹41.21, saved ₹213.13).
+- **Seed (superseded in P6, see "Integration after P6"):** `mentor@` (car, 3 seats) and `student2@` (bike, women-only offer) are approved carpool drivers. Each first seed creates two open offers (Borivali → SPIT at about now + 75 min, auto-accept; Goregaon → SPIT at about now + 50 min, women-only) and one completed ride yesterday with `student@` aboard (Malad → Andheri, share ₹41.21, saved ₹213.13).
 
 ## Module A (hub) after P4 — what U2 and P6 must know
 
@@ -190,9 +227,34 @@ Ported from `routepool2-react-` @ `0c57429` into `apps/api/src/modules/rides/` (
 - **Seed numbers:** the API computes from the stored rows, so the screen shows today **3 h 32 m**, average **4 h 24 m** and **20 % under** (the design's chart says 3.7 h and "16 % under", which don't match its own 3 h 32 m). Series: 252, 300, 282, 234, 264, 252, 212 → 4.2 h, 5.0 h, 4.7 h, 3.9 h, 4.4 h, 4.2 h, 3.5 h.
 - **For P6:** wire `studyMinutesThisWeek` into the hub through the platform (e.g. a module capability), never by importing wellbeing from hub.
 
+## Integration after P6 — what U2, P7 and Person 2 must know
+
+- **Week strip** (`GET /api/dashboard/week`): providers are registered (see the P6 decision for titles, statuses and hrefs). The mentor's "N mentorship requests" item is placed at the current time; U2 may render its time as "now" (the design does). Dashed = `confirmed: false`.
+- **Ride link:** `MentorshipRequest.rideLink` (`{ href } | null`) → the Rides screen opens Find a ride with `to`, `date` and `arriveBy` filled; submit `POST /api/rides/requests { pickupNodeId, dropNodeId, arriveBy: '<date>T<arriveBy>:00+05:30' }`.
+- **Matches:** each `OfferMatch` has `booking` (`null` | `{ id, status: 'requested' | 'accepted' }`): accepted → "JOINED · YOU ARE IN THIS CAR", requested → "REQUESTED · WAITING FOR DRIVER" (cancel with `POST /api/rides/bookings/:id/cancel`), null → "Request to join".
+- **Focus sharing:** the hub prep screen and dashboard card show `focusStudyMinutesThisWeek` only when present; the toggle is `PUT /api/wellbeing/settings { shareStudyWithHub }` on the Wellbeing screen.
+- **Web cards:** `apps/web/src/modules/hub/module.ts` and `wellbeing/module.ts` now have `dashboardCard` (design copy per role) and `activityText` (hub requests; the weekly summary). The visual fixtures still send hub/wellbeing `{ status: 'not_built' }` and provisional hub activity types, so the placeholder card and fallback text are what the baselines show; U2 should switch the fixtures to the real contracts and update the baselines then.
+- **Visual tests after the U1 merge:** `npm run test:visual` 214 of 214 passed (route-mocked, no database); no screen failed, so nothing is listed for U2.
+- **Demo data** (`docs/TEST-SCENARIOS.md` "Demo data at a glance"): Diya drives a 3-seat car (women-only off); Sneha is the women-only rider; Kabir and Ishita are approved carpool drivers; `aditya.rane@universe.test` is the inactive account. Neha's 08:30 from Malad is the **day after tomorrow** (not tomorrow), so Ishita, who drives her own ride tomorrow, is never in two cars on one morning. Aarav's seat request on it shows in his week as a dashed "requested" item.
+- **Storyline:** `apps/api/test/storyline.test.ts` is the live demo script; it re-books Neha's Monday slot (cancel, then request it) because the seed already has that session accepted and one live request per student and mentor is a database rule.
+
 ## Requests for the other owner
 
+- 2026-10-30 (P6, for Person 2): please review the P6 pull request (stacked on P5; it contains the merges of `main` and U1). Shared areas it changes, all authorised for this phase: `apps/api/src/platform/` (`publicApi` + `platform.modules`, `seedAfter`/`seedModules`, `RoleGuard`/`anyRole` on platform routes, `routeTable.ts`, module guards on `app.locals.mounted`, `platform.user_created` on account creation), `packages/contracts/` (`actor.ts`, `publicApi.ts`, `rides|hub|wellbeing/public.ts`, `arriveBy`, `OfferMatch.booking`, `rideLink`, `focusStudyMinutesThisWeek`, `platform.user_created`), `prisma/seed/` (`run.ts`, `story.ts`, `reset.ts`, `demo-reset.ts`, inactive account, welcome text), root `package.json` (`demo:reset`, `docs:roles`), `apps/web/src/modules/{hub,wellbeing}/module.ts`. **For your modules:** expose read-only functions to others with `publicApi` (add your schemas to `publicApiRegistry`), call others with `platform.modules.get(id)` inside handlers (never import another module), add `weekItems` for the week strip, and `seedAfter` if your seed needs another module's data. `npm run docs:roles` then lists your routes; the guard test needs every route behind `requireAuth` with role metadata (your module's `roles` already count). When you add `observatory`/`exam`, add your steps to the storyline's marked hook (`it.todo` in `apps/api/test/storyline.test.ts`).
+
 - 2026-10-30 (P5, for Person 2): please review the P5 pull request (stacked on P4). Shared areas it changes, all authorised for this phase except the one-line `wbSettings` back-relation in `platform.prisma` (Prisma requires it, as in P4): `packages/contracts/` (`wellbeing/index.ts`, `activity/wellbeing.ts`, real `dashboard/wellbeing.ts`, registry lines); `apps/api/src/platform/scheduler.ts` + `platform.schedule` + `server.ts` start/stop (**use `platform.schedule` for your own periodic jobs**); the request logger in `apps/api/src/app.ts`; the new workspace `packages/wellbeing-core` (root `package.json` workspaces and build, web dependency and Vite alias).
+
+- 2026-10-30 (U1, for Person 2): please review the U1 pull request. Shared areas it changes:
+  - `packages/contracts/` — `dashboard/week.ts` and `AuditQuery.actionPrefix`;
+  - `apps/api/src/platform/` — the week route in `dashboard.ts`, `weekItems` in `modules/index.ts`, `actionPrefix` in `audit/index.ts`, OpenAPI;
+  - `apps/web/src/shell/` — new;
+  - root `package.json` — `test:visual`, `design:compare`; `typecheck` and `lint` now include the harness and Stylelint.
+  - Your screens: see "How to add your module's screens" below. Please confirm the prototype's assumption that Observatory is visible to everyone.
+- 2026-10-30 (U1, for the design team): three places in the design are under WCAG 4.5:1 contrast. The build keeps them exact and the Chromium axe check excludes only them:
+  - `--faint` text for the login demo note;
+  - "Nothing yet" in the week strip;
+  - inactive user rows at 65% opacity.
+  Suggest `--muted` for both texts and 80% opacity, or confirm as is.
 
 - 2026-10-30 (P4, for Person 2): please review the P4 pull request (stacked on #4, which is stacked on #3: merge those first). Shared areas it changes (all authorised for this phase except the one-line `platform.prisma` back-relation, which Prisma requires):
   - `packages/contracts/` — new `hub/index.ts`, `week.ts` (**use `weekOf()` for any "this week" in C and E**), `activity/hub.ts`, `audit/hub.ts`, real `dashboard/hub.ts`, registry lines;
@@ -210,6 +272,26 @@ Ported from `routepool2-react-` @ `0c57429` into `apps/api/src/modules/rides/` (
 
 - 2026-10-29 (P2, for Person 2): please review the P2 pull request too (it changes shared areas: `packages/contracts/`, `apps/api/src/platform/`, `prisma/schema/platform.prisma`, `prisma/seed/index.ts`, root `package.json`). Your modules plug in without touching the platform: see "How to plug in your module (backend)" below. Two shared files take one line each when you start: `packages/contracts/src/dashboard/index.ts` (your summary schema) and `packages/contracts/src/audit/index.ts` (your audit actions), via PR.
 - 2026-10-29 (P1, for Person 2): please review and approve the P1 pull request: it creates every shared area (`packages/contracts/`, `apps/api/src/platform/`, root `package.json`, `prisma/schema/base.prisma`, `prisma/schema/platform.prisma`, `prisma/seed/index.ts`). To send activity events from C or E: add `packages/contracts/src/activity/observatory.ts` / `exam.ts` (types named `observatory.*` / `exam.*`), spread them into `activityRegistry` in `packages/contracts/src/activity/index.ts` (shared, so via PR), then call `transaction()` or `emit()` from `apps/api/src/platform/activity/service.ts`.
+
+## How to add your module's screens (Person 2 and U2)
+
+Full guide: `docs/design/DESIGN-SYSTEM.md` sections 8–9.
+- **Folder:** `apps/web/src/modules/<id>/`. `Page.tsx` default-exports the screen; it is lazily loaded at `/<id>/*` and shown only to roles `GET /api/modules` lists (others get 403). `module.ts` default-exports `{ activityText?, dashboardCard? }`.
+- **Dashboard card:** `dashboardCard(summaryData, user) => { big, text, status?, tone? } | null` from your `dashboardSummaryRegistry` schema; `null` shows the placeholder.
+- **Week items:** backend `weekItems(user, { from, to }, signal)` in your module definition (contract above).
+- **Shared components and states:** `PageHeader` with `AREA.<id>` eyebrow/title and `module="<id>"`, then `Loading`, `Empty`, `ErrorBox`, `Table`, `Chips`, `Modal`, `Drawer`, `useToast`. Live data: `useActivity().subscribe('<id>.<event>', fn)`.
+- **Checks:** add your screens to `tools/design-compare/` (`matrix.ts`, `prototype.ts` driving, fixtures validated with your contracts), then `npm run design:compare` and `npm run test:visual -- --update-snapshots`.
+
+## README vs OpenAPI differences found in U1
+
+- Announcements are `POST /api/activity/announcements` (README: `/api/admin/announcements`).
+- Rides is also visible to role `driver` (README table: student, mentor, admin).
+- The README's "last seen" is the API's `lastLoginAt`.
+- Audit actions are `admin.user_password_reset` and `admin.user_updated` (prototype: `admin.password_reset`, `admin.user_deactivated`). Targets are `targetType` + `targetId` (ids, not names).
+- `ActivityEvent` has `type` + `payload`, no display text; wording comes from each module's `activityText`.
+- The audit prefix chips needed a new `actionPrefix` query (added).
+- The README says the dashboard uses `GET /api/activity?limit=3`; the build shares the inbox's feed query (`limit=20`) and takes three, one request for both screens.
+- `Role` has `driver`; the prototype's role filter and New user list do not (the build adds it).
 
 ## How to plug in your module (backend)
 
@@ -273,8 +355,25 @@ Then run `npm run api:docs` and commit `docs/api/openapi.json`. `npm test` fails
 
 **7. Tests.** Use `apps/api/test/helpers.ts`: `login(email)` and `as(session).get/post/patch/delete(url)` (cookie and CSRF header set). Create the app with your module: `createApp({ modules: await loadModules() })` (optionally `loadModules({ platform: createPlatform({ ...overrides }) })`). Rides tests (`apps/api/test/rides/`) show concurrency tests, SSE checks and query counting.
 
+**8. Cross-module calls.** Never import another module. To offer read-only data, add `packages/contracts/src/<id>/public.ts` (Zod input with `actor: Actor` and output per function) and one entry in `publicApiRegistry` (`packages/contracts/src/publicApi.ts`), then implement it in your definition:
+```ts
+import type { PublicApiImpl } from '../../platform/modules/index.js';
+const publicApi: PublicApiImpl<'exam'> = {
+  openFlagCount: async ({ actor }, signal) => (actor.role === 'admin' ? count() : null),
+};
+return { ...definition, publicApi };
+```
+To call another module, resolve it inside the handler (not in your factory) and handle it being absent or failing:
+```ts
+const stop = await platform.modules.get('rides')?.findStop({ actor: user, stopId }); // undefined: not installed
+```
+Calls are validated both ways, limited to 500 ms and fail with 503 `MODULE_UNAVAILABLE`; catch it where the data is optional. Available today: rides `findStop`, `searchStops`, `upcomingForUser`; hub `sessionsForUser`, `weeklyGoal`; wellbeing `studyMinutesThisWeek`.
+
+**9. Week strip and seeds.** `weekItems(user, { from, to }, signal)` returns your dated items (contract `WeekProviderItem`; see the P6 decision for the copy style). If your seed needs another module's data, set `seedAfter: ['rides']`; `npm run demo:reset -- --yes` re-runs every seed from now (add your tables to `MODULE_TABLES` in `prisma/seed/reset.ts`).
+
 ## Audit findings for P8
 
+- LOW (found in P6, root config, not fixed: outside P6's authorised scope) — `prisma.config.ts:25` fails `tsc -p tsconfig.json` (the root project that covers the seed files) under `exactOptionalPropertyTypes`: `shadowDatabaseUrl: string | undefined`. No gate runs that project, so it never showed. Fix: `...(shadow && { shadowDatabaseUrl: shadow })`, and add `tsc -p tsconfig.json` to `npm run typecheck` so `prisma/seed/` is checked too.
 - HIGH (found in P5, platform, not fixed: outside P5's authorised scope) — **Timestamps are shifted by the database session time zone.** Both local databases have `TimeZone = Asia/Kolkata` (Homebrew default from the Mac). The Prisma 7 pg adapter writes a JS `Date` as its UTC wall-clock time without an offset (PostgreSQL then reads it as IST) and reads `timestamptz` back the same way. So values written and read through Prisma round-trip, but anything compared with SQL `now()`/`CURRENT_TIMESTAMP` or filled by a database default is off by 5 h 30 m: e.g. a probe stored `paused_since` intended as 19:00Z as 13:30Z, and `SELECT ${d.toISOString()}::timestamptz` came back 5 h 30 m late. Affects every `@default(now())` read back, and any SQL `now()` comparison against Prisma-written times (hub slots/requests, sessions, rides). Fix at the root: `ALTER DATABASE universe SET timezone TO 'UTC'` (and `universe_test`, `universe_shadow`, README setup step), or pass `options: '-c TimeZone=UTC'` to the pool in `apps/api/src/platform/db.ts`. Then re-check seeds and tests. Wellbeing avoids database-clock values it reads back (`ensure()` sets `updated_at` from JS; a test checks).
 
 From the independent P1–P2 verification in P3a (the one high finding, the login-lockout race, was fixed in P3a):
@@ -287,6 +386,18 @@ From the independent P1–P2 verification in P3a (the one high finding, the logi
 - LOW — `docs/sessions/P1.md` §9 still says a 429 lockout appears only for existing accounts (fixed in P2).
 
 ## Open questions
+
+- decided: Neha's 08:30 from Malad is the day after tomorrow, not tomorrow, so Ishita (eligible driver for Aarav tomorrow, and accepted on Neha's ride) is never in two cars on one morning (P6, unattended).
+- decided: the hidden-by-time match is Neha's kept Borivali → SPIT offer moved to tomorrow 07:55 (15 minutes early); the design's "pickup 08:25" can't be hidden by time because the matcher's SQL window already drops departures after 08:20 (P6, unattended).
+- decided: Diya's ride starts at Dahisar 08:02 (pickup at Borivali 08:10) with Rahul aboard, so the design's "1 of 3 seats left" is real (P6, unattended).
+- decided: the storyline re-books Neha's seeded Monday session (cancel, request the same slot) because a second live request to the same mentor is refused by a unique index (P6, unattended).
+- decided: a slot stop that can't be checked (rides missing) is refused with 422 `STOP_NOT_FOUND` rather than stored unchecked (P6, unattended).
+- decided: ride links only for stops a car can reach (`drivable`); campus walk-only stops (Library, Canteen…) get none (P6, unattended).
+- decided: the inactive demo account is Aditya Rane (`aditya.rane@universe.test`), kept out of `DEMO_ACCOUNTS` so the sign-in test still signs every demo account in (P6, unattended).
+- decided: `demo:reset` deletes every module table including reference data (stops, topics, subjects) and soft-deletes module files; the seed recreates everything. It was run on `universe` at the end of P6 to leave the demo database matching the new seed (P6, unattended).
+- decided: the story seed deletes this run's side-effect events in Aarav's inbox (e.g. the completed ride's acceptance) so his inbox is exactly the design's five lines (P6, unattended).
+- decided: "Paused since" is clamped to today's start, so the week strip always shows it today, even right after midnight (P6, unattended).
+- decided: added `platform.user_created` for the design's admin inbox line; observatory/exam inbox lines are Person 2's (P6, unattended).
 
 - decided: wildcard `*.x.com` also matches `x.com`; IPs and localhost count as the domain `local` (P5, unattended).
 - decided: summary totals, series and average count only categories currently counted; `average` uses previous days that have counted rows; `days` accepts 7–31 (P5, unattended).
@@ -317,11 +428,30 @@ From the independent P1–P2 verification in P3a (the one high finding, the logi
 
 ## Session log (newest first)
 
+- 2026-10-30 03:05–04:00 — P6 Integration: one platform, demo data, test scenarios (Person 1, Opus 5.5 / high, unattended).
+  - Merged `main` (no change) and U1 (shell, week endpoint, visual harness) after green gates.
+  - `platform.modules.get(id)` cross-module `publicApi` (rides stops and own rides, hub sessions and goal, wellbeing opt-in study minutes), week providers for hub, rides and wellbeing, ride link to mentor sessions with `arriveBy`, matches listing your own bookings, `platform.user_created`.
+  - Route-guard metadata → `docs/ROLES.md` (`npm run docs:roles`) with a guard test; one consistent demo story seed and `npm run demo:reset`; storyline test with live SSE; `docs/TEST-SCENARIOS.md`, `docs/COVERAGE.md`.
+  - 328 API (+1 todo) + 86 library + 52 web tests; visual 214/214; storyline 3/3.
+  - Branch `p1/p6-integration`, PR stacked on P5. Full report: `docs/sessions/P6.md`. Next: P7.
 - 2026-10-30 02:33–03:10 — P5 Module D: wellbeing core library and backend (Person 1, Opus 5.5 / high, unattended).
   - `packages/wellbeing-core`: sanitiser, rules, focus sessions, metrics, daily totals; three hand-checked sample days; 86 tests incl. fast-check properties.
   - 3 `wb_` tables (1 migration), contracts, 10 owner-only routes, hourly retention + weekly summary job via the new `platform.schedule`, wellbeing-safe request logging, dashboard summary, seed matching the design.
   - 278 API tests (36 new) + 86 library + 1 web. Found a platform-wide time-zone shift (HIGH, for P8).
   - Branch `p1/p5-wellbeing`, PR stacked on P4. Full report: `docs/sessions/P5.md`. Next: P6.
+- 2026-10-30 ~01:40–03:05 — U1 Frontend shell and platform screens from the design (Person 1, Opus 5.5 / high).
+  - Built from the Claude Design handoff: tokens and type scale; Radix-based components; TanStack Query; one-EventSource `ActivityProvider`.
+  - Shell from `/api/modules`, with a top bar below 1024px.
+  - Screens:
+    - sign-in (demo flag), forced and voluntary password change;
+    - dashboard "Your week", inbox, admin users and audit log;
+    - 403, 404, "Something went wrong" and "new version".
+  - Folder-discovered lazy module pages.
+  - Backend: `GET /api/dashboard/week` with `weekItems` providers, and audit `actionPrefix`.
+  - Design-compare harness: 168 cases; 78 of the 84 at 1440 are under 0.5%, and the rest are data the API doesn't have yet.
+  - 204 visual baselines plus Chromium axe; Stylelint token guard; `DESIGN-SYSTEM.md`.
+  - Tests: 189 API + 49 web.
+  - Branch `p1/u1-shell`. Full report: `docs/sessions/U1.md`. Next: U2 (and P6 adds week providers).
 - 2026-10-30 01:52–02:35 — P4 Module A: Student Hub backend (Person 1, Opus 5.5 / high, unattended).
   - 9 `hub_` tables (2 migrations), contracts (hub schemas, shared IST week, activity, audit, dashboard).
   - Profiles with privacy, prep tracker (row-locked increments with Idempotency-Key, weekly goal and pace, readiness, 30-day series), mentor ranking in one query, slots with an exclusion constraint, row-locked accept, resource repository with full-text + uploader-name search and file-in-use protection, admin views, dashboard summary, seed with the design's data and six padded real files.

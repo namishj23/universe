@@ -2,7 +2,7 @@ import { existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import cookieParser from 'cookie-parser';
 import cors from 'cors';
-import express, { type Express, type Request, type Router } from 'express';
+import express, { type Express, type Request, type RequestHandler, type Router } from 'express';
 import helmet from 'helmet';
 import type { SerializedRequest, SerializedResponse } from 'pino';
 import { pinoHttp } from 'pino-http';
@@ -19,12 +19,7 @@ import { fileRoutes } from './platform/files/index.js';
 import { healthRoutes } from './platform/health.js';
 import { errorHandler, notFound, requestId } from './platform/http.js';
 import { logger } from './platform/logger.js';
-import {
-  basePath,
-  moduleListRoutes,
-  mountModules,
-  type ModuleDefinition,
-} from './platform/modules/index.js';
+import { moduleListRoutes, mountModules, type ModuleDefinition } from './platform/modules/index.js';
 import { buildOpenApiDocument } from './platform/openapi.js';
 
 // Same relative path from src/ (dev) and dist/ (built).
@@ -60,10 +55,14 @@ export interface AppOptions {
   modules?: readonly ModuleDefinition[];
 }
 
-/** Every mounted router and its prefix; the OpenAPI test checks each route is documented. */
+/**
+ * Every mounted router and its prefix (plus the guards mounted in front of it); the OpenAPI
+ * test checks each route is documented, the route table reads the guards.
+ */
 export interface MountedRouter {
   prefix: string;
   router: Router;
+  guards?: RequestHandler[];
 }
 
 export function createApp({ modules = [] }: AppOptions = {}): Express {
@@ -107,11 +106,7 @@ export function createApp({ modules = [] }: AppOptions = {}): Express {
     { prefix: '/api/files', router: fileRoutes(modules) },
   ];
   for (const { prefix, router } of mounted) app.use(prefix, router);
-  mountModules(app, modules);
-  app.locals.mounted = [
-    ...mounted,
-    ...modules.map((m) => ({ prefix: basePath(m), router: m.router })),
-  ] satisfies MountedRouter[];
+  app.locals.mounted = [...mounted, ...mountModules(app, modules)] satisfies MountedRouter[];
 
   // The contract for the UI phases; not served in production.
   if (env.NODE_ENV !== 'production') {

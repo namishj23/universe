@@ -1,5 +1,5 @@
 import { beforeAll, describe, expect, it } from 'vitest';
-import { DashboardResponse, wellbeing } from '@universe/contracts';
+import { DashboardResponse, istDayStart, wellbeing } from '@universe/contracts';
 import { prisma } from '../../src/platform/db.js';
 import { account, daysAgo, setupWellbeing, today, tracking, type Wb } from './helpers.js';
 
@@ -28,9 +28,12 @@ describe("the design's Wellbeing screen (seeded Aarav)", () => {
     expect(body).toMatchObject({ percentVsAverage: 20, direction: 'under', recordCount: 28 });
     expect(body.tracking).toBe('paused');
     const pausedSince = Date.parse(body.pausedSince ?? '');
-    expect(pausedSince % 3_600_000).toBe(0);
-    expect(Date.now() - pausedSince).toBeGreaterThanOrEqual(2 * 3_600_000);
-    expect(Date.now() - pausedSince).toBeLessThan(3 * 3_600_000);
+    // On the hour two hours ago, or the start of today (IST) when that was yesterday.
+    if (pausedSince !== istDayStart(new Date()).getTime()) {
+      expect(pausedSince % 3_600_000).toBe(0);
+      expect(Date.now() - pausedSince).toBeGreaterThanOrEqual(2 * 3_600_000);
+      expect(Date.now() - pausedSince).toBeLessThan(3 * 3_600_000);
+    }
   });
 
   it('shows the same on the dashboard card, to the owner only', async () => {

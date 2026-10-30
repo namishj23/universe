@@ -9,6 +9,8 @@ export * from './dashboard/index.js';
 export * from './admin.js';
 export * from './files.js';
 export * from './week.js';
+export * from './actor.js';
+export * from './publicApi.js';
 export * as rides from './rides/index.js';
 export * as hub from './hub/index.js';
 export * as wellbeing from './wellbeing/index.js';
