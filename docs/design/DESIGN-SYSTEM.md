@@ -33,7 +33,7 @@ Colours are CSS custom properties on `:root` (light) and `:root[data-theme='dark
 ## 2. Type
 
 - `--font-sans` (Familjen Grotesk 400–700) for all UI text. `--font-mono` (Reddit Mono 400–600) **only** for numbers, labels, codes, times, IDs and table data, never sentences. Both are self-hosted with `@fontsource` (imported in `main.tsx`; the CSP blocks third-party fonts).
-- Sizes are tokens named by their pixel value: `--fs-76`, `--fs-36`, `--fs-34`, `--fs-30`, `--fs-22`, `--fs-20`, `--fs-19`, `--fs-18`, `--fs-16`, `--fs-15`, `--fs-14-5`, `--fs-14`, `--fs-13-5`, `--fs-13`, `--fs-12-5`, `--fs-12`, `--fs-11-5`, `--fs-11`, `--fs-10-5`, `--fs-10`, `--fs-9-5`. A size not on this list is a design question, not a new token.
+- Sizes are tokens named by their pixel value: `--fs-76`, `--fs-36`, `--fs-34`, `--fs-30`, `--fs-28`, `--fs-22`, `--fs-20`, `--fs-19`, `--fs-18`, `--fs-16`, `--fs-15`, `--fs-14-5`, `--fs-14`, `--fs-13-5`, `--fs-13`, `--fs-12-5`, `--fs-12`, `--fs-11-5`, `--fs-11`, `--fs-10-5`, `--fs-10`, `--fs-9-5`. A size not on this list is a design question, not a new token.
 
 | Role | Style |
 | --- | --- |

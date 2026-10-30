@@ -76,5 +76,28 @@ function dashboardCard(data: unknown): CardContent | null {
   };
 }
 
-const rides: WebModule = { activityText, dashboardCard };
+const offers = ['rides', 'offers'] as const;
+const bookings = ['rides', 'bookings'] as const;
+const matches = ['rides', 'matches'] as const;
+const groups = ['rides', 'groups'] as const;
+/** Live updates: stored rides events refresh the screens they change (see api.ts keys). */
+const invalidates: WebModule['invalidates'] = {
+  'rides.seat_requested': [offers],
+  'rides.booking_cancelled': [offers],
+  'rides.seat_accepted': [bookings, matches, offers],
+  'rides.seat_declined': [bookings, matches, offers],
+  'rides.offer_cancelled': [bookings, matches, offers],
+  'rides.offer_departing': [bookings, offers],
+  'rides.member_joined': [groups, matches],
+  'rides.member_left': [groups, matches],
+  'rides.group_confirmed': [groups],
+  'rides.driver_assigned': [groups],
+  'rides.driver_accepted': [groups],
+  'rides.driver_heading': [groups],
+  'rides.ride_cancelled': [groups, matches],
+  'rides.rider_boarded': [groups],
+  'rides.trip_completed': [groups, ['rides', 'stats']],
+};
+
+const rides: WebModule = { activityText, dashboardCard, invalidates };
 export default rides;
