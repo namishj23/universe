@@ -1,16 +1,19 @@
 """
-Django settings for the Exam Surveillance System.
+Settings for the UniVerse exam service (Module E).
+
+The service sits behind the platform on 127.0.0.1 and never faces the browser
+(docs/integration/exam-service.md). Every secret comes from the environment
+(services/exam/.env, git-ignored); a missing one stops the service at start-up.
 """
 
 import os
 from pathlib import Path
-from datetime import timedelta
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 
 def _load_env_file(path):
-    """Read KEY=VALUE lines from the project's .env without overriding real env vars."""
+    """Read KEY=VALUE lines from services/exam/.env without overriding real env vars."""
     if not path.exists():
         return
     for line in path.read_text(encoding="utf-8").splitlines():
@@ -20,217 +23,173 @@ def _load_env_file(path):
             os.environ.setdefault(key.strip(), value.strip())
 
 
-_load_env_file(BASE_DIR.parent / ".env")
+_load_env_file(BASE_DIR / ".env")
 
-SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY", "dev-secret-key-change-in-production")
 
-DEBUG = os.environ.get("DJANGO_DEBUG", "True") == "True"
+def _required(name):
+    value = os.environ.get(name, "").strip()
+    if not value:
+        raise RuntimeError(f"Set {name} in services/exam/.env (see README).")
+    return value
 
-ALLOWED_HOSTS = ["*"]
 
+def _path(name):
+    path = Path(_required(name)).expanduser().resolve()
+    if path == BASE_DIR or BASE_DIR in path.parents:
+        raise RuntimeError(f"{name} must be outside the repository.")
+    return path
+
+
+SECRET_KEY = _required("DJANGO_SECRET_KEY")
+DEBUG = os.environ.get("DJANGO_DEBUG", "0") == "1"
+ALLOWED_HOSTS = ["127.0.0.1", "localhost"]
+
+# Shared with the platform: sent by it as X-Service-Token, sent back on /internal/exam/*.
+SERVICE_TOKEN_EXAM = _required("SERVICE_TOKEN_EXAM")
+if len(SERVICE_TOKEN_EXAM) < 32:
+    raise RuntimeError("SERVICE_TOKEN_EXAM must be at least 32 characters.")
+PLATFORM_INTERNAL_URL = _required("PLATFORM_INTERNAL_URL").rstrip("/")
+
+# No admin, auth, sessions, messages or CORS: identity comes only from the platform's headers.
 INSTALLED_APPS = [
-    "django.contrib.admin",
-    "django.contrib.auth",
-    "django.contrib.contenttypes",
-    "django.contrib.sessions",
-    "django.contrib.messages",
-    "django.contrib.staticfiles",
-
-    # Third party
     "rest_framework",
-    "rest_framework_simplejwt",
-    "corsheaders",
-
-    # Local
+    "drf_spectacular",
     "surveillance",
 ]
 
 MIDDLEWARE = [
-    "corsheaders.middleware.CorsMiddleware",
     "django.middleware.security.SecurityMiddleware",
-    "django.contrib.sessions.middleware.SessionMiddleware",
+    "surveillance.middleware.PlatformIdentity",
     "django.middleware.common.CommonMiddleware",
-    "django.middleware.csrf.CsrfViewMiddleware",
-    "django.contrib.auth.middleware.AuthenticationMiddleware",
-    "django.contrib.messages.middleware.MessageMiddleware",
-    "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
 
-ROOT_URLCONF = "exam_surveillance.urls"
+ROOT_URLCONF = "exam_service.urls"
+WSGI_APPLICATION = "exam_service.wsgi.application"
+TEMPLATES = []
 
-TEMPLATES = [
-    {
-        "BACKEND": "django.template.backends.django.DjangoTemplates",
-        "DIRS": [],
-        "APP_DIRS": True,
-        "OPTIONS": {
-            "context_processors": [
-                "django.template.context_processors.debug",
-                "django.template.context_processors.request",
-                "django.contrib.auth.context_processors.auth",
-                "django.contrib.messages.context_processors.messages",
-            ],
-        },
-    },
-]
-
-WSGI_APPLICATION = "exam_surveillance.wsgi.application"
-ASGI_APPLICATION = "exam_surveillance.asgi.application"
-
-# Database - PostgreSQL (the implementation plan's shared database) when
-# POSTGRES_DB is set in .env; otherwise the local SQLite file.
-if os.environ.get("POSTGRES_DB"):
-    DATABASES = {
-        "default": {
-            "ENGINE": "django.db.backends.postgresql",
-            "NAME": os.environ["POSTGRES_DB"],
-            "USER": os.environ.get("POSTGRES_USER", ""),
-            "PASSWORD": os.environ.get("POSTGRES_PASSWORD", ""),
-            "HOST": os.environ.get("POSTGRES_HOST", "127.0.0.1"),
-            "PORT": os.environ.get("POSTGRES_PORT", "5432"),
-            "CONN_MAX_AGE": 60,
-        }
+DATABASES = {
+    "default": {
+        "ENGINE": "django.db.backends.postgresql",
+        "NAME": _required("POSTGRES_DB"),
+        "USER": _required("POSTGRES_USER"),
+        "PASSWORD": _required("POSTGRES_PASSWORD"),
+        "HOST": os.environ.get("POSTGRES_HOST", "127.0.0.1"),
+        "PORT": os.environ.get("POSTGRES_PORT", "5432"),
+        "CONN_MAX_AGE": 60,
+        "CONN_HEALTH_CHECKS": True,
     }
-else:
-    DATABASES = {
-        "default": {
-            "ENGINE": "django.db.backends.sqlite3",
-            "NAME": BASE_DIR / "db.sqlite3",
-            # The background worker writes while web requests read; wait for the
-            # lock instead of failing with "database is locked".
-            "OPTIONS": {"timeout": 20},
-        }
-    }
-
-AUTH_PASSWORD_VALIDATORS = [
-    {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},
-    {"NAME": "django.contrib.auth.password_validation.MinimumLengthValidator"},
-    {"NAME": "django.contrib.auth.password_validation.CommonPasswordValidator"},
-    {"NAME": "django.contrib.auth.password_validation.NumericPasswordValidator"},
-]
-
-LANGUAGE_CODE = "en-us"
-TIME_ZONE = "Asia/Kolkata"
-USE_I18N = True
-USE_TZ = True
-
-STATIC_URL = "static/"
-MEDIA_URL = "/media/"
-MEDIA_ROOT = BASE_DIR / "media"
-
-# Where uploaded videos and flag snapshots are stored
-VIDEO_UPLOAD_DIR = MEDIA_ROOT / "videos"
-SNAPSHOT_DIR = MEDIA_ROOT / "flags"
-os.makedirs(VIDEO_UPLOAD_DIR, exist_ok=True)
-os.makedirs(SNAPSHOT_DIR, exist_ok=True)
-
+}
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
+LANGUAGE_CODE = "en-us"
+TIME_ZONE = "UTC"
+USE_I18N = False
+USE_TZ = True
+
+# Clips and snapshots show people: stored outside the repo, served only through the API.
+MEDIA_ROOT = _path("MEDIA_ROOT")
+CLIP_DIR = MEDIA_ROOT / "clips"
+SNAPSHOT_DIR = MEDIA_ROOT / "snapshots"
+UPLOAD_TMP_DIR = MEDIA_ROOT / "tmp"
+for _dir in (CLIP_DIR, SNAPSHOT_DIR, UPLOAD_TMP_DIR):
+    _dir.mkdir(parents=True, exist_ok=True)
+
+MAX_CLIP_BYTES = 200 * 1024 * 1024
+# Uploads stream to a temporary file next to the clips (never held in memory).
+FILE_UPLOAD_MAX_MEMORY_SIZE = 0
+FILE_UPLOAD_TEMP_DIR = str(UPLOAD_TMP_DIR)
+FILE_UPLOAD_HANDLERS = ["surveillance.uploads.LimitedUploadHandler"]
+DATA_UPLOAD_MAX_MEMORY_SIZE = 64 * 1024        # the non-file fields of a request
+DATA_UPLOAD_MAX_NUMBER_FIELDS = 20
+FILE_UPLOAD_PERMISSIONS = 0o600
+
+SECURE_CONTENT_TYPE_NOSNIFF = True
+SECURE_REFERRER_POLICY = "no-referrer"
+X_FRAME_OPTIONS = "DENY"
+
 REST_FRAMEWORK = {
-    "DEFAULT_AUTHENTICATION_CLASSES": (
-        "rest_framework_simplejwt.authentication.JWTAuthentication",
-    ),
-    "DEFAULT_PERMISSION_CLASSES": (
-        "rest_framework.permissions.IsAuthenticated",
-    ),
-    "DEFAULT_PARSER_CLASSES": (
-        "rest_framework.parsers.JSONParser",
-        "rest_framework.parsers.MultiPartParser",
-        "rest_framework.parsers.FormParser",
-    ),
+    "DEFAULT_AUTHENTICATION_CLASSES": [],
+    "DEFAULT_PERMISSION_CLASSES": [],
+    "UNAUTHENTICATED_USER": None,
+    "DEFAULT_RENDERER_CLASSES": ["rest_framework.renderers.JSONRenderer"],
+    "DEFAULT_PARSER_CLASSES": ["rest_framework.parsers.JSONParser"],
+    "EXCEPTION_HANDLER": "surveillance.errors.exception_handler",
+    "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
+    "DEFAULT_VERSIONING_CLASS": None,
 }
 
-SIMPLE_JWT = {
-    "ACCESS_TOKEN_LIFETIME": timedelta(hours=8),
-    "REFRESH_TOKEN_LIFETIME": timedelta(days=1),
+SPECTACULAR_SETTINGS = {
+    "TITLE": "UniVerse exam service",
+    "DESCRIPTION": (
+        "Module E behind the platform (docs/integration/exam-service.md). The browser sees these "
+        "paths under /api/exam/. Flags are observed events for human review; the service never "
+        "decides anything."
+    ),
+    "VERSION": "1",
+    "SERVE_INCLUDE_SCHEMA": False,
 }
 
-CORS_ALLOWED_ORIGINS = [
-    "http://localhost:5173",
-    "http://127.0.0.1:5173",
-]
-CORS_ALLOW_CREDENTIALS = True
+# One JSON line per event; never personal data (no names, notes or file names).
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": {"json": {"()": "surveillance.logs.JsonFormatter"}},
+    "handlers": {"console": {"class": "logging.StreamHandler", "formatter": "json"}},
+    "root": {"handlers": ["console"], "level": os.environ.get("LOG_LEVEL", "INFO")},
+    "loggers": {
+        # Django's request logger would print the path of every 4xx; our handler logs instead.
+        "django.request": {"handlers": ["console"], "level": "ERROR", "propagate": False},
+        "ultralytics": {"level": "WARNING"},
+    },
+}
 
 # ---------------------------------------------------------------------------
-# YOLO / detection settings
+# Models and detection. Every model file is loaded from ML_DIR only.
 # ---------------------------------------------------------------------------
-# Two models, both under ML/weights/:
-#   1. Detector: pretrained COCO yolov8n.pt, used for its "person" and
-#      "cell phone" classes only (no custom training needed).
-#   2. Classifier: exam_behaviour_cls.pt (normal / suspicious), trained by
-#      ML/train_classification.py and run on each detected student's crop.
-# Every value below is a starting point to tune on our own clips; override any
-# of them with an environment variable of the same name.
-PROJECT_ROOT = BASE_DIR.parent
-ML_DIR = Path(os.environ.get("ML_DIR", str(PROJECT_ROOT / "ML")))
-
-DETECTION_MODEL_PATH = os.environ.get(
-    "DETECTION_MODEL_PATH", str(ML_DIR / "weights" / "yolov8n.pt")
-)
-CLASSIFICATION_MODEL_PATH = os.environ.get(
-    "CLASSIFICATION_MODEL_PATH", str(ML_DIR / "weights" / "exam_behaviour_cls.pt")
-)
-# Pretrained COCO pose model: person boxes plus nose/eye/ear/shoulder keypoints,
-# used for the head-turn event.
-POSE_MODEL_PATH = os.environ.get("POSE_MODEL_PATH", str(ML_DIR / "weights" / "yolov8n-pose.pt"))
+ML_DIR = _path("ML_DIR")
+DETECTION_MODEL_FILE = "yolov8n.pt"
+POSE_MODEL_FILE = "yolov8n-pose.pt"
+CLASSIFIER_MODEL_FILE = "exam_behaviour_cls.pt"
+CLASSIFIER_SHA256 = "e990cc6f47272be1371619b349b9a00e05617cb651966c74903dc9e656a09054"
+# auto = cuda, else mps, else cpu (chosen and logged when the worker starts).
+DEVICE = os.environ.get("DEVICE", "auto")
 
 # Frames analysed per second of video (the rest are skipped).
 ANALYSIS_FPS = float(os.environ.get("ANALYSIS_FPS", "5"))
-
-# Minimum detector confidence for a person / phone box to count.
 PERSON_CONFIDENCE = float(os.environ.get("PERSON_CONFIDENCE", "0.4"))
 PHONE_CONFIDENCE = float(os.environ.get("PHONE_CONFIDENCE", "0.35"))
 
-# A student's crop counts as "suspicious posture" at or above this classifier score.
+# The optional posture classifier is off by default: on the sample clips it was confidently
+# wrong on people sitting close to the camera. When on, its signal is "unusual posture
+# (supporting detail)". A missing or altered file turns it off with one warning.
+POSTURE_FLAGS_ENABLED = os.environ.get("POSTURE_FLAGS_ENABLED", "0") == "1"
 POSTURE_THRESHOLD = float(os.environ.get("POSTURE_THRESHOLD", "0.85"))
 
-# On our sample clips the posture classifier was confidently wrong on students
-# sitting close to the camera, so by default it is only supporting evidence on
-# head-turn flags, not a flag of its own. Set to "1" to flag it on its own again.
-POSTURE_FLAGS_ENABLED = os.environ.get("POSTURE_FLAGS_ENABLED", "0") == "1"
-
-# Head turn: horizontal offset of the nose from the shoulder centre, in shoulder
-# widths, compared with that student's own usual offset (camera angle makes the
-# usual offset differ per seat). At or past this change the head counts as turned.
+# Head turn: nose offset from the shoulder centre (in shoulder widths), compared with that
+# person's own usual offset; with no shoulders in frame, from the eye midpoint (eye distances).
 HEAD_TURN_OFFSET = float(os.environ.get("HEAD_TURN_OFFSET", "0.25"))
-# Same idea when the shoulders are out of frame (laptop webcam): nose offset from
-# the eye midpoint, in eye distances. 0.35 is roughly a 30 degree turn.
 HEAD_TURN_FACE_OFFSET = float(os.environ.get("HEAD_TURN_FACE_OFFSET", "0.35"))
-# Seconds of a student's first observations used to learn their usual offset.
 HEAD_TURN_WARMUP_SECONDS = float(os.environ.get("HEAD_TURN_WARMUP_SECONDS", "1.0"))
 
 # An observed event becomes a flag only if it lasts at least this long (seconds).
 FLAG_MIN_DURATION = {
     "head_turn": float(os.environ.get("HEAD_TURN_MIN_SECONDS", "1.5")),
-    "suspicious_posture": float(os.environ.get("POSTURE_MIN_SECONDS", "2.0")),
+    "unusual_posture": float(os.environ.get("POSTURE_MIN_SECONDS", "2.0")),
     "phone_visible": float(os.environ.get("PHONE_MIN_SECONDS", "1.0")),
     "restricted_zone": float(os.environ.get("ZONE_MIN_SECONDS", "1.5")),
 }
-
-# Gaps shorter than this inside one event (e.g. a missed detection) are bridged.
-# Head turns use a longer gap so several glances close together become one
-# "repeated head turns" flag instead of many short ones.
+# Gaps shorter than this inside one event are bridged; glances within 3 s become one flag.
 FLAG_GAP_SECONDS = {
     "head_turn": float(os.environ.get("HEAD_TURN_GAP_SECONDS", "3.0")),
-    "suspicious_posture": float(os.environ.get("FLAG_GAP_SECONDS", "1.0")),
+    "unusual_posture": float(os.environ.get("FLAG_GAP_SECONDS", "1.0")),
     "phone_visible": float(os.environ.get("FLAG_GAP_SECONDS", "1.0")),
     "restricted_zone": float(os.environ.get("FLAG_GAP_SECONDS", "1.0")),
 }
 
-# A video still "processing" with no progress for this long is shown as stalled.
+# A running job with no progress for this long is marked failed (crash or restart).
 STALLED_AFTER_SECONDS = int(os.environ.get("STALLED_AFTER_SECONDS", "120"))
-
-# ---------------------------------------------------------------------------
-# Live webcam sessions
-# ---------------------------------------------------------------------------
-# The webcam on the machine running the backend (0 = built-in camera).
-LIVE_CAMERA_INDEX = int(os.environ.get("LIVE_CAMERA_INDEX", "0"))
-LIVE_CAMERA_WIDTH = int(os.environ.get("LIVE_CAMERA_WIDTH", "1280"))
-LIVE_CAMERA_HEIGHT = int(os.environ.get("LIVE_CAMERA_HEIGHT", "720"))
-# Frames analysed per second while live; the newest frame is always used, so a
-# slow GPU skips frames instead of falling behind.
-LIVE_ANALYSIS_FPS = float(os.environ.get("LIVE_ANALYSIS_FPS", "8"))
-# Recording frame rate (WebM/VP8, which browsers can play) and live-view rate.
-LIVE_RECORD_FPS = float(os.environ.get("LIVE_RECORD_FPS", "15"))
-# Live sessions stop on their own after this long, in case Stop is never pressed.
-LIVE_MAX_MINUTES = int(os.environ.get("LIVE_MAX_MINUTES", "30"))
+# Live progress to the uploader's tabs, at most this often.
+PROGRESS_PUSH_SECONDS = 2.0
+# Outbox delivery: retries with exponential backoff up to this many attempts.
+OUTBOX_MAX_ATTEMPTS = int(os.environ.get("OUTBOX_MAX_ATTEMPTS", "12"))
+OUTBOX_TIMEOUT_SECONDS = 5

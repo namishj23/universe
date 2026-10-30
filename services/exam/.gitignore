@@ -1,15 +1,22 @@
+# Never commit: secrets, local databases, media (clips and snapshots show people),
+# model weights, videos, datasets, virtual environments.
 .env
+.env.*
+db.sqlite3
+*.sqlite3
+media/
 *.pt
 *.mp4
 *.webm
 *.avi
+*.mov
 *.zip
 *.csv
-db.sqlite3
-media/
 venv/
 .venv/
 __pycache__/
+.pytest_cache/
+samples/
 data_classification/
 datasets/
 detected_frames/

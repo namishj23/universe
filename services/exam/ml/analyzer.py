@@ -1,5 +1,5 @@
 """
-Video processing pipeline for the Exam Surveillance System.
+Clip analysis for the exam service (Person 2's detection logic).
 
 For every sampled frame (ANALYSIS_FPS per second of video):
   1. The pretrained pose model finds people with nose/shoulder keypoints, and
@@ -12,191 +12,91 @@ For every sampled frame (ANALYSIS_FPS per second of video):
                              position by HEAD_TURN_OFFSET shoulder widths or more
        - phone_visible:      a phone box, attributed to the student holding it
        - restricted_zone:    the student's foot point inside the video's zone
-       - suspicious_posture: classifier score >= POSTURE_THRESHOLD (only when
+       - unusual_posture: classifier score >= POSTURE_THRESHOLD (only when
                              POSTURE_FLAGS_ENABLED; otherwise the score is kept
                              as supporting detail on head-turn flags)
   5. Consecutive observations of the same event for the same student are
      merged into one Flag with a start/end time, mean and peak confidence and
      one annotated snapshot. Events shorter than FLAG_MIN_DURATION are dropped.
 
-Flags are observations for a human to review. Nothing here decides that
-misconduct happened, and there is no video-level verdict.
+Flags are observations for a human to review. Nothing here decides anything, and there is no video-level verdict.
 
 Uploads are processed one at a time by a single background worker thread so
 long videos never block a web request and two jobs never compete for the GPU.
 """
 
 import logging
-import math
 import os
-import queue
 import statistics
-import threading
-import time
 import uuid
 from collections import defaultdict, deque
 
 import cv2
 from django.conf import settings
-from django.core.files.base import ContentFile
-from django.db import close_old_connections
-from django.utils import timezone
 
-from .models import Flag, Video
+from surveillance.models import Flag
 
-logger = logging.getLogger(__name__)
+os.environ.setdefault("YOLO_OFFLINE", "1")
+logger = logging.getLogger("exam.ml")
 
 PERSON_CLASS = 0        # COCO "person"
 PHONE_CLASS = 67        # COCO "cell phone"
 NOSE, LEFT_EYE, RIGHT_EYE, LEFT_SHOULDER, RIGHT_SHOULDER = 0, 1, 2, 5, 6   # COCO keypoints
 KEYPOINT_CONFIDENCE = 0.5
-CROP_PADDING = 0.1      # widen each student crop by 10% for context
+CROP_PADDING = 0.1
 SNAPSHOT_MAX_WIDTH = 1280
-PROGRESS_EVERY_SECONDS = 2.0
-
 _model_cache = {}
-_process_lock = threading.Lock()
-_jobs = queue.Queue()
-_worker = None
-_worker_lock = threading.Lock()
 
 
-def _load_models():
-    """Lazily load both models so Django can start even without weights present."""
+def _sha256(path):
+    import hashlib
+    h = hashlib.sha256()
+    with open(path, "rb") as fh:
+        for chunk in iter(lambda: fh.read(1 << 20), b""):
+            h.update(chunk)
+    return h.hexdigest()
+
+
+def pick_device():
+    import torch
+    if settings.DEVICE != "auto":
+        return settings.DEVICE
+    if torch.cuda.is_available():
+        return "cuda"
+    return "mps" if torch.backends.mps.is_available() else "cpu"
+
+
+def load_models():
+    """Load models from ML_DIR only; the posture classifier is optional and never blocks start-up."""
     if "models" in _model_cache:
         return _model_cache["models"]
-
-    from ultralytics import YOLO  # imported lazily; heavy dependency
-
-    paths = {
-        "DETECTION_MODEL_PATH": (settings.DETECTION_MODEL_PATH, "the pretrained yolov8n.pt"),
-        "POSE_MODEL_PATH": (settings.POSE_MODEL_PATH, "the pretrained yolov8n-pose.pt"),
-        "CLASSIFICATION_MODEL_PATH": (
-            settings.CLASSIFICATION_MODEL_PATH, "exam_behaviour_cls.pt from ML/train_classification.py"
-        ),
-    }
-    for setting, (path, what) in paths.items():
-        if not os.path.exists(path):
-            raise FileNotFoundError(f"Model not found: {path}. Put {what} in ML/weights/ or set {setting}.")
-
-    det_model = YOLO(settings.DETECTION_MODEL_PATH)
-    pose_model = YOLO(settings.POSE_MODEL_PATH)
-    cls_model = YOLO(settings.CLASSIFICATION_MODEL_PATH)
-    suspicious = [i for i, name in cls_model.names.items() if name.lower() == "suspicious"]
-    if not suspicious:
-        raise ValueError(f"Classifier has no 'suspicious' class: {cls_model.names}")
-
-    _model_cache["models"] = _Models(det_model, pose_model, cls_model, suspicious[0])
+    from ultralytics import YOLO
+    device = pick_device()
+    loaded = {}
+    for name in (settings.DETECTION_MODEL_FILE, settings.POSE_MODEL_FILE):
+        path = settings.ML_DIR / name
+        if not path.is_file():
+            raise FileNotFoundError(f"Model {name} is missing from ML_DIR (run scripts/fetch_weights.py).")
+        logger.info("model loaded", extra={"file": name, "sha256": _sha256(path), "device": device})
+        loaded[name] = YOLO(str(path))
+    cls, posture_index = None, None
+    if settings.POSTURE_FLAGS_ENABLED:
+        path = settings.ML_DIR / settings.CLASSIFIER_MODEL_FILE
+        digest = _sha256(path) if path.is_file() else None
+        if digest != settings.CLASSIFIER_SHA256:
+            logger.warning("posture classifier missing or altered; posture flags off", extra={"sha256": digest})
+        else:
+            logger.info("model loaded", extra={"file": path.name, "sha256": digest, "device": device})
+            cls = YOLO(str(path))
+            posture_index = next(i for i, n in cls.names.items() if n.lower() != "normal")
+    _model_cache["models"] = _Models(loaded[settings.DETECTION_MODEL_FILE], loaded[settings.POSE_MODEL_FILE],
+                                     cls, posture_index, device)
     return _model_cache["models"]
 
 
 class _Models:
-    def __init__(self, det, pose, cls, suspicious_index):
-        self.det = det
-        self.pose = pose
-        self.cls = cls
-        self.suspicious_index = suspicious_index
-
-
-def enqueue(video_id: int):
-    """Queue a video for background processing; returns immediately."""
-    global _worker
-    with _worker_lock:
-        if _worker is None or not _worker.is_alive():
-            _worker = threading.Thread(target=_worker_loop, name="detection-worker", daemon=True)
-            _worker.start()
-    _jobs.put(video_id)
-
-
-def _worker_loop():
-    while True:
-        video_id = _jobs.get()
-        try:
-            process_video(video_id)
-        except Exception:  # noqa: BLE001
-            # Errors are already recorded on the Video row by process_video()
-            pass
-        finally:
-            close_old_connections()
-
-
-def process_video(video_id: int):
-    """Main entrypoint: loads the Video row, runs the full pipeline, updates status."""
-    with _process_lock:
-        video = Video.objects.get(id=video_id)
-
-        # A re-run starts clean instead of adding a second copy of every flag.
-        for old in video.flags.all():
-            old.snapshot.delete(save=False)
-        video.flags.all().delete()
-
-        video.status = Video.STATUS_PROCESSING
-        video.error_message = ""
-        video.processed_at = None
-        video.last_progress_at = timezone.now()
-        video.save(update_fields=["status", "error_message", "processed_at", "last_progress_at"])
-
-        try:
-            _run_pipeline(video)
-            video.status = Video.STATUS_COMPLETED
-            video.processed_at = timezone.now()
-            video.save(update_fields=["status", "processed_at"])
-        except Exception as exc:  # noqa: BLE001
-            logger.exception("Failed to process video %s", video_id)
-            video.status = Video.STATUS_FAILED
-            video.error_message = str(exc)
-            video.save(update_fields=["status", "error_message"])
-            raise
-
-
-def _run_pipeline(video: Video):
-    models = _load_models()
-
-    capture = cv2.VideoCapture(video.file.path)
-    if not capture.isOpened():
-        raise RuntimeError(f"Could not open video file: {video.file.path}")
-
-    fps = capture.get(cv2.CAP_PROP_FPS) or 25
-    total_frames = int(capture.get(cv2.CAP_PROP_FRAME_COUNT) or 0)
-    stride = max(1, round(fps / settings.ANALYSIS_FPS))
-
-    video.duration_seconds = total_frames / fps if total_frames else 0
-    video.total_frames_expected = math.ceil(total_frames / stride) if total_frames else 0
-    video.frames_processed = 0
-    video.save(update_fields=["duration_seconds", "total_frames_expected", "frames_processed"])
-
-    logger.info(
-        "Video %s: %s frames @ %.1ffps (%.1fs), analysing every %s frame(s)",
-        video.id, total_frames, fps, video.duration_seconds, stride,
-    )
-
-    analyzer = FrameAnalyzer(video, models, sample_interval=stride / fps)
-
-    frame_index = 0
-    last_report = time.monotonic()
-    try:
-        while True:
-            ok, frame = capture.read()
-            if not ok:
-                break
-
-            if frame_index % stride == 0:
-                analyzer.analyze(frame, frame_index / fps, frame_index)
-                if time.monotonic() - last_report >= PROGRESS_EVERY_SECONDS:
-                    video.frames_processed = analyzer.frames_analysed
-                    video.last_progress_at = timezone.now()
-                    video.save(update_fields=["frames_processed", "last_progress_at"])
-                    last_report = time.monotonic()
-
-            frame_index += 1
-    finally:
-        capture.release()
-
-    analyzer.finish()
-    video.frames_processed = analyzer.frames_analysed
-    video.total_frames_expected = analyzer.frames_analysed
-    video.last_progress_at = timezone.now()
-    video.save(update_fields=["frames_processed", "total_frames_expected", "last_progress_at"])
+    def __init__(self, det, pose, cls, posture_index, device):
+        self.det, self.pose, self.cls, self.posture_index, self.device = det, pose, cls, posture_index, device
 
 
 class FrameAnalyzer:
@@ -216,20 +116,20 @@ class FrameAnalyzer:
         )
         self.events = _EventBuilder(sample_interval=sample_interval)
         self.frames_analysed = 0
+        self.ended = []
         self.overlay = []  # [(box, is_flagged, label)] from the latest analysed frame
 
     def analyze(self, frame, t, frame_index):
         active, persons, track_ids, phones = _observe_frame(
             frame, t, self.models, self.tracker, self.heads, self.zone
         )
-        for event in self.events.observe(t, active, frame_index, frame):
-            _save_flag(self.video, event, self.zone)
+        self.ended.extend(self.events.observe(t, active, frame_index, frame))
         self.overlay = _overlay(persons, track_ids, phones, active)
         self.frames_analysed += 1
 
     def finish(self):
-        for event in self.events.finish():
-            _save_flag(self.video, event, self.zone)
+        self.ended.extend(self.events.finish())
+        return [build_flag(self.video, e, self.zone) for e in self.ended]
 
 
 def _overlay(persons, track_ids, phones, active):
@@ -241,7 +141,7 @@ def _overlay(persons, track_ids, phones, active):
     items = []
     for (box, _), track_id in zip(persons, track_ids):
         reasons = flagged.get(track_id)
-        label = f"Student #{track_id}" + (f" | {', '.join(reasons)}" if reasons else "")
+        label = f"Person {track_id}" + (f" | {', '.join(reasons)}" if reasons else "")
         items.append((box, bool(reasons), label))
     for box, conf in phones:
         items.append((box, True, f"Phone {conf:.2f}"))
@@ -269,13 +169,13 @@ def _observe_frame(frame, t, models, tracker, heads, zone):
     """
     height, width = frame.shape[:2]
 
-    people = models.pose(frame, classes=[PERSON_CLASS], conf=settings.PERSON_CONFIDENCE, verbose=False)[0]
+    people = models.pose(frame, classes=[PERSON_CLASS], conf=settings.PERSON_CONFIDENCE, device=models.device, verbose=False)[0]
     persons = list(zip(people.boxes.xyxy.tolist(), people.boxes.conf.tolist()))
     keypoints = people.keypoints
     kp_xy = keypoints.xy.tolist() if keypoints is not None and len(persons) else []
     kp_conf = keypoints.conf.tolist() if keypoints is not None and keypoints.conf is not None and len(persons) else []
 
-    phone_boxes = models.det(frame, classes=[PHONE_CLASS], conf=settings.PHONE_CONFIDENCE, verbose=False)[0].boxes
+    phone_boxes = models.det(frame, classes=[PHONE_CLASS], conf=settings.PHONE_CONFIDENCE, device=models.device, verbose=False)[0].boxes
     phones = list(zip(phone_boxes.xyxy.tolist(), phone_boxes.conf.tolist()))
 
     track_ids = tracker.update([box for box, _ in persons], t)
@@ -283,10 +183,10 @@ def _observe_frame(frame, t, models, tracker, heads, zone):
 
     if persons:
         crops = [_crop(frame, box) for box, _ in persons]
-        results = models.cls(crops, verbose=False)
+        results = models.cls(crops, device=models.device, verbose=False) if models.cls else [None] * len(persons)
         for i, ((box, conf), track_id, result) in enumerate(zip(persons, track_ids, results)):
-            posture = float(result.probs.data[models.suspicious_index])
-            if settings.POSTURE_FLAGS_ENABLED and posture >= settings.POSTURE_THRESHOLD:
+            posture = float(result.probs.data[models.posture_index]) if result is not None else None
+            if posture is not None and posture >= settings.POSTURE_THRESHOLD:
                 active[(Flag.TYPE_POSTURE, track_id)] = (posture, box, {})
 
             measured = _head_offset(kp_xy[i], kp_conf[i]) if i < len(kp_conf) else None
@@ -297,7 +197,7 @@ def _observe_frame(frame, t, models, tracker, heads, zone):
                     # 0.5 at the threshold, 1.0 at twice the threshold or more.
                     strength = min(1.0, abs(change) / (2 * threshold))
                     active[(Flag.TYPE_HEAD_TURN, track_id)] = (
-                        strength, box, {"offset": abs(change), "posture": posture},
+                        strength, box, {"offset": abs(change), **({"posture": posture} if posture is not None else {})},
                     )
 
             if zone and _foot_in_zone(box, zone, width, height):
@@ -371,7 +271,7 @@ def _crop(frame, box):
 
 
 def _zone_fractions(video):
-    if not video.has_zone:
+    if not video.zone:
         return None
     return (video.zone_x1 / 100, video.zone_y1 / 100, video.zone_x2 / 100, video.zone_y2 / 100)
 
@@ -474,9 +374,9 @@ class _Event:
     def detail(self):
         if self.flag_type != Flag.TYPE_HEAD_TURN:
             return {}
-        detail = {"turns": self.segments, "max_offset": round(self.max_offset, 2)}
+        detail = {"turns": self.segments, "maxOffset": round(self.max_offset, 2)}
         if self.posture_scores:
-            detail["posture_score"] = round(sum(self.posture_scores) / len(self.posture_scores), 2)
+            detail["postureScore"] = round(sum(self.posture_scores) / len(self.posture_scores), 2)
         return detail
 
 
@@ -512,7 +412,8 @@ class _EventBuilder:
         return None
 
 
-def _save_flag(video, event, zone):
+def build_flag(video, event, zone):
+    """An unsaved Flag with its snapshot written to SNAPSHOT_DIR (saved by the caller in one transaction)."""
     image = event.peak_image.copy()
     height, width = image.shape[:2]
     thickness = max(2, width // 480)
@@ -525,7 +426,7 @@ def _save_flag(video, event, zone):
 
     x1, y1, x2, y2 = (int(v) for v in event.peak_box)
     cv2.rectangle(image, (x1, y1), (x2, y2), red, thickness)
-    subject = f"Student #{event.track_id}" if event.track_id else "Unassigned"
+    subject = f"Person {event.track_id}" if event.track_id else "Unassigned"
     label = f"{subject} | {dict(Flag.TYPE_CHOICES)[event.flag_type]} {event.peak:.2f}"
     font_scale = 0.35 * thickness
     (text_width, _), _ = cv2.getTextSize(label, cv2.FONT_HERSHEY_SIMPLEX, font_scale, thickness)
@@ -537,22 +438,18 @@ def _save_flag(video, event, zone):
         scale = SNAPSHOT_MAX_WIDTH / width
         image = cv2.resize(image, None, fx=scale, fy=scale, interpolation=cv2.INTER_AREA)
 
-    flag = Flag(
-        video=video,
-        flag_type=event.flag_type,
-        track_id=event.track_id,
-        start_seconds=round(event.start, 2),
-        end_seconds=round(event.end, 2),
-        confidence=round(sum(event.scores) / len(event.scores), 4),
-        peak_confidence=round(event.peak, 4),
-        frame_number=event.peak_frame_number,
-        # Box as percentages of the frame, so the UI can draw it at any size.
-        bbox=[round(x1 / width * 100, 2), round(y1 / height * 100, 2),
-              round(x2 / width * 100, 2), round(y2 / height * 100, 2)],
-        detail=event.detail(),
-    )
+    name = ""
     success, buffer = cv2.imencode(".jpg", image, [cv2.IMWRITE_JPEG_QUALITY, 85])
     if success:
-        # Random name: snapshots show identifiable people, so URLs must not be guessable.
-        flag.snapshot.save(f"{uuid.uuid4().hex}.jpg", ContentFile(buffer.tobytes()), save=False)
-    flag.save()
+        # Random name: snapshots show people; served only through the API.
+        name = f"snapshots/{uuid.uuid4().hex}.jpg"
+        (settings.MEDIA_ROOT / name).write_bytes(buffer.tobytes())
+    return Flag(
+        clip=video, exam_id=video.exam_id, signal=event.flag_type, track_id=event.track_id,
+        start_seconds=round(event.start, 2), end_seconds=round(event.end, 2),
+        confidence=min(1.0, round(sum(event.scores) / len(event.scores), 4)),
+        peak_confidence=min(1.0, round(event.peak, 4)), frame_number=event.peak_frame_number,
+        bbox=[round(x1 / width * 100, 2), round(y1 / height * 100, 2),
+              round(x2 / width * 100, 2), round(y2 / height * 100, 2)],
+        snapshot=name, evidence=event.detail(),
+    )
