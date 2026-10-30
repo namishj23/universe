@@ -26,3 +26,11 @@ __pycache__/
 !apps/web/.env.visual
 test-results/
 playwright-report/
+
+# Exam service (services/exam/): uploaded media, local databases, model weights, venvs
+services/exam/**/media/
+services/exam/**/venv/
+*.sqlite3
+*.pt
+*.mp4
+!**/fixtures/**/*.mp4
