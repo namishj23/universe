@@ -24,7 +24,7 @@ export const ERROR_CODES = {
   NOT_BOARDED: { status: 409, meaning: 'Only a rider who boarded, after pickup, may rate the ride' },
   RIDE_CLOSED: { status: 409, meaning: 'The ride was cancelled, completed, started or reassigned' },
   TIME_WINDOW_MISMATCH: { status: 409, meaning: "The ride no longer fits the passenger's requested time" },
-  WOMEN_ONLY: { status: 403, meaning: 'Women-only ride' },
+  GROUP_ACCESS: { status: 403, meaning: 'Women-only ride or group (the code requestSeat already used)' },
   DRIVER_SUSPENDED: { status: 409, meaning: 'The driver is suspended from rides' },
   SEAT_OVERLAP: { status: 409, meaning: 'The rider already holds a seat at an overlapping time' },
   IDEMPOTENCY_KEY_REUSED: { status: 422, meaning: 'The Idempotency-Key was used for a different request' },
