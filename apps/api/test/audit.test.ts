@@ -5,7 +5,7 @@ import { createApp } from '../src/app.js';
 import { audit } from '../src/platform/audit/index.js';
 import { emailHmac } from '../src/platform/auth/throttle.js';
 import { prisma } from '../src/platform/db.js';
-import { as, login, PASSWORD, seed } from './helpers.js';
+import { as, DEMO_ACCOUNTS, login, PASSWORD, seed } from './helpers.js';
 
 const AuditPage = pageOf(AuditEntry);
 beforeAll(seed);
@@ -46,7 +46,10 @@ describe('recording', () => {
       metadata: { emailHmac: emailHmac('ghost@universe.test') },
     });
     expect(failed?.requestId).toMatch(/^[0-9a-f-]{36}$/);
-    expect(rows[2]?.metadata).toEqual({ recipients: 1, roles: ['mentor'] });
+    expect(rows[2]?.metadata).toEqual({
+      recipients: DEMO_ACCOUNTS.filter((a) => a.role === 'mentor').length,
+      roles: ['mentor'],
+    });
     expect(rows[4]).toMatchObject({
       actorId: admin.user.id,
       targetType: 'user',

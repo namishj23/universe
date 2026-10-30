@@ -2,6 +2,21 @@
 
 Every number here feeds an estimate shown in the app. Module owners add their own section; Person 2 adds Module C's energy and carbon assumptions below.
 
+## Module A · Student Hub (Person 1)
+
+Constants in `apps/api/src/modules/hub/config.ts` (no environment variables).
+
+- **Prep catalogue** (seeded): the design's DSA sheet — Arrays & Strings 50, Linked Lists 20, Trees 30, Graphs 30, Dynamic Programming 35, Greedy 25 (190) — plus Quantitative aptitude 30, Logical reasoning 20, Operating Systems 20, DBMS 20, Computer Networks 20, Mock interviews 5, Resume review 1. Problem counts are demo sizes, not an official sheet.
+- **Readiness weights**: DSA 0.5, core 0.2, aptitude 0.15, interview 0.1, resume 0.05 (sum 1). A judgement call for SDE-style placements, not a validated predictor; shown as a progress indicator only.
+- **Week**: Sunday 00:00 to Saturday 23:59:59.999 Asia/Kolkata for every module. Default weekly target 20 problems (1–200).
+- **Mentor ranking weights**: 0.6 match, 0.2 availability, 0.2 free capacity; match = 0.75 weak-topic coverage + 0.25 interest overlap; 3 weak topics; 4 open slots in 7 days = fully available. Chosen so expertise matters most, then time; not fitted to data.
+- **Slots**: 30–180 minutes. Accept without a slot books the earliest open slot at least 60 minutes away. Mentor capacity 0–20, default 3.
+- **Term** (mentor dashboard "mentees this term"): Jan–Jun and Jul–Dec, IST.
+- **Near capacity** (admin dashboard): current mentees ≥ 80 % of capacity.
+- **New resources** (student dashboard): added by anyone in the last 7 days.
+- **Idempotency keys** for "+1": remembered 10 minutes, at most 10,000 keys, in one API process.
+- **Seeded resource files** are generated, valid PDF/PNG/JPEG files padded to the design's sizes (2.4 MB, 1.1 MB, 640 KB, 3.8 MB, 6.2 MB, 880 KB); their content is a title page, not real notes.
+
 ## Module B · Rides (Person 1)
 
 ### Stop graph (`apps/api/src/modules/rides/data/graph.json`)

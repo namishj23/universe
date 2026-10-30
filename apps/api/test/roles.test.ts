@@ -35,10 +35,10 @@ describe('role guard', () => {
       recipients: DEMO_ACCOUNTS.length,
     });
     expect((await send({ message: 'Hello students', roles: ['student'] })).body).toEqual({
-      recipients: 2,
+      recipients: DEMO_ACCOUNTS.filter((a) => a.role === 'student').length,
     });
     expect((await send({ message: 'Hello drivers', roles: ['driver'] })).body).toEqual({
-      recipients: 9,
+      recipients: DEMO_ACCOUNTS.filter((a) => a.role === 'driver').length,
     });
     await request(app)
       .post('/api/activity/announcements')

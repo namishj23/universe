@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { hubAudit } from './hub.js';
 import { platformAudit } from './platform.js';
 import { ridesAudit } from './rides.js';
 
@@ -9,6 +10,7 @@ import { ridesAudit } from './rides.js';
 export const auditRegistry = {
   ...platformAudit,
   ...ridesAudit,
+  ...hubAudit,
 } as const;
 
 export type AuditAction = keyof typeof auditRegistry;

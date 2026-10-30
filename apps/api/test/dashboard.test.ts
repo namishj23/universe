@@ -26,7 +26,13 @@ it('returns 200 with ok, error and timeout entries; one failing module never fai
       id: 'hub',
       label: 'Hub',
       order: 10,
-      dashboardSummary: () => Promise.resolve({ status: 'not_built' }),
+      dashboardSummary: () =>
+        Promise.resolve({
+          kind: 'admin',
+          resourcesTotal: 0,
+          resourcesThisWeek: 0,
+          mentorsNearCapacity: 0,
+        }),
     },
     {
       ...base,
@@ -67,7 +73,11 @@ it('returns 200 with ok, error and timeout entries; one failing module never fai
   expect(body.unreadCount).toBe(1); // the seeded welcome message
   expect(body.latest).toHaveLength(1);
   expect(body.modules).toEqual([
-    { id: 'hub', status: 'ok', data: { status: 'not_built' } },
+    {
+      id: 'hub',
+      status: 'ok',
+      data: { kind: 'admin', resourcesTotal: 0, resourcesThisWeek: 0, mentorsNearCapacity: 0 },
+    },
     { id: 'rides', status: 'error' },
     { id: 'wellbeing', status: 'timeout' },
   ]);

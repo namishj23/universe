@@ -1,0 +1,180 @@
+// Module A · Student Hub (Person 1). Every table is prefixed hub_. hub_profiles holds what the
+// hub keeps per user (created on first use) and every other reference to a person points at it,
+// so the platform User model carries one back-relation. Enum-like text columns, array sizes and
+// ranges have CHECK constraints in the migration SQL. File ids point at platform `files`
+// without a foreign key (same reason as rides: the file sweep hard-deletes rows); the
+// `hub.resource` purpose's `inUse` keeps attached files from being deleted or swept.
+
+model HubProfile {
+  userId            String    @id @map("user_id") @db.Uuid
+  branch            String?
+  year              String? // 'FE' | 'SE' | 'TE' | 'BE'
+  skills            String[]  @default([])
+  interests         String[]  @default([])
+  targetRole        String?   @map("target_role")
+  targetCompanies   String[]  @default([]) @map("target_companies")
+  placementDeadline DateTime? @map("placement_deadline") @db.Date
+  /// Lets a senior student appear as a mentor (with a non-empty expertise list).
+  isPeerMentor      Boolean   @default(false) @map("is_peer_mentor")
+  mentorExpertise   String[]  @default([]) @map("mentor_expertise")
+  mentorDepartment  String?   @map("mentor_department")
+  mentorCapacity    Int       @default(3) @map("mentor_capacity") @db.SmallInt
+  createdAt         DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt         DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  user             User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  progress         HubTopicProgress[]
+  progressEvents   HubProgressEvent[]
+  weeklyGoals      HubWeeklyGoal[]
+  slots            HubMentorSlot[]
+  requestsSent     HubMentorshipRequest[] @relation("RequestStudent")
+  requestsReceived HubMentorshipRequest[] @relation("RequestMentor")
+  resources        HubResource[]
+
+  @@index([isPeerMentor], where: raw("is_peer_mentor"))
+  @@map("hub_profiles")
+}
+
+/// The prep catalogue. `tag` is the short label mentors' expertise is matched against.
+model HubTopic {
+  id         String @id // slug, e.g. 'dsa-dp'
+  track      String // 'dsa' | 'aptitude' | 'core' | 'interview' | 'resume'
+  name       String @unique
+  tag        String @unique
+  totalItems Int    @map("total_items") @db.SmallInt
+  sort       Int    @db.SmallInt
+
+  progress HubTopicProgress[]
+  events   HubProgressEvent[]
+
+  @@unique([id, totalItems])
+  @@index([track, sort])
+  @@map("hub_topics")
+}
+
+/// A row means the student tracks the topic. `total_items` is a copy kept in step with the
+/// catalogue by the composite foreign key (ON UPDATE CASCADE), so a CHECK can bound `solved`.
+model HubTopicProgress {
+  userId       String   @map("user_id") @db.Uuid
+  topicId      String   @map("topic_id")
+  totalItems   Int      @map("total_items") @db.SmallInt
+  solved       Int      @default(0) @db.SmallInt
+  trackedSince DateTime @default(now()) @map("tracked_since") @db.Timestamptz(3)
+  updatedAt    DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  profile HubProfile @relation(fields: [userId], references: [userId], onDelete: Cascade)
+  topic   HubTopic   @relation(fields: [topicId, totalItems], references: [id, totalItems], onUpdate: Cascade, onDelete: Restrict)
+
+  @@id([userId, topicId])
+  @@index([topicId, totalItems])
+  @@map("hub_topic_progress")
+}
+
+/// Append-only log of every change to a progress row (kept when the topic is untracked).
+model HubProgressEvent {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  topicId   String   @map("topic_id")
+  delta     Int      @db.SmallInt
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  profile HubProfile @relation(fields: [userId], references: [userId], onDelete: Cascade)
+  topic   HubTopic   @relation(fields: [topicId], references: [id], onDelete: Restrict)
+
+  @@index([userId, createdAt])
+  @@index([topicId])
+  @@map("hub_progress_events")
+}
+
+/// `week_start` is the Sunday (Asia/Kolkata) the week begins on.
+model HubWeeklyGoal {
+  userId    String   @map("user_id") @db.Uuid
+  weekStart DateTime @map("week_start") @db.Date
+  target    Int      @default(20) @db.SmallInt
+
+  profile HubProfile @relation(fields: [userId], references: [userId], onDelete: Cascade)
+
+  @@id([userId, weekStart])
+  @@map("hub_weekly_goals")
+}
+
+/// No two live (not cancelled) slots of one mentor overlap: exclusion constraint
+/// hub_mentor_slots_no_overlap in the migration SQL (btree_gist).
+model HubMentorSlot {
+  id             String   @id @default(uuid()) @db.Uuid
+  mentorId       String   @map("mentor_id") @db.Uuid
+  startsAt       DateTime @map("starts_at") @db.Timestamptz(3)
+  endsAt         DateTime @map("ends_at") @db.Timestamptz(3)
+  locationLabel  String?  @map("location_label")
+  /// A rides stop (rides_nodes.id), checked by the app; no FK across modules.
+  locationStopId String?  @map("location_stop_id") @db.Uuid
+  status         String   @default("open") // 'open' | 'booked' | 'cancelled'
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  mentor   HubProfile             @relation(fields: [mentorId], references: [userId], onDelete: Cascade)
+  requests HubMentorshipRequest[]
+
+  @@unique([mentorId, startsAt], map: "hub_mentor_slots_live_start_key", where: raw("status <> 'cancelled'"))
+  @@index([mentorId, status, startsAt])
+  @@map("hub_mentor_slots")
+}
+
+model HubMentorshipRequest {
+  id        String    @id @default(uuid()) @db.Uuid
+  studentId String    @map("student_id") @db.Uuid
+  mentorId  String    @map("mentor_id") @db.Uuid
+  slotId    String?   @map("slot_id") @db.Uuid
+  note      String?
+  status    String    @default("pending") // 'pending' | 'accepted' | 'declined' | 'cancelled' | 'completed'
+  decidedAt DateTime? @map("decided_at") @db.Timestamptz(3)
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  student HubProfile     @relation("RequestStudent", fields: [studentId], references: [userId], onDelete: Cascade)
+  mentor  HubProfile     @relation("RequestMentor", fields: [mentorId], references: [userId], onDelete: Cascade)
+  slot    HubMentorSlot? @relation(fields: [slotId], references: [id], onDelete: SetNull)
+
+  @@unique([studentId, mentorId], map: "hub_requests_one_live_key", where: raw("(status = ANY (ARRAY['pending'::text, 'accepted'::text]))"))
+  @@index([mentorId, status, createdAt(sort: Desc), id(sort: Desc)])
+  @@index([studentId, createdAt(sort: Desc), id(sort: Desc)])
+  @@index([slotId])
+  @@map("hub_mentorship_requests")
+}
+
+model HubSubject {
+  code String @id // 'OS', 'DBMS', ...
+  name String
+  sort Int    @db.SmallInt
+
+  resources HubResource[]
+
+  @@map("hub_subjects")
+}
+
+/// `search` is a generated column (weighted tsvector over title, subject and description), written
+/// in the migration. The `dbgenerated` text and the partial-index predicates are copied from
+/// PostgreSQL's own normalised form so `prisma migrate diff` stays empty.
+model HubResource {
+  id          String                   @id @default(uuid()) @db.Uuid
+  fileId      String                   @unique @map("file_id") @db.Uuid
+  title       String
+  description String?
+  subject     String
+  type        String // 'notes' | 'question_paper' | 'study_material' | 'cheat_sheet'
+  semester    Int?                     @db.SmallInt
+  examYear    Int?                     @map("exam_year") @db.SmallInt
+  uploaderId  String                   @map("uploader_id") @db.Uuid
+  search      Unsupported("tsvector")? @default(dbgenerated("((((setweight(to_tsvector('simple'::regconfig, title), 'A'::\"char\") || setweight(to_tsvector('english'::regconfig, title), 'A'::\"char\")) || setweight(to_tsvector('simple'::regconfig, subject), 'A'::\"char\")) || setweight(to_tsvector('simple'::regconfig, COALESCE(description, ''::text)), 'B'::\"char\")) || setweight(to_tsvector('english'::regconfig, COALESCE(description, ''::text)), 'B'::\"char\"))"))
+  createdAt   DateTime                 @default(now()) @map("created_at") @db.Timestamptz(3)
+  deletedAt   DateTime?                @map("deleted_at") @db.Timestamptz(3)
+
+  subjectRef HubSubject @relation(fields: [subject], references: [code], onDelete: Restrict)
+  uploader   HubProfile @relation(fields: [uploaderId], references: [userId], onDelete: Restrict)
+
+  @@index([search], type: Gin, map: "hub_resources_search_idx")
+  @@index([createdAt(sort: Desc), id(sort: Desc)], map: "hub_resources_live_idx", where: raw("deleted_at IS NULL"))
+  @@index([subject, createdAt(sort: Desc), id(sort: Desc)])
+  @@index([type])
+  @@index([semester])
+  @@index([uploaderId])
+  @@map("hub_resources")
+}

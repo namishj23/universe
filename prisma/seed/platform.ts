@@ -11,6 +11,14 @@ export const DEMO_ACCOUNTS: readonly { email: string; name: string; role: Role }
   { email: 'mentor@universe.test', name: 'Prof. Neha Iyer', role: 'mentor' },
   { email: 'invigilator@universe.test', name: 'Rohan Desai', role: 'invigilator' },
   { email: 'admin@universe.test', name: 'Admin Office', role: 'admin' },
+  // Student Hub (P4): the design's mentors and the students in its sample data.
+  { email: 'sameer.joshi@universe.test', name: 'Dr. Sameer Joshi', role: 'mentor' },
+  { email: 'kavita.nair@universe.test', name: 'Prof. Kavita Nair', role: 'mentor' },
+  { email: 'arjun.menon@universe.test', name: 'Prof. Arjun Menon', role: 'mentor' },
+  { email: 'kabir.shah@universe.test', name: 'Kabir Shah', role: 'student' },
+  { email: 'ishita.rao@universe.test', name: 'Ishita Rao', role: 'student' },
+  { email: 'sneha.patil@universe.test', name: 'Sneha Patil', role: 'student' },
+  { email: 'rahul.verma@universe.test', name: 'Rahul Verma', role: 'student' },
   // Drivers: the rides roster (apps/api/src/modules/rides/data/roster.js, same names) plus two
   // accounts that show the document states. The rides seed links each to its vehicle.
   ...[

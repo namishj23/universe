@@ -89,6 +89,8 @@ All use the `SEED_DEMO_PASSWORD` from `apps/api/.env`.
 | mentor@universe.test | Prof. Neha Iyer | mentor |
 | invigilator@universe.test | Rohan Desai | invigilator |
 | admin@universe.test | Admin Office | admin |
+| sameer.joshi@universe.test, kavita.nair@universe.test, arjun.menon@universe.test | Dr. Sameer Joshi, Prof. Kavita Nair, Prof. Arjun Menon | mentor (Student Hub: slots, Kavita has 5 mentees) |
+| kabir.shah@universe.test, ishita.rao@universe.test, sneha.patil@universe.test, rahul.verma@universe.test | Kabir Shah, Ishita Rao, Sneha Patil, Rahul Verma | student (Student Hub sample data) |
 | priya.more@drivers.universe.test (and the other six roster drivers, `first.last@drivers.universe.test`) | Priya More | driver (auto, online, documents approved) |
 | kiran.pawar@drivers.universe.test | Kiran Pawar | driver (licence expiring in ~10 days, no vehicle) |
 | ganesh.salunkhe@drivers.universe.test | Ganesh Salunkhe | driver (no documents, no vehicle) |
@@ -135,5 +137,8 @@ API tests refuse to run unless `DATABASE_URL` in `apps/api/.env.test` points at 
 | Rides: payment | Simulated: records that the rider finished the payment step and the method; no money moves |
 | Rides: driver ETA | Simulated: random 3–8 minutes at assignment |
 | Rides: group chat | Implemented (stored, live over SSE) |
-| Hub, Wellbeing | Not built yet (stubs) |
+| Hub: profiles, placement goals, prep tracker with weekly goal, readiness and 30-day progress | Implemented (backend; screens in U2). The prep catalogue's problem counts are demo sizes |
+| Hub: mentor ranking, slots and mentorship requests | Implemented: ranking from prep weakness, interests, free slots and load; row-locked accept; activity events |
+| Hub: resource repository with search | Implemented: uploads checked from the bytes, full-text plus uploader-name search, soft delete. The six seeded files are generated title pages padded to the design's sizes |
+| Wellbeing | Not built yet (stub) |
 | Observatory, Exam monitoring | Person 2 (not started) |
