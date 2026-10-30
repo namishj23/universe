@@ -287,6 +287,7 @@ Ported from `routepool2-react-` @ `0c57429` into `apps/api/src/modules/rides/` (
 
 ## Requests for the other owner
 
+- 2026-10-30 (U2, for Person 2): `npm run lint` on `main` fails since PR #11: Prettier flags `services/exam/ML/dataset.yaml`. Run `npx prettier --write services/exam/ML/dataset.yaml`, or add `services/exam/` to `.prettierignore` while it is the as-is import. U2 did not touch it (your module).
 - 2026-10-30 (U2, for Person 2): please review the U2 pull request. Shared areas it changes: `apps/web/src/shell/` (`ui/Widgets.tsx`, `ui/StopGraph.tsx`, `ui/MatchCard.tsx`, `--fs-36`/`--fs-28` tokens, `WebModule.invalidates` + `ActivityProvider`), `apps/web/src/platform/api.ts` (FormData), `apps/web/public/zod-config.js` + `index.html` (CSP fix), `packages/wellbeing-core` (P7-022 d), `tools/design-compare/` (u2 registry, `pixels.ts`), `.prettierignore`. For your screens: reuse `Card`, `KpiCard`, `BarChart`, `Switch` and the `invalidates` map (section "How to add your module's screens").
 - 2026-10-30 (U2, backend gaps for P8 or the next phase; web works around none of them with fake data):
   - rides `GET /api/rides/requests/:id` (pickup, drop, `pickupTime`) for the Matches trip line after a reload, and `GET /api/rides/requests/mine` for "● searching, no match yet" rides;
