@@ -17,6 +17,7 @@ encode live at 720p on a laptop CPU, hence the two steps.
 
 import logging
 import os
+import sys
 import threading
 import time
 import uuid
@@ -62,7 +63,9 @@ def start(user, room, exam_name=""):
             raise LiveError("An uploaded video is being processed. Try again when it finishes.")
         try:
             models = detection._load_models()
-            camera = cv2.VideoCapture(settings.LIVE_CAMERA_INDEX, cv2.CAP_DSHOW)
+            # DirectShow opens Windows webcams fastest; it doesn't exist on macOS/Linux.
+            backend = cv2.CAP_DSHOW if sys.platform == "win32" else cv2.CAP_ANY
+            camera = cv2.VideoCapture(settings.LIVE_CAMERA_INDEX, backend)
             camera.set(cv2.CAP_PROP_FRAME_WIDTH, settings.LIVE_CAMERA_WIDTH)
             camera.set(cv2.CAP_PROP_FRAME_HEIGHT, settings.LIVE_CAMERA_HEIGHT)
             ok, frame = camera.read() if camera.isOpened() else (False, None)
