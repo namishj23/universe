@@ -1,0 +1,432 @@
+/* Student Hub: values from the prototype (UniVerse App.dc.html, hub section). */
+.hue {
+  display: contents;
+}
+
+.mono {
+  font-family: var(--font-mono);
+}
+
+.muted {
+  color: var(--muted);
+}
+
+/* Prep tracker */
+.prep {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 16px;
+}
+
+.prepTable {
+  flex: 1 1 480px;
+  min-width: 0;
+}
+
+.prepSide {
+  display: flex;
+  flex: 1 1 260px;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.topic {
+  font-size: var(--fs-14);
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.solved {
+  font-family: var(--font-mono);
+  font-size: var(--fs-13);
+}
+
+.progress {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.pct {
+  width: 36px;
+  font-family: var(--font-mono);
+  font-size: var(--fs-11);
+  text-align: right;
+}
+
+.inc {
+  height: 28px;
+  border: 1.5px solid var(--line-strong);
+  border-radius: 5px;
+  background: none;
+  color: var(--ink);
+  font-family: var(--font-mono);
+  font-size: var(--fs-12);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.inc:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.inc:hover:not(:disabled) {
+  background: var(--hover);
+}
+
+.big {
+  font-family: var(--font-mono);
+
+  /* The design draws 36px, which has no token: --fs-36 requested for tokens.css. */
+  font-size: var(--fs-36);
+  font-weight: 500;
+  letter-spacing: -0.03em;
+}
+
+.cardText {
+  color: var(--ink2);
+  font-size: var(--fs-13-5);
+}
+
+/* Mentors */
+.intro {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+}
+
+.introText {
+  max-width: 640px;
+  color: var(--ink2);
+  font-size: var(--fs-14);
+}
+
+.count {
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: var(--fs-11);
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.mentor {
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr) 120px 150px;
+  align-items: center;
+  gap: 16px;
+  padding: 14px;
+  border: 1.5px solid var(--line-strong);
+  border-radius: 8px;
+  background: var(--surface);
+}
+
+.rank {
+  font-family: var(--font-mono);
+  font-size: var(--fs-20);
+  font-weight: 500;
+}
+
+.who {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 0;
+}
+
+.name {
+  font-size: var(--fs-15);
+  font-weight: 600;
+}
+
+.dept {
+  color: var(--muted);
+  font-weight: 400;
+}
+
+.why {
+  color: var(--ink2);
+  font-size: var(--fs-13);
+}
+
+.tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.tag {
+  padding: 2px 7px;
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  font-family: var(--font-mono);
+  font-size: var(--fs-10-5);
+}
+
+.score {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.scoreValue {
+  font-family: var(--font-mono);
+  font-size: var(--fs-22);
+  font-weight: 500;
+}
+
+.small {
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: var(--fs-10-5);
+}
+
+.action {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.mentorButton {
+  height: 34px;
+  border: 0;
+  border-radius: 5px;
+  background: var(--ink);
+  color: var(--bg);
+  font-size: var(--fs-13-5);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.requested {
+  border: 1.5px solid var(--line-strong);
+  background: transparent;
+  color: var(--warn);
+}
+
+.accepted {
+  border: 1.5px solid var(--line-strong);
+  background: transparent;
+  color: var(--ok);
+  cursor: default;
+}
+
+.rideLink {
+  color: var(--ink);
+  font-family: var(--font-mono);
+  font-size: var(--fs-10-5);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.rideLink:hover {
+  text-decoration: underline;
+}
+
+/* Requests (mentor) */
+.request {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 16px;
+  padding: 14px;
+  border: 1.5px solid var(--line-strong);
+  border-radius: 8px;
+  background: var(--surface);
+}
+
+.requestText {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.nameButton {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--ink);
+  font-size: var(--fs-15);
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+}
+
+.nameButton:hover {
+  text-decoration: underline;
+}
+
+.note {
+  color: var(--ink2);
+  font-size: var(--fs-13-5);
+}
+
+.buttons {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.chip {
+  padding: 4px 8px;
+  border-radius: 4px;
+  background: var(--hover);
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: var(--fs-11);
+  font-weight: 600;
+}
+
+.chipOk {
+  background: var(--ok-bg);
+  color: var(--ok);
+}
+
+.facts {
+  display: grid;
+  grid-template-columns: 140px minmax(0, 1fr);
+  gap: 10px 14px;
+  margin: 0;
+}
+
+.facts dt {
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: var(--fs-11);
+  font-weight: 600;
+}
+
+.facts dd {
+  margin: 0;
+  font-size: var(--fs-14);
+}
+
+/* Resources */
+.filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.search {
+  flex: 1;
+  min-width: 240px;
+}
+
+.upload {
+  height: 38px;
+  padding: 0 14px;
+  border-radius: 6px;
+}
+
+.resTitle {
+  color: var(--ink);
+  font-size: var(--fs-14);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.resTitle:hover {
+  text-decoration: underline;
+}
+
+.type {
+  margin-left: 8px;
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: var(--fs-10);
+  font-weight: 600;
+}
+
+.subject {
+  color: var(--mod);
+  font-family: var(--font-mono);
+  font-size: var(--fs-11-5);
+}
+
+.by {
+  color: var(--ink2);
+  font-size: var(--fs-13-5);
+}
+
+.cell {
+  font-family: var(--font-mono);
+  font-size: var(--fs-11-5);
+}
+
+.noMatch {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 28px 14px;
+}
+
+.noMatchTitle {
+  font-size: var(--fs-14-5);
+  font-weight: 600;
+}
+
+.noMatchBody {
+  color: var(--muted);
+  font-size: var(--fs-13-5);
+}
+
+/* Profile */
+.profile {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  align-items: start;
+  gap: 16px;
+}
+
+.pair {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+
+.end {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.footnote {
+  color: var(--muted);
+  font-size: var(--fs-12-5);
+}
+
+/* Shared form pieces */
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.choices {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.choice {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--fs-13-5);
+}
+
+.toolbar {
+  display: flex;
+  justify-content: flex-end;
+}

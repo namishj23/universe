@@ -33,7 +33,7 @@ Colours are CSS custom properties on `:root` (light) and `:root[data-theme='dark
 ## 2. Type
 
 - `--font-sans` (Familjen Grotesk 400–700) for all UI text. `--font-mono` (Reddit Mono 400–600) **only** for numbers, labels, codes, times, IDs and table data, never sentences. Both are self-hosted with `@fontsource` (imported in `main.tsx`; the CSP blocks third-party fonts).
-- Sizes are tokens named by their pixel value: `--fs-76`, `--fs-34`, `--fs-30`, `--fs-22`, `--fs-20`, `--fs-19`, `--fs-18`, `--fs-16`, `--fs-15`, `--fs-14-5`, `--fs-14`, `--fs-13-5`, `--fs-13`, `--fs-12-5`, `--fs-12`, `--fs-11-5`, `--fs-11`, `--fs-10-5`, `--fs-10`, `--fs-9-5`. A size not on this list is a design question, not a new token.
+- Sizes are tokens named by their pixel value: `--fs-76`, `--fs-36`, `--fs-34`, `--fs-30`, `--fs-28`, `--fs-22`, `--fs-20`, `--fs-19`, `--fs-18`, `--fs-16`, `--fs-15`, `--fs-14-5`, `--fs-14`, `--fs-13-5`, `--fs-13`, `--fs-12-5`, `--fs-12`, `--fs-11-5`, `--fs-11`, `--fs-10-5`, `--fs-10`, `--fs-9-5`. A size not on this list is a design question, not a new token.
 
 | Role | Style |
 | --- | --- |
@@ -82,6 +82,13 @@ Colours are CSS custom properties on `:root` (light) and `:root[data-theme='dark
 | `ModalActions` | right-aligned button row | Secondary first, primary last |
 | `Drawer` | as `Modal`, plus `side` (`right` 440px; `left` 280px for the mobile menu) and `hideHead` | Closes on Esc, the scrim or "Close" |
 | `useToast()` | `toast(message)` shows DONE; `toast(message, 'ERROR')` | Bottom center, `--inv-bg`, 2.6s, `role="status"` |
+| `Card`, `CardLabel` (`Widgets.tsx`) | `pad` 12–18, `gap`, `dashed` (1px `--faint`: not confirmed); `CardLabel` mono 11/600 with optional right `meta` | The 1.5px card every module screen uses |
+| `Switch` | `label`, `checked`, `onChange` | 34×20 track in the module fill (`data-mod` on an ancestor), `role="switch"` (Wellbeing consent, driver online) |
+| `Stepper` | `label`, `value`, `min`, `max` | 38px − value +, each button labelled (Rides SEATS) |
+| `ProgressBar` | `percent`, `label` | 8px bar, `--line` track, module fill (Prep tracker, Wellbeing categories) |
+| `GoalGrid` | `done`, `total` | 16px cells, done in the module fill (THIS WEEK'S GOAL) |
+| `BarChart` | `bars { key, value, label, ratio, highlight }`, `height` 150/170, `summary` (screen-reader text) | Wellbeing LAST 7 DAYS; Rides Savings |
+| `KpiCard` | `label`, `value`, `unit`, `note` | Observatory KPI style (Rides Savings and admin Overview) |
 
 Data hooks used by screens: `useModules()` (`GET /api/modules`), `useFeed()` and `useActivity()` (`unread`, `setUnread`, `subscribe(name, fn)` for ephemeral SSE events such as `rides.chat`), `useAuth()` / `useUser()`. Every query goes through `api()` with the query's `signal`. TanStack Query retries only network errors and 5xx.
 

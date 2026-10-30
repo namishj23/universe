@@ -1,0 +1,4 @@
+{
+  "extends": "../design-compare/tsconfig.json",
+  "include": ["*.ts"]
+}

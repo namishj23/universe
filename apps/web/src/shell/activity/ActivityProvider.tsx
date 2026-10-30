@@ -16,6 +16,7 @@ import {
 } from '@tanstack/react-query';
 import { ActivityEvent, pageOf, UnreadCount, type Page } from '@universe/contracts';
 import { api, ApiRequestError, request } from '../../platform/api';
+import { webModules } from '../modules';
 
 export const FEED_KEY = ['activity', 'feed'] as const;
 const FeedPage = pageOf(ActivityEvent);
@@ -120,6 +121,9 @@ export function ActivityProvider({ children }: { children: ReactNode }) {
         if (!parsed.success || seen.has(parsed.data.id)) return;
         seen.add(parsed.data.id);
         addToFeed(queryClient, parsed.data);
+        const module = webModules[parsed.data.type.split('.')[0] ?? ''];
+        for (const queryKey of module?.invalidates?.[parsed.data.type] ?? [])
+          void queryClient.invalidateQueries({ queryKey });
       });
       es.addEventListener('unread-count', (ev: MessageEvent<string>) => {
         const parsed = UnreadCount.safeParse(json(ev.data));

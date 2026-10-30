@@ -53,10 +53,10 @@ describe('shared states', () => {
     expect(await screen.findByRole('heading', { name: 'Page not found' })).toBeInTheDocument();
   });
 
-  it('a module the role has opens its own lazily loaded page', async () => {
+  it('a listed module without a folder shows the placeholder', async () => {
     mockApi(signedIn('student'));
-    await renderApp('/hub');
-    expect(await screen.findByRole('heading', { name: 'Student Hub' })).toBeInTheDocument();
+    await renderApp('/observatory');
+    expect(await screen.findByRole('heading', { name: 'Observatory' })).toBeInTheDocument();
     expect(await screen.findByText('Coming in the next build')).toBeInTheDocument();
   });
 
