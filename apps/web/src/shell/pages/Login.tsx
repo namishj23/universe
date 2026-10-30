@@ -11,7 +11,6 @@ import s from './Login.module.css';
 const INDEX = [
   ['A', 'Student Hub', 'students · mentors'],
   ['B', 'Rides', 'students · mentors'],
-  ['C', 'Observatory', 'everyone'],
   ['D', 'Wellbeing', 'only you'],
   ['E', 'Exam Review', 'invigilators'],
 ] as const;
@@ -46,7 +45,7 @@ export function BrandPanel() {
       <div className={s.hero}>
         <span className={s.wordmark}>UniVerse</span>
         <span className={s.tagline}>
-          One sign-in for the hub, rides, the observatory, wellbeing and exam review.
+          One sign-in for the hub, rides, wellbeing and exam review.
         </span>
       </div>
       <ul className={s.index} aria-label="Modules">
