@@ -349,7 +349,11 @@ export const MentorshipRequest = z
     /** The requested slot while pending; the booked slot once accepted. */
     slot: Slot.nullable(),
     mentor: z.object({ id: Id, name: z.string(), department: z.string().nullable() }),
-    student: StudentCard,
+    /**
+     * The full card for the student and admins, and for the mentor while the request is
+     * pending or accepted (or completed within 14 days); otherwise the name only (P8, P7-006).
+     */
+    student: z.union([StudentCard, z.object({ id: Id, name: z.string() })]),
     /**
      * Accepted sessions at a stop a car can reach: opens Rides to arrive 15 minutes early,
      * `/rides?to=<stopId>&date=YYYY-MM-DD&arriveBy=HH:MM` (IST). Null otherwise.

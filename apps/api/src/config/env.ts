@@ -64,6 +64,12 @@ const Env = z.object({
   EMAIL_HMAC_SECRET: secret,
   STORAGE_DIR: storageDir,
   STORAGE_QUOTA_MB: z.coerce.number().int().min(1).max(100_000).default(200),
+  // Module E's exam service (docs/integration/exam-service.md). Both unset = not installed.
+  EXAM_SERVICE_URL: z.url({ protocol: /^https?$/ }).optional(),
+  /** Shared with the exam service; it authenticates both directions. */
+  SERVICE_TOKEN_EXAM: z.string().min(32, 'must be at least 32 random characters').optional(),
+  /** Internal service routes accept non-loopback callers only when true. */
+  SERVICE_ALLOW_REMOTE: bool,
 });
 
 const parsed = Env.safeParse(process.env);

@@ -180,12 +180,12 @@ module.exports = function core(p) {
   const pageQuery = (query) => p.contracts.rides.RidesPageQuery.parse(query);
   const cursorOf = (cursor) => (cursor ? p.paging.decodeCursor(cursor) : null);
   // Rows strictly after the cursor, ascending by `field` then id.
-  function afterAsc(field, cursor) {
+  function afterAsc(field, cursor, idField = 'id') {
     const c = cursorOf(cursor);
     if (!c) return {};
     return {
       [field]: { gte: c.createdAt },
-      OR: [{ [field]: { gt: c.createdAt } }, { [field]: c.createdAt, id: { gt: c.id } }],
+      OR: [{ [field]: { gt: c.createdAt } }, { [field]: c.createdAt, [idField]: { gt: c.id } }],
     };
   }
   function beforeDesc(field, cursor, idField = 'id') {

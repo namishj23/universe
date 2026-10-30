@@ -30,7 +30,9 @@ type Request = hub.MentorshipRequest;
 function metaLine(r: Request) {
   if (r.status === 'accepted' && r.slot)
     return `SESSION ${weekdayShortTime(r.slot.startsAt).toUpperCase()}`;
-  return `REQUESTED ${shortWhen(r.createdAt).toUpperCase()} · PREP ${r.student.dsaPercent}%`;
+  const requested = `REQUESTED ${shortWhen(r.createdAt).toUpperCase()}`;
+  // A closed request's student is { id, name } only (P7-006).
+  return 'dsaPercent' in r.student ? `${requested} · PREP ${r.student.dsaPercent}%` : requested;
 }
 
 const CHIP: Record<Exclude<hub.RequestStatus, 'pending'>, string> = {
@@ -122,8 +124,13 @@ export function MentorRequests() {
                   onClick={() => setViewing(r.student)}
                 >
                   {r.student.name}
-                </button>{' '}
-                <span className={cx(s.name, s.dept)}>· {yearBranch(r.student)}</span>
+                </button>
+                {'year' in r.student && (
+                  <>
+                    {' '}
+                    <span className={cx(s.name, s.dept)}>· {yearBranch(r.student)}</span>
+                  </>
+                )}
               </span>
               {r.note && <span className={s.note}>&quot;{r.note}&quot;</span>}
               <span className={s.small}>{metaLine(r)}</span>

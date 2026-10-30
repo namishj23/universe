@@ -130,6 +130,7 @@ export function authRoutes(): Router {
           requestId: req.id,
         });
       });
+      closeUserStreams(user.id, { only: sessionId });
       clearSessionCookie(res);
       res.status(204).end();
     }),
@@ -173,7 +174,7 @@ export function authRoutes(): Router {
           requestId: req.id,
         });
       });
-      closeUserStreams(user.id, sessionId);
+      closeUserStreams(user.id, { except: sessionId });
       res.status(204).end();
     }),
   );

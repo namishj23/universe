@@ -127,3 +127,24 @@ describe('stats over completed shared rides', () => {
     await status(student.http.get('/api/rides/admin/stats'), 403);
   });
 });
+
+describe('busy hours (P7-001)', () => {
+  it('a 09:00 IST pickup is counted in the 8–10 AM bucket', async () => {
+    const s = await user(rides);
+    const before = (await s.http.get('/api/rides/campus-stats').expect(200)).body as {
+      hourLabels: string[];
+      byHour: number[];
+    };
+    const tomorrow = new Date(Date.now() + 24 * 60 * 60_000 + 5.5 * 60 * 60_000)
+      .toISOString()
+      .slice(0, 10);
+    await requestAt(s, 'Borivali Station', 'SPIT Campus (Gate 2)', `${tomorrow}T09:00:00+05:30`);
+    const after = (await s.http.get('/api/rides/campus-stats').expect(200)).body as typeof before;
+    expect(after.hourLabels[0]).toBe('8 AM');
+    expect(after.byHour[0]).toBe(before.byHour[0]! + 1);
+    const [row] = await prisma.$queryRaw<{ hour: number }[]>`
+      SELECT EXTRACT(HOUR FROM pickup_at AT TIME ZONE 'Asia/Kolkata')::int AS hour
+      FROM rides_requests ORDER BY created_at DESC LIMIT 1`;
+    expect(row!.hour).toBe(9);
+  });
+});

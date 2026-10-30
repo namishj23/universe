@@ -6,12 +6,12 @@ How the repros were run: the probe tests in `docs/audit/P7-evidence/probes/` (st
 
 ## Summary
 
-| Severity | Count | IDs |
-| --- | --- | --- |
-| Critical | 0 | — |
-| High | 6 | P7-001 … P7-006 |
-| Medium | 11 | P7-007 … P7-017 |
-| Low | 11 | P7-018 … P7-028 |
+| Severity | Count | IDs | P8 status |
+| --- | --- | --- | --- |
+| Critical | 0 | — | — |
+| High | 6 | P7-001 … P7-006 | all fixed |
+| Medium | 11 | P7-007 … P7-017 | P7-008 fixed; the rest open (deferred) |
+| Low | 11 | P7-018 … P7-028 | P7-023 fixed; the rest open (deferred) |
 
 "Confirmed" = reproduced by a probe or script in `P7-evidence/`. "Code-verified" = read in the code and traced by hand, not executed.
 
@@ -51,6 +51,7 @@ Script: `P7-evidence/gates.sh`. Logs: `P7-evidence/gates/`.
 - **Why it matters:** the stored data is wrong in absolute terms, and every row written grows the cleanup a later fix must do. A pickup at 09:00 IST is counted in hour 3 of the busy-hours chart.
 - **Fix:** pin the session to UTC at the root. Add `options: '-c TimeZone=UTC'` to `PrismaPg` in `db.ts` (and to the seed and scripts that build their own client), plus `ALTER DATABASE … SET timezone TO 'UTC'` in the README setup. Re-seed `universe` with `npm run demo:reset -- --yes`. Any real data needs a one-off `UPDATE … + interval '5 hours 30 minutes'`.
 - **Test to add:** in `apps/api/test/health.test.ts`, assert that `SELECT now()` via `$queryRaw` is within 1 s of `Date.now()`. Also check that `last_login_at::text` matches the IST wall clock.
+- **P8:** fixed on `p1/p8-fixes` (commit message starts `fix(P7-001)`) · test apps/api/test/health.test.ts, rides/stats.test.ts, hub/prep.test.ts
 
 ### P7-002 · High · Rides (pooled autos) · One rider who never boarded can suspend any auto with a single feedback (confirmed)
 - **Where:**
@@ -65,6 +66,7 @@ Script: `P7-evidence/gates.sh`. Logs: `P7-evidence/gates/`.
   - Make `tags` unique with `.refine`.
   - Count one complaint per feedback row (or per distinct rider) towards flag and suspend.
 - **Test to add:** a non-boarded member gets 409; duplicate tags get 400; one feedback with 5 tags does not suspend.
+- **P8:** fixed on `p1/p8-fixes` (commit message starts `fix(P7-002)`) · test apps/api/test/rides/admin.test.ts
 
 ### P7-003 · High · Rides (pooled autos) · Admin cancel or unassign leaves the driver's trip live (confirmed)
 - **Where:**
@@ -82,6 +84,7 @@ Script: `P7-evidence/gates.sh`. Logs: `P7-evidence/gates/`.
 - **Test to add:**
   - cancel → heading/board/complete give 409;
   - unassign → reassign → accept by the same driver gives 200.
+- **P8:** fixed on `p1/p8-fixes` (commit message starts `fix(P7-003)`) · test apps/api/test/rides/p7-audit.test.ts
 
 ### P7-004 · High · Rides (pooled autos) · Strangers see full names and drop stops of forming groups (confirmed)
 - **Where:**
@@ -92,6 +95,7 @@ Script: `P7-evidence/gates.sh`. Logs: `P7-evidence/gates/`.
 - **Why it matters:** any student can see who is travelling where and when. Carpool offers deliberately show first names only (P3b), so the two ride types disagree.
 - **Fix:** for non-members, return first name (or initials) and the stop only. Drop `userId`. Keep `memberRideRequestIds`, which the join flow needs.
 - **Test to add:** a non-member's `/groups/available` and `/matches` contain no surname and no `userId`.
+- **P8:** fixed on `p1/p8-fixes` (commit message starts `fix(P7-004)`) · test apps/api/test/rides/p7-audit.test.ts
 
 ### P7-005 · High · Rides (carpool) · Driver accept skips the passenger's time window and women-only check (code-verified)
 - **Where:**
@@ -106,6 +110,7 @@ Script: `P7-evidence/gates.sh`. Logs: `P7-evidence/gates/`.
 - **Why it matters:** it breaks the women-only guarantee (a safety promise) and the departure-time requirement.
 - **Fix:** re-check both rules in `acceptInTx` against the passenger's profile and request, or have `update` cancel requested bookings that no longer fit, in the same transaction.
 - **Test to add:** the sequence above gives 409 (time) and 403 (women-only).
+- **P8:** fixed on `p1/p8-fixes` (commit message starts `fix(P7-005)`) · test apps/api/test/rides/offer-recheck.test.ts
 
 ### P7-006 · High · Hub · A mentor keeps reading a student's live card after the request is cancelled or declined (confirmed)
 - **Where:**
@@ -118,29 +123,34 @@ Script: `P7-evidence/gates.sh`. Logs: `P7-evidence/gates/`.
   - For students, also require a current peer-mentor profile.
   - In `incoming`, return only name and status for closed rows.
 - **Test to add:** cancel or decline → 404; a former peer mentor → 404.
+- **P8:** fixed on `p1/p8-fixes` (commit message starts `fix(P7-006)`) · test apps/api/test/hub/p7-audit.test.ts
 
 ### P7-007 · Medium · Hub · `Idempotency-Key` is not tied to the topic or body; a different increment is silently dropped (confirmed)
 - **Where:** `hub/routes.ts:174` keys `${userId}:increment:${key}`. `hub/idempotency.ts` is an in-memory map: lost on restart, per process, and a global 10,000-key cap evicts other users' keys.
 - **Repro:** `P7-H2`. With key `k1`, `+1` on `dsa-dp`, then `+1` on `dsa-graphs` with the same key, returns **200 with the dsa-dp body**; graphs `solved` stays 0.
 - **Fix:** include `topicId` and a body hash in the key; reject a reuse with a different body with 422 `IDEMPOTENCY_KEY_REUSED`. Optionally persist keys (unique `(user_id, key)`) with a TTL.
 - **Test to add:** the H2 sequence gives 422 (or applies to graphs).
+- **P8:** open — deferred (15-minute deadline)
 
 ### P7-008 · Medium · Rides · `GET /api/rides/admin/drivers` page 2 returns 500 (confirmed)
 - **Where:** `services/admin.js:404` uses `c.afterAsc('createdAt', cursor)`, which emits `id: { gt }` (`core.js:183-190`). `RidesDriver` has no `id` column (its PK is `userId`).
 - **Repro:** `P7-R6`. `?limit=1`, then the returned `nextCursor` → **500 INTERNAL_ERROR**. The existing test only uses `?limit=100`.
 - **Fix:** give `afterAsc` an `idField` parameter (as `beforeDesc` has) and pass `'userId'`.
 - **Test to add:** page through with `limit=1`.
+- **P8:** fixed on `p1/p8-fixes` (commit message starts `fix(P7-008)`) · test apps/api/test/rides/p7-audit.test.ts
 
 ### P7-009 · Medium · Rides · Leaving after the ride rewrites fares and the driver's payout (code-verified)
 - **Where:** `riders.js:613-662` (`leave`) never checks `g.status`. `core.js:35-40` `leaveLockedReason` unlocks once pickup has passed. The driver's earnings are computed live from `g.total_fare_paise` (`drivers.js:391-395`).
 - **Repro (traced):** group of 3, the driver boards 2 and completes; the no-show calls `POST /groups/:id/leave` → 200. The others' shares rise after they paid, and the payout changes.
 - **Fix:** reject `leave` when the group is `completed`/`cancelled` or a trip has started.
 - **Test to add:** leave after complete gives 409.
+- **P8:** open — deferred (15-minute deadline)
 
 ### P7-010 · Medium · Rides · A rides suspension does not stop a carpool driver's live offers (code-verified)
 - **Where:** `admin.js:212-252` sets only `suspendedAt`. `requestSeat`, `decide`, `depart` and `complete` (`offers.js`) never check the driver's suspension.
 - **Fix:** cancel live offers on suspension (reuse `cancelInTx`), and refuse seat requests and accepts for suspended drivers.
 - **Test to add:** after suspension, a seat request on the driver's offer gives 409.
+- **P8:** open — deferred (15-minute deadline)
 
 ### P7-011 · Medium · Rides · No database guard against one rider holding two seats at once (code-verified)
 - **Where:**
@@ -153,22 +163,26 @@ Script: `P7-evidence/gates.sh`. Logs: `P7-evidence/gates/`.
   - In `acceptInTx` and `join`, reject when the user already holds a matched request with an overlapping window.
   - Optionally add an exclusion constraint per driver on `tstzrange(depart_at, …)`.
 - **Test to add:** accepted on an offer, then joining a group at an overlapping time gives 409.
+- **P8:** open — deferred (15-minute deadline)
 
 ### P7-012 · Medium · Rides · A passenger whose seat is only *requested* sees confirmed passengers' stops, times and shares (code-verified)
 - **Where:** `offers.js:796-798, 826-846` (`GET /offers/:id`). Anyone can create a request, request a seat, read the plan and cancel.
 - **Fix:** show other passengers' stops and times only to accepted passengers and the driver; requesters see the route and their own pickup.
 - **Test to add:** a requested passenger's view has no other passenger's pickup/drop/time.
+- **P8:** open — deferred (15-minute deadline)
 
 ### P7-013 · Medium · Hub · Accept, decline and complete skip the mentor check (code-verified)
 - **Where:** `hub/requests.ts:278-282` (`lockFor(…, 'mentor')`) checks only `user.id === row.mentorId`. `incoming`, `mySlots`, `createSlot` and `deleteSlot` call `requireMentor`. `docs/ROLES.md:5` says mentor routes also need a mentor or peer-mentor profile.
 - **Repro (traced):** a peer mentor turns `isPeerMentor` off; `GET /requests/incoming` → 403, but `POST /requests/:id/accept` → 200 and books a slot.
 - **Fix:** call `requireMentor(tx, user)` in `accept`, `decline` and `complete`, or auto-decline pending requests when someone stops mentoring.
 - **Test to add:** the sequence above gives 403 `NOT_A_MENTOR`.
+- **P8:** open — deferred (15-minute deadline)
 
 ### P7-014 · Medium · Hub · Completing a session sends no notification (code-verified)
 - **Where:** `hub/requests.ts:375-388` (`complete`) updates the status but emits nothing. The other three transitions emit `hub.request_*`. The integration requirement asks for a common notification mechanism for module actions.
 - **Fix:** emit `hub.request_completed` to the student in the same transaction, and add it to `packages/contracts/src/activity/hub.ts` and the web `activityText`.
 - **Test to add:** after complete, the student has one `hub.request_completed` event.
+- **P8:** open — deferred (15-minute deadline)
 
 ### P7-015 · Medium · Hub · Two booking rules are enforced only by application code (code-verified)
 - **Where:** migration `20261029202837_p4_hub` has no constraint for:
@@ -179,6 +193,7 @@ Script: `P7-evidence/gates.sh`. Logs: `P7-evidence/gates/`.
   - (a) Partial unique `hub_mentorship_requests(slot_id) WHERE status IN ('accepted','completed')`.
   - (b) `UNIQUE (id, mentor_id)` on `hub_mentor_slots`, plus a composite FK `(slot_id, mentor_id)`.
 - **Test to add:** a raw insert of a second accepted request on the same slot fails on the constraint.
+- **P8:** open — deferred (15-minute deadline)
 
 ### P7-016 · Medium · Wellbeing / platform logging · An absolute-form request target bypasses the wellbeing log scrubbing (confirmed)
 - **Where:** `apps/api/src/app.ts:32-33` tests `req.originalUrl` against `^/api/wellbeing…`. Express 4 still routes `GET http://host/api/wellbeing/... HTTP/1.1`, and pino then logs the full URL with the query string and params.
@@ -186,54 +201,65 @@ Script: `P7-evidence/gates.sh`. Logs: `P7-evidence/gates/`.
 - **Why it matters:** this breaks the binding rule that wellbeing dates, categories and query strings never reach a log.
 - **Fix:** match on the pathname, `new URL(req.originalUrl, 'http://x').pathname`, or reject absolute-form targets in `requestId` middleware.
 - **Test to add:** P7-W1 in `apps/api/test/wellbeing/logs.test.ts`.
+- **P8:** open — deferred (15-minute deadline)
 
 ### P7-017 · Medium (scale, uncertain) · Wellbeing · The weekly-summary job is one unbounded interactive transaction
 - **Where:** `modules/wellbeing/jobs.ts:22-41`. One `INSERT … SELECT` covers every user, then `emit` creates events in 1,000-row chunks, all inside `prisma.$transaction` with the default 5 s timeout.
 - **Why it matters:** at several thousand eligible users the transaction can time out every hour, so no summary is ever sent. Not observed at demo scale.
 - **Fix:** batch by `user_id` (e.g. 500 per transaction, loop until 0); `ON CONFLICT DO NOTHING` already makes batches idempotent.
 - **Test to add:** 3,000 eligible users → `sent === 3000`, second run `sent === 0`.
+- **P8:** open — deferred (15-minute deadline)
 
 ### P7-018 · Low · Rides · `GET /groups/:id/driver` assigns a driver and emits events (a state change on GET)
 - **Where:** `drivers.js:179-202`. GET skips CSRF, and SameSite=Lax cookies are sent on top-level cross-site GET navigations. The group id is a UUID, so this is hard to exploit.
 - **Fix:** move assignment to `POST /groups/:id/driver`.
+- **P8:** open — deferred (15-minute deadline)
 
 ### P7-019 · Low · Rides · Riders can self-board at any time, which inflates savings
 - **Where:** `riders.js:705-721` has no vehicle or time check. This feeds `completedRides`/savings (`history.js:87-88`), and the odometer is skipped if boarding happens before assignment (`riders.js:675`).
 - **Fix:** require an assigned vehicle and pickup within the buffer.
+- **P8:** open — deferred (15-minute deadline)
 
 ### P7-020 · Low · Hub · Smaller concurrency and performance items (code-verified)
 - (a) `requests.ts:203-204, 283` lock `hub_profiles … FOR UPDATE`, which conflicts with FK `KEY SHARE`. Two peer mentors requesting each other at once can deadlock (40P01 → 500). Use `FOR NO KEY UPDATE`.
 - (b) `resources.ts:209-213`: delete is `findFirst` then an unconditional `update`, so double admin deletes write two audit rows. Use `updateMany({ id, deletedAt: null })`.
 - (c) `resources.ts:154-160`: the file ownership/live check is outside the create transaction, so an owner's concurrent `DELETE /api/files/:id` leaves a resource pointing at an unreadable file. Lock the file row inside the transaction.
 - (d) `GET /requests/incoming` without `status` sorts in memory. Add index `(mentor_id, created_at DESC, id DESC)`.
+- **P8:** open — deferred (15-minute deadline)
 
 ### P7-021 · Low · Hub, rides · Mutating routes ignore unknown query fields (and some DELETE bodies)
 - **Where:** hub `PUT /me`, `PUT /prep/*`, all POSTs, and `DELETE /slots/:id`/`/resources/:id` bodies (`hub/routes.ts:229, 359`); rides POST/PATCH/DELETE never parse `req.query` (e.g. `rides/routes.js:81, 634`). CLAUDE.md: reject unknown fields everywhere.
 - **Fix:** parse `NoQuery`/`NoBody` by default in each module's route loop.
+- **P8:** open — deferred (15-minute deadline)
 
 ### P7-022 · Low · Wellbeing · Privacy and edge items
 - (a) `DELETE /data` (`service.ts:289-299`) leaves `wellbeing.weekly_summary` activity events, which show the user had data. Because it also deletes the markers, re-uploading last week's totals sends a second summary. Delete the user's `wellbeing.*` events in the same transaction.
 - (b) Lowering `retentionDays` (`service.ts:139-152`) deletes nothing until the hourly job, so `/records` and `/export` still return rows outside the new window for up to an hour. Delete in the same transaction.
 - (c) `Cache-Control: no-store` is missing on wellbeing-derived values outside the module: the `GET /api/dashboard` wellbeing card, hub `GET /prep` `focusStudyMinutesThisWeek`, and the outer guard's 401/403 on `/api/wellbeing`.
 - (d) The library can produce totals the server rejects in bulk: no lower date bound, and no 1440-minute cap per day for overlapping slices (`events.ts:95-97`, `daily.ts:83-117`). The all-or-nothing `PUT /totals` then fails. U2 contract gap.
+- **P8:** open — deferred (15-minute deadline)
 
 ### P7-023 · Low · Platform · Logout does not close that session's SSE streams
 - **Where:** `platform/auth/routes.ts` `/logout` deletes the session but never calls `closeUserStreams` (change-password and admin deactivate do). The stream keeps receiving events until the next 25 s heartbeat notices the dead session.
 - **Fix:** after the transaction, `closeUserStreams(user.id)` filtered to `sessionId` (add a `sessionId` filter variant).
 - **Test to add:** after logout, the open stream ends within 1 s.
+- **P8:** fixed on `p1/p8-fixes` (commit message starts `fix(P7-023)`) · test apps/api/test/platform/streams.test.ts
 
 ### P7-024 · Low · Seeds · `demo:reset` guard and scope
 - `prisma/seed/reset.ts:63` checks only `url.hostname`. A `?host=` query parameter, which pg honours, or a localhost tunnel to a remote server passes. Also check `inet_server_addr()` and `current_database()` after connecting.
 - `reset.ts:87` `activityEvent.deleteMany()` also deletes Person 2's observatory/exam events while their tables stay (a cross-owner deletion). Limit it to `module IN ('platform','hub','rides','wellbeing')`.
 - `reset.ts:52` `as unknown as Table` bypasses the type checker.
+- **P8:** open — deferred (15-minute deadline)
 
 ### P7-025 · Low · Root config · `prisma.config.ts` fails the root typecheck (known from P6, still open)
 - **Where:** `prisma.config.ts:25`. No gate runs `tsc -p tsconfig.json`, so `prisma/seed/` is not type-checked by `npm run typecheck`.
 - **Fix:** `...(shadow && { shadowDatabaseUrl: shadow })`, and add the root project to `npm run typecheck`.
+- **P8:** open — deferred (15-minute deadline)
 
 ### P7-026 · Low · Tooling · npm 11 does not run dependency install scripts
 - `npm ci` warns that 6 packages' install scripts (`@prisma/engines`, `argon2`'s build, `esbuild`, `fsevents`, …) were not run. Everything works today from prebuilt binaries and the root `postinstall` (`prisma generate`), but a platform without prebuilds would fail at runtime.
 - **Fix:** add an `allowScripts` list to `package.json` (or `.npmrc`) for the packages that need them, and document it in the README setup.
+- **P8:** open — deferred (15-minute deadline)
 
 ### P7-027 · Low · Platform · Earlier LOW findings still open (re-verified)
 - SSE stream registered after an early client disconnect: `activity/routes.ts:120-163` still has no `req.destroyed` check.
@@ -242,9 +268,11 @@ Script: `P7-evidence/gates.sh`. Logs: `P7-evidence/gates/`.
 - No index on `sessions.last_seen_at`: EXPLAIN #12 is a seq scan, `P7-evidence/explain.log`.
 - `targetId`-only audit filter: EXPLAIN #6 uses `audit_log_target_idx` with 3 index searches, which is fine at 300k rows.
 - Platform routes ignore unknown query fields.
+- **P8:** open — deferred (15-minute deadline)
 
 ### P7-028 · Low · Docs · Reports and COVERAGE.md claims that are false or overstated
 See "Reports versus reality" below. Correct `docs/sessions/P1.md` §9, `docs/COVERAGE.md` (three rows) and the P5 time-zone diagnosis (P7-001).
+- **P8:** open — deferred (15-minute deadline)
 
 ---
 

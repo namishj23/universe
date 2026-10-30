@@ -5,6 +5,144 @@
     "version": "0.2.0",
     "description": "Every error is `{ error: { code, message, requestId } }`. Unsafe methods need the `X-CSRF-Token` header from /api/auth/login or /api/auth/me."
   },
+  "x-error-codes": {
+    "MODULE_UNAVAILABLE": {
+      "status": 503,
+      "meaning": "Another module or companion service is down or slow"
+    },
+    "FILE_TOO_LARGE": {
+      "status": 413,
+      "meaning": "Upload over the limit"
+    },
+    "INVALID_RECIPIENT": {
+      "status": 422,
+      "meaning": "Internal exam call names a user who is not an active reviewer"
+    },
+    "INVALID_ACTOR": {
+      "status": 422,
+      "meaning": "Internal exam audit actor is not an active reviewer"
+    },
+    "NOT_BOARDED": {
+      "status": 409,
+      "meaning": "Only a rider who boarded, after pickup, may rate the ride"
+    },
+    "RIDE_CLOSED": {
+      "status": 409,
+      "meaning": "The ride was cancelled, completed, started or reassigned"
+    },
+    "TIME_WINDOW_MISMATCH": {
+      "status": 409,
+      "meaning": "The ride no longer fits the passenger's requested time"
+    },
+    "GROUP_ACCESS": {
+      "status": 403,
+      "meaning": "Women-only ride or group (the code requestSeat already used)"
+    },
+    "DRIVER_SUSPENDED": {
+      "status": 409,
+      "meaning": "The driver is suspended from rides"
+    },
+    "SEAT_OVERLAP": {
+      "status": 409,
+      "meaning": "The rider already holds a seat at an overlapping time"
+    },
+    "IDEMPOTENCY_KEY_REUSED": {
+      "status": 422,
+      "meaning": "The Idempotency-Key was used for a different request"
+    },
+    "NOT_A_MENTOR": {
+      "status": 403,
+      "meaning": "Mentor action by someone who no longer mentors"
+    }
+  },
+  "x-external-services": {
+    "exam": {
+      "basePath": "/api/exam",
+      "upstream": "${EXAM_SERVICE_URL}/exam",
+      "installedWhen": "EXAM_SERVICE_URL and SERVICE_TOKEN_EXAM are set",
+      "roles": [
+        "invigilator",
+        "admin"
+      ],
+      "contract": "docs/integration/exam-service.md",
+      "errors": {
+        "413": "FILE_TOO_LARGE: body over 200 MB",
+        "503": "MODULE_UNAVAILABLE: the service is down or slow"
+      },
+      "paths": [
+        {
+          "method": "GET",
+          "path": "/exams",
+          "summary": "List exams or rooms"
+        },
+        {
+          "method": "POST",
+          "path": "/clips",
+          "summary": "Upload a clip (multipart, ≤ 200 MB); 202 {clipId, jobId}"
+        },
+        {
+          "method": "GET",
+          "path": "/clips",
+          "summary": "List clips with job status"
+        },
+        {
+          "method": "GET",
+          "path": "/clips/{id}",
+          "summary": "Clip detail with job progress"
+        },
+        {
+          "method": "GET",
+          "path": "/clips/{id}/video",
+          "summary": "The clip (Range, 206)"
+        },
+        {
+          "method": "GET",
+          "path": "/flags",
+          "summary": "Flags for human review, with counts per status"
+        },
+        {
+          "method": "GET",
+          "path": "/flags/{id}",
+          "summary": "Flag detail with explanation and history"
+        },
+        {
+          "method": "GET",
+          "path": "/flags/{id}/snapshot",
+          "summary": "The JPEG snapshot"
+        },
+        {
+          "method": "POST",
+          "path": "/flags/{id}/review",
+          "summary": "Record a decision (dismiss | follow_up) with a note"
+        },
+        {
+          "method": "POST",
+          "path": "/flags/{id}/reopen",
+          "summary": "Back to open, with a note"
+        },
+        {
+          "method": "GET",
+          "path": "/dashboard-summary",
+          "summary": "Open flags and last processed time"
+        },
+        {
+          "method": "POST",
+          "path": "/live/sessions",
+          "summary": "Start a live session (needs consent: true)"
+        },
+        {
+          "method": "POST",
+          "path": "/live/sessions/{id}/stop",
+          "summary": "Stop a live session"
+        },
+        {
+          "method": "GET",
+          "path": "/live/sessions/{id}/stream",
+          "summary": "MJPEG stream (tracked, ≤ 2 h)"
+        }
+      ]
+    }
+  },
   "paths": {
     "/api/health/live": {
       "get": {
@@ -15186,7 +15324,29 @@
             "additionalProperties": false
           },
           "student": {
-            "$ref": "#/components/schemas/HubStudentCard"
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/HubStudentCard"
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                  },
+                  "name": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "id",
+                  "name"
+                ],
+                "additionalProperties": false
+              }
+            ]
           },
           "rideLink": {
             "anyOf": [
@@ -17269,16 +17429,6 @@
             "items": {
               "type": "object",
               "properties": {
-                "userId": {
-                  "type": "string",
-                  "format": "uuid",
-                  "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
-                },
-                "rideRequestId": {
-                  "type": "string",
-                  "format": "uuid",
-                  "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
-                },
                 "name": {
                   "type": "string"
                 },
@@ -17330,8 +17480,6 @@
                 }
               },
               "required": [
-                "userId",
-                "rideRequestId",
                 "name",
                 "initials",
                 "isYou",

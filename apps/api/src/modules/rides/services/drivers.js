@@ -441,13 +441,18 @@ module.exports = function drivers(c, services) {
         data: { driverAcceptedAt: new Date() },
       });
       if (won.count === 0) throw c.conflict('This ride is no longer offered to you');
-      await tx.ridesDriverTrip.create({
-        data: {
-          groupId,
-          driverId: userId,
-          vehicleId: d.vehicleId,
-          status: 'accepted',
-          acceptedAt: new Date(),
+      // An earlier trip of this driver for this group (cancelled or unassigned by an admin) is
+      // reused: one row per (group, driver) stays the rule (P7-003).
+      const accepted = { vehicleId: d.vehicleId, status: 'accepted', acceptedAt: new Date() };
+      await tx.ridesDriverTrip.upsert({
+        where: { groupId_driverId: { groupId, driverId: userId } },
+        create: { groupId, driverId: userId, ...accepted },
+        update: {
+          ...accepted,
+          declinedAt: null,
+          headingAt: null,
+          startedAt: null,
+          completedAt: null,
         },
       });
       const members = await tx.ridesGroupMember.findMany({
@@ -475,14 +480,11 @@ module.exports = function drivers(c, services) {
       if (!g) throw c.notFound('Ride not found');
       if (!d.vehicleId || g.vehicleId !== d.vehicleId || g.driverAcceptedAt)
         throw c.conflict('This ride is no longer offered to you');
-      await tx.ridesDriverTrip.create({
-        data: {
-          groupId,
-          driverId: userId,
-          vehicleId: d.vehicleId,
-          status: 'declined',
-          declinedAt: new Date(),
-        },
+      const declined = { vehicleId: d.vehicleId, status: 'declined', declinedAt: new Date() };
+      await tx.ridesDriverTrip.upsert({
+        where: { groupId_driverId: { groupId, driverId: userId } },
+        create: { groupId, driverId: userId, ...declined },
+        update: declined,
       });
       const cleared = await tx.ridesGroup.update({
         where: { id: groupId },
@@ -500,11 +502,26 @@ module.exports = function drivers(c, services) {
     return { declined: true };
   }
 
+  // A trip only moves while its group is live and still holds this trip's vehicle (P7-003).
+  const rideClosed = () =>
+    c.fail(409, 'RIDE_CLOSED', 'This ride was cancelled, completed or given to another driver');
+  const assertLive = (g, trip) => {
+    if (['cancelled', 'completed'].includes(g.status) || g.vehicleId !== trip.vehicleId)
+      throw rideClosed();
+  };
+
   // One trip step: only from the listed states (conditional update, so a double click is 409).
   async function tripStep(userId, groupId, from, to, after) {
     await driverOf(userId);
     const graph = await c.loadGraph();
     await p.transaction(async (tx, emit) => {
+      const locked = await c.lockGroup(tx, groupId);
+      const current =
+        locked &&
+        (await tx.ridesDriverTrip.findUnique({
+          where: { groupId_driverId: { groupId, driverId: userId } },
+        }));
+      if (current) assertLive(locked, current);
       const stamp = { heading: 'headingAt', started: 'startedAt', completed: 'completedAt' }[to];
       const moved = await tx.ridesDriverTrip.updateMany({
         where: { groupId, driverId: userId, status: { in: from } },
@@ -564,6 +581,7 @@ module.exports = function drivers(c, services) {
         }));
       if (!trip || !['accepted', 'heading', 'started'].includes(trip.status))
         throw c.conflict('Accept the ride before verifying riders');
+      assertLive(g, trip);
       const members = (await c.membersByGroup([groupId], tx)).get(groupId);
       const match = members.find((m) => m.profile.riderCode === code);
       if (!match) throw c.badRequest("That code doesn't match any rider in this group");

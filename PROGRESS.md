@@ -13,8 +13,8 @@ Master plan (scope, architecture, rubric): the "UniVerse — Implementation Plan
 | A · Student Hub | Person 1 | P4 profiles, prep tracker, mentor ranking, mentorship requests, resource repository (backend) | Done — PR open (stacked on #4) |
 | B · Ride-Pooling | Person 1 | P3b carpool offers, campus graph, detour matching, savings | Done — PR #4 open (stacked on #3) |
 | D · Digital Wellbeing | Person 1 | P5 browser-side library (`packages/wellbeing-core`) and backend: daily totals, consent, pause, see my data, export, delete | Done — PR open (stacked on P4) |
-| C · Observatory | Person 2 | — | Not started |
-| E · Exam Monitoring | Person 2 | — | Not started |
+| C · Observatory | — | — | **Dropped** by team decision (P8): not built, nothing removed for it |
+| E · Exam Review | **Person 1** (since P8) | P8 platform gateway (`apps/api/src/modules/exam/`); E1 builds the Django service in `services/exam/` | Gateway done (P8); service in progress (E1) |
 
 ## Person 1 phases
 
@@ -28,7 +28,7 @@ Master plan (scope, architecture, rubric): the "UniVerse — Implementation Plan
 | P5 | Module D: privacy logic library (sanitise, categorise, metrics) and API for opt-in daily totals, consent, export and delete | Opus 5.5 / high | Done (report: `docs/sessions/P5.md`) |
 | P6 | Cross-module links, seed data, test scenarios, demo storyline run through the API | Opus 5.5 / high | Done (report: `docs/sessions/P6.md`) |
 | P7 | Independent read-only audit of Platform, A, B, D | Opus 5.5 / high | Done (findings: `docs/audit/P7-findings.md`, report: `docs/sessions/P7.md`) |
-| P8 | Fix audit findings | Sonnet 5.5 / high | Not started |
+| P8 | Fix audit findings + exam-service gateway (Tier 0) | Opus 5.5 / high | Partly done (report: `docs/sessions/P8.md`): gateway + all HIGH fixed; mediums/lows deferred |
 | P9 | README, architecture, algorithms, docs | Sonnet 5.5 / medium | Not started |
 | U1 | Frontend shell and platform screens from the team's UI design (Opus 5.5 / high) | Opus 5.5 / high | Done (report: `docs/sessions/U1.md`) — branch `p1/u1-shell`, PR open |
 | U2 | Frontend screens for A, B, D from the team's UI design | Opus 5.5 / high | Done (report: `docs/sessions/U2.md`) — branch `p1/u2-modules`, PR open. Rides driver/admin screens cut (user) |
@@ -38,6 +38,16 @@ Checkpoints with Person 2: merge to `main` at Hour 5 and Hour 7. Feature freeze 
 
 ## Decisions (newest first)
 
+- 2026-10-30 (P8) — **Module C is dropped and Person 1 owns Module E** (team decision). E keeps its own stack: a Django service in `services/exam/` (E1) behind the platform, contract `docs/integration/exam-service.md` (v1, binding for both sides).
+- 2026-10-30 (P8) — **Exam gateway (platform side):**
+  - Installed only when `EXAM_SERVICE_URL` and `SERVICE_TOKEN_EXAM` (≥ 32 chars) are both set: the factory returns `null` otherwise (new: a factory may return `null` = not installed).
+  - `apps/api/src/modules/exam/gateway.ts`: Node `http`, body streamed with back-pressure and counted (413 `FILE_TOO_LARGE` past 200 MB; a refused body is drained for up to 5 s so the client sees the reply, not a reset), header allow-list both ways (identity headers `X-UniVerse-User-Id|Role|Name`, `X-Service-Token`, `X-Request-Id`; `Set-Cookie` and every other service header dropped; `nosniff` + helmet's headers), connect 2 s / headers 30 s → 503 `MODULE_UNAVAILABLE`, `/live/` streams tracked (≤ 2 h). Dot segments are 404. 600 requests/min per user.
+  - New definition fields: `rawBody` (the app's JSON parser skips `/api/<id>`) and `internalRoutes(router)` (mounted at `/internal/<id>` before the JSON parser: loopback socket address only unless `SERVICE_ALLOW_REMOTE=true`, `X-Service-Token` compared as SHA-256 digests with `timingSafeEqual`, 600/min, 64 kB JSON, logs keep the route pattern only).
+  - New platform members: `services.get(id)` (that module's URL + token), `streams.track(req, res, { maxMs })` (closed on that session's logout, deactivation, shutdown, `maxMs` ≤ 2 h), `serviceEvents.claim(tx, module, key)` (table `platform_service_events`, PK `(module, idempotency_key)`, `created_at` index, hourly 7-day sweep job `platform.service_events`).
+  - Internal routes: `activity` (types `exam.flag_created|flag_reviewed|clip_processed`; params strict per type — ids, counts, a seat label `^[A-Za-z0-9-]{1,12}$`; the sentence comes from `EXAM_ACTIVITY_TEXT` in `packages/contracts/src/activity/exam.ts`; recipients `{ role: 'invigilator' }` or `userIds` that must all be active invigilators/admins, else 422 `INVALID_RECIPIENT`), `audit` (actions listed in `packages/contracts/src/audit/exam.ts`: `exam.clip_uploaded|clip_deleted|flag_reviewed|flag_reopened|live_session_started|live_session_stopped`; meta values are ids/codes/numbers/booleans without spaces; the actor must be an active invigilator/admin, else 422 `INVALID_ACTOR`), `push` (`exam.job_progress`, `progress` 0–100, `status` a lower-case word; optional `idempotencyKey`). All 202 `{ accepted: true }`, a repeated key writes nothing.
+  - OpenAPI: the proxied paths are listed under the document's `x-external-services.exam` (from `EXAM_GATEWAY_PATHS` in contracts), not as routes of this API.
+- 2026-10-30 (P8) — `.gitattributes` (`* text=auto eol=lf`, binaries) added; `git add --renormalize .` changed no file on this machine. `.gitignore` ignores the exam service's media, venvs, `*.sqlite3`, `*.pt` and `*.mp4` (except under `fixtures/`).
+- 2026-10-30 (P8) — Person 2's `p2/windows-module-import-fix` merged (module import by file URL, Prisma CLI through `process.execPath` in test setup); one import-line conflict, kept both sides; all gates green.
 - 2026-10-30 (U2) — **Scope (user decision mid-session): Rides is the student/mentor portal only.** Driver (Trips, Earnings) and admin (Overview, Drivers, Vehicles, Rides) screens were removed from U2; those roles see "Coming in the next build" on `/rides`. Add them later if there is time.
 - 2026-10-30 (U2) — **Shared widgets** (`apps/web/src/shell/ui/Widgets.tsx`): Card, CardLabel, Switch (`role="switch"`), Stepper, ProgressBar, GoalGrid, BarChart, KpiCard; plus `StopGraph.tsx` and `MatchCard.tsx` from Rides. New size tokens `--fs-36` (Prep OVERALL, Wellbeing TODAY) and `--fs-28` (match score), both from the prototype.
 - 2026-10-30 (U2) — **Live updates through the one stream:** `WebModule.invalidates` (`shell/modules.ts`) maps stored activity types to query keys; `ActivityProvider` invalidates them when an event arrives. Hub refreshes `['hub']` on `hub.request_*`; Rides maps its booking/offer/group types. No polling anywhere.
@@ -330,6 +340,13 @@ Ported from `routepool2-react-` @ `0c57429` into `apps/api/src/modules/rides/` (
 - 2026-10-29 (P2, for Person 2): please review the P2 pull request too (it changes shared areas: `packages/contracts/`, `apps/api/src/platform/`, `prisma/schema/platform.prisma`, `prisma/seed/index.ts`, root `package.json`). Your modules plug in without touching the platform: see "How to plug in your module (backend)" below. Two shared files take one line each when you start: `packages/contracts/src/dashboard/index.ts` (your summary schema) and `packages/contracts/src/audit/index.ts` (your audit actions), via PR.
 - 2026-10-29 (P1, for Person 2): please review and approve the P1 pull request: it creates every shared area (`packages/contracts/`, `apps/api/src/platform/`, root `package.json`, `prisma/schema/base.prisma`, `prisma/schema/platform.prisma`, `prisma/seed/index.ts`). To send activity events from C or E: add `packages/contracts/src/activity/observatory.ts` / `exam.ts` (types named `observatory.*` / `exam.*`), spread them into `activityRegistry` in `packages/contracts/src/activity/index.ts` (shared, so via PR), then call `transaction()` or `emit()` from `apps/api/src/platform/activity/service.ts`.
 
+## Exam Review (Module E) — running the service next to the API
+
+- One-time: create the `universe_exam` role and database (README, "Exam Review"), then follow `services/exam/README.md` (E1) to install and migrate the service.
+- In `apps/api/.env`: `EXAM_SERVICE_URL=http://127.0.0.1:8000` and `SERVICE_TOKEN_EXAM=<openssl rand -base64 32>`; the service's env gets the same token and `PLATFORM_URL=http://127.0.0.1:4000`.
+- Start the service with `waitress` on 127.0.0.1:8000, then `npm run dev` (or `npm start`). Without the two variables the API runs without Exam Review.
+- Service → platform: `POST /internal/exam/activity|audit|push` with `X-Service-Token` (see the P8 decision above for the exact bodies). The browser only ever calls `/api/exam/...`.
+
 ## How to add your module's screens (Person 2 and U2)
 
 Full guide: `docs/design/DESIGN-SYSTEM.md` sections 8–9.
@@ -439,6 +456,13 @@ Calls are validated both ways, limited to 500 ms and fail with 503 `MODULE_UNAVA
 
 **9. Week strip and seeds.** `weekItems(user, { from, to }, signal)` returns your dated items (contract `WeekProviderItem`; see the P6 decision for the copy style). If your seed needs another module's data, set `seedAfter: ['rides']`; `npm run demo:reset -- --yes` re-runs every seed from now (add your tables to `MODULE_TABLES` in `prisma/seed/reset.ts`).
 
+## P8 fixes
+
+- **Fixed:** the Tier 0 exam gateway; P7-001, 002, 003, 004, 005, 006, 008, 023. Tests: `apps/api/test/{exam,platform}/`, `test/rides/p7-audit.test.ts`, `test/rides/offer-recheck.test.ts`, `test/hub/p7-audit.test.ts`, `test/health.test.ts`.
+- **Deferred (15-minute deadline):** P7-007, 009–022, 024–028.
+- **Contract changes for U2:** P7-004, `RidesMatch.members` has no `userId`/`rideRequestId`, and non-members see first names only. P7-006 also changed `MentorshipRequest.student`, which is now `StudentCard | { id, name }`.
+- `demo:reset` and `db:seed` were re-run on `universe` after the UTC fix.
+
 ## P7 audit (for P8)
 
 Full findings, repro steps and evidence: `docs/audit/P7-findings.md` and `docs/audit/P7-evidence/`. Read-only phase: nothing below is fixed.
@@ -525,6 +549,7 @@ From the independent P1–P2 verification in P3a (the one high finding, the logi
 
 ## Session log (newest first)
 
+- 2026-10-30 08:06–10:45 — P8 Exam gateway + HIGH audit fixes (Person 1, Opus 5.5 / high, unattended; laptop sleep mid-run, then a hard deadline). Branch `p1/p8-fixes`. Report: `docs/sessions/P8.md`. Next: P8b for the deferred findings.
 - 2026-10-30 07:55–08:55 — U2 Hub, Rides and Wellbeing screens from the design (Person 1, Opus 5.5 / high).
   - Shared widgets, `invalidates` live-update map, FormData uploads, `--fs-36`/`--fs-28`, U2 compare registry; three builders in parallel (Hub, Rides, Wellbeing), integrated and committed one module at a time.
   - Hub for every role (+ mentor Slots, admin ranking); Rides student/mentor portal (+ Auto pools, group chat, Savings), driver/admin cut by the user; Wellbeing with IndexedDB device store, Focus and Rules cards; P7-022 (d).

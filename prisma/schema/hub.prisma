@@ -127,6 +127,8 @@ model HubMentorshipRequest {
   note      String?
   status    String    @default("pending") // 'pending' | 'accepted' | 'declined' | 'cancelled' | 'completed'
   decidedAt DateTime? @map("decided_at") @db.Timestamptz(3)
+  /// When the mentor marked the session completed (the student card stays visible 14 days).
+  completedAt DateTime? @map("completed_at") @db.Timestamptz(3)
   createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
 
   student HubProfile     @relation("RequestStudent", fields: [studentId], references: [userId], onDelete: Cascade)

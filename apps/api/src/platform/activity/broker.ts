@@ -49,12 +49,61 @@ export function pushEvent(userIds: Iterable<string>, name: string, data: unknown
 export const sendActivity = (userId: string, event: ActivityEvent) =>
   sendToUser(userId, 'activity', event, event.id);
 
-/** Closes a user's open streams (all of them, or all but one session's). */
-export function closeUserStreams(userId: string, exceptSessionId?: string): void {
-  for (const stream of [...(streams.get(userId) ?? [])])
-    if (stream.sessionId !== exceptSessionId) stream.close();
+// Long-lived non-SSE responses (for example a proxied MJPEG stream), closed with the SSE ones.
+const tracked = new Map<string, Set<Stream>>();
+
+/** The longest a tracked response may stay open, whatever the caller asks for. */
+export const MAX_TRACKED_MS = 2 * 60 * 60 * 1000;
+
+/**
+ * Tracks a long-lived response of this user and session: it is destroyed on that session's
+ * logout, the user's deactivation, shutdown, or after `maxMs` (at most 2 hours).
+ */
+export function trackResponse(
+  userId: string,
+  sessionId: string,
+  res: { destroy(): unknown; once(event: 'close', fn: () => void): unknown },
+  maxMs = MAX_TRACKED_MS,
+): void {
+  let set = tracked.get(userId);
+  if (!set) tracked.set(userId, (set = new Set()));
+  const timer = setTimeout(() => entry.close(), Math.min(maxMs, MAX_TRACKED_MS));
+  timer.unref();
+  let closed = false;
+  const entry: Stream = {
+    sessionId,
+    send() {},
+    close() {
+      if (closed) return;
+      closed = true;
+      clearTimeout(timer);
+      const own = tracked.get(userId);
+      own?.delete(entry);
+      if (own?.size === 0) tracked.delete(userId);
+      res.destroy();
+    },
+  };
+  set.add(entry);
+  res.once('close', () => entry.close());
+}
+
+/**
+ * Closes a user's open streams: all of them, all but one session's (`except`), or only one
+ * session's (`only`, on logout).
+ */
+export function closeUserStreams(
+  userId: string,
+  filter: { except?: string; only?: string } = {},
+): void {
+  for (const stream of [...(streams.get(userId) ?? []), ...(tracked.get(userId) ?? [])])
+    if (
+      stream.sessionId !== filter.except &&
+      (filter.only === undefined || stream.sessionId === filter.only)
+    )
+      stream.close();
 }
 
 export function closeAllStreams(): void {
-  for (const set of [...streams.values()]) for (const stream of [...set]) stream.close();
+  for (const map of [streams, tracked])
+    for (const set of [...map.values()]) for (const stream of [...set]) stream.close();
 }

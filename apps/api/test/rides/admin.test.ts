@@ -1,4 +1,5 @@
 import type { Server } from 'node:http';
+import { createRequire } from 'node:module';
 import type { AddressInfo } from 'node:net';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { FileRecord, rides as R } from '@universe/contracts';
@@ -14,6 +15,15 @@ import {
   type Rides,
   type Session,
 } from './helpers.js';
+
+interface ComplaintStatus {
+  complaints: number;
+  shouldFlag: boolean;
+  shouldSuspend: boolean;
+}
+const { complaintStatus } = createRequire(import.meta.url)(
+  '../../src/modules/rides/lib/vehicleStatus.js',
+) as { complaintStatus: (feedback: object[], now: number) => ComplaintStatus };
 
 let rides: Rides;
 let admin: Session;
@@ -307,7 +317,7 @@ describe('fleet (port of checkVehicles.js)', () => {
     expect(await audits('rides.vehicle_status_changed')).toBe(2);
   });
 
-  it('flags and then suspends a vehicle after rider complaints, one rating per rider', async () => {
+  it('counts complaints per boarded rider, not per tag (P7-002)', async () => {
     await prisma.ridesDriver.updateMany({ data: { online: false } });
     const ramesh = await prisma.user.findUniqueOrThrow({
       where: { email: 'ramesh.patil@drivers.universe.test' },
@@ -318,39 +328,81 @@ describe('fleet (port of checkVehicles.js)', () => {
     await status(joinGroup(b, group, 'Azad Nagar', 'Ghatkopar', 31), 201);
     await status(joinGroup(c, group, 'Azad Nagar', 'Ghatkopar', 31), 201);
     await status(a.http.get(`/api/rides/groups/${group.id}/driver`), 200);
-    const tags = ['dirty seats', 'unsafe driving'];
-    await status(
-      a.http
-        .post(`/api/rides/groups/${group.id}/feedback`)
-        .send({ cleanliness: 1, condition: 2, tags }),
-      201,
-    );
-    await a.http
-      .post(`/api/rides/groups/${group.id}/feedback`)
-      .send({ cleanliness: 1, condition: 2 })
-      .expect(409);
-    await status(
-      b.http
-        .post(`/api/rides/groups/${group.id}/feedback`)
-        .send({ cleanliness: 2, condition: 2, tags }),
-      201,
-    );
+    const feedback = (s: typeof a, body: object) =>
+      s.http.post(`/api/rides/groups/${group.id}/feedback`).send(body);
+    const allTags = [
+      'dirty seats',
+      'meter not working',
+      'unsafe driving',
+      'poor condition',
+      'rash lane changes',
+    ];
+    // Not boarded yet: no rating at all.
+    const early = await feedback(a, { cleanliness: 1, condition: 1, tags: allTags });
+    expect(early.status).toBe(409);
+    expect((early.body as { error: { code: string } }).error.code).toBe('NOT_BOARDED');
+    // Boarded and the ride is over.
+    await prisma.ridesGroupMember.updateMany({
+      where: { groupId: group.id },
+      data: { boardedAt: new Date() },
+    });
+    await prisma.ridesGroup.update({ where: { id: group.id }, data: { status: 'completed' } });
+    await feedback(a, {
+      cleanliness: 1,
+      condition: 1,
+      tags: ['dirty seats', 'dirty seats'],
+    }).expect(400);
+    await status(feedback(a, { cleanliness: 1, condition: 1, tags: allTags }), 201);
+    await feedback(a, { cleanliness: 1, condition: 2 }).expect(409); // one rating per rider
     let v = await prisma.ridesVehicle.findUniqueOrThrow({
       where: { id: await vehicle('MH 02 EK 4417') },
     });
-    expect(v.flaggedReason).toMatch(/Sent for inspection: 4 rider complaints/);
-    await status(
-      c.http
-        .post(`/api/rides/groups/${group.id}/feedback`)
-        .send({ cleanliness: 1, condition: 1, tags }),
-      201,
-    );
+    expect(v.status).toBe('active'); // one rider with five tags is one complaint
+    expect(v.flaggedReason).toBeNull();
+    const tags = ['dirty seats', 'unsafe driving'];
+    await status(feedback(b, { cleanliness: 2, condition: 2, tags }), 201);
+    await status(feedback(c, { cleanliness: 1, condition: 1, tags }), 201);
     v = await prisma.ridesVehicle.findUniqueOrThrow({ where: { id: v.id } });
-    expect(v.status).toBe('suspended');
+    expect(v.flaggedReason).toMatch(/Sent for inspection: 3 rider complaints/);
+    expect(v.status).not.toBe('suspended');
     await prisma.ridesVehicle.update({
       where: { id: v.id },
       data: { status: 'active', flaggedReason: null },
     });
+  });
+
+  it('suspends at five distinct complaining riders (P7-002)', () => {
+    const at = new Date();
+    const fb = (userId: string, tags: string[]) => ({
+      userId,
+      tags,
+      cleanliness: 1,
+      condition: 1,
+      createdAt: at,
+    });
+    const oneRider = complaintStatus(
+      [
+        fb('u1', [
+          'dirty seats',
+          'unsafe driving',
+          'poor condition',
+          'meter not working',
+          'rash lane changes',
+        ]),
+      ],
+      Date.now(),
+    );
+    expect(oneRider).toMatchObject({ complaints: 1, shouldFlag: false, shouldSuspend: false });
+    const five = complaintStatus(
+      ['u1', 'u2', 'u3', 'u4', 'u5'].map((u) => fb(u, ['dirty seats'])),
+      Date.now(),
+    );
+    expect(five).toMatchObject({ complaints: 5, shouldFlag: true, shouldSuspend: true });
+    const repeat = complaintStatus(
+      ['u1', 'u1', 'u2', 'u2', 'u3'].map((u) => fb(u, ['dirty seats'])),
+      Date.now(),
+    );
+    expect(repeat).toMatchObject({ complaints: 3, shouldSuspend: false });
   });
 });
 

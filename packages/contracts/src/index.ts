@@ -14,4 +14,6 @@ export * from './publicApi.js';
 export * as rides from './rides/index.js';
 export * as hub from './hub/index.js';
 export * as wellbeing from './wellbeing/index.js';
+export * as exam from './exam/index.js';
+export { EXAM_ACTIVITY_TEXT, examActivityParams, type ExamActivityType } from './activity/exam.js';
 export { WEEKLY_SUMMARY_TEXT } from './activity/wellbeing.js';

@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { Role } from '../role.js';
+import { examActivity } from './exam.js';
 import { hubActivity } from './hub.js';
 import { platformActivity } from './platform.js';
 import { ridesActivity } from './rides.js';
@@ -25,6 +26,7 @@ export const activityRegistry = {
   ...ridesActivity,
   ...hubActivity,
   ...wellbeingActivity,
+  ...examActivity,
 } as const;
 
 export type ActivityType = keyof typeof activityRegistry;

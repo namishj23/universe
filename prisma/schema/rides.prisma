@@ -372,7 +372,7 @@ model RidesDriverTrip {
   groupId     String    @map("group_id") @db.Uuid
   driverId    String    @map("driver_id") @db.Uuid
   vehicleId   String?   @map("vehicle_id") @db.Uuid
-  status      String // declined | accepted | heading | started | completed
+  status      String // declined | accepted | heading | started | completed | cancelled | unassigned
   declinedAt  DateTime? @map("declined_at") @db.Timestamptz(3)
   acceptedAt  DateTime? @map("accepted_at") @db.Timestamptz(3)
   headingAt   DateTime? @map("heading_at") @db.Timestamptz(3)

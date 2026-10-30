@@ -3,7 +3,15 @@ import { hub } from '@universe/contracts';
 import type { Platform } from '../../platform/modules/index.js';
 import type { PrepService } from './prep.js';
 import { readiness } from './prep.js';
-import { ensureProfile, errors, isMentor, isoOrNull, uniqueTags, type User } from './shared.js';
+import {
+  cardVisibleWhere,
+  ensureProfile,
+  errors,
+  isMentor,
+  isoOrNull,
+  uniqueTags,
+  type User,
+} from './shared.js';
 
 /** Drops undefined keys (exactOptionalPropertyTypes): omitted fields keep their value. */
 const defined = <T extends object>(o: T) =>
@@ -67,7 +75,8 @@ export function profileService(p: Platform, prep: PrepService) {
   }
 
   /**
-   * A student's card: admins always; a mentor only if that student has sent them a request;
+   * A student's card: admins always; a mentor (a peer mentor only while still mentoring) only
+   * through a request that is pending or accepted, or completed within 14 days (P7-006);
    * anyone else (and any non-student id) gets 404.
    */
   async function student(viewer: User, params: unknown): Promise<hub.StudentCard> {
@@ -76,11 +85,14 @@ export function profileService(p: Platform, prep: PrepService) {
     const target = await db.user.findUnique({ where: { id }, select: { role: true } });
     if (!target || target.role !== 'student') throw E.notFound();
     if (viewer.role !== 'admin') {
-      const asked = await db.hubMentorshipRequest.findFirst({
-        where: { studentId: id, mentorId: viewer.id },
-        select: { id: true },
-      });
-      if (!asked) throw E.notFound();
+      const [asked, profile] = await Promise.all([
+        db.hubMentorshipRequest.findFirst({
+          where: { studentId: id, mentorId: viewer.id, ...cardVisibleWhere() },
+          select: { id: true },
+        }),
+        db.hubProfile.findUnique({ where: { userId: viewer.id } }),
+      ]);
+      if (!asked || !isMentor(viewer.role, profile)) throw E.notFound();
     }
     const card = (await prep.studentCards(db, [id])).get(id);
     if (!card) throw E.notFound();

@@ -74,6 +74,9 @@ module.exports = function admin(c, services) {
 
   // Call off a ride: the group is cancelled and every rider's request with it, so nobody is
   // left thinking they have a seat. Members hear it through the activity feed.
+  // Trip states that are still running; admin cancel/unassign closes them (P7-003).
+  const LIVE_TRIP = ['accepted', 'heading', 'started'];
+
   async function cancelRide(adminUser, groupId, body, requestId) {
     const { reason } = R.ReasonRequest.parse(body);
     const graph = await c.loadGraph();
@@ -92,6 +95,10 @@ module.exports = function admin(c, services) {
         data: { status: 'cancelled' },
       });
       await tx.ridesGroup.update({ where: { id: groupId }, data: { status: 'cancelled' } });
+      await tx.ridesDriverTrip.updateMany({
+        where: { groupId, status: { in: LIVE_TRIP } },
+        data: { status: 'cancelled' },
+      });
       await audit(
         tx,
         adminUser.id,
@@ -141,6 +148,10 @@ module.exports = function admin(c, services) {
           driverFemaleRequested: false,
           driverAcceptedAt: null,
         },
+      });
+      await tx.ridesDriverTrip.updateMany({
+        where: { groupId, status: { in: LIVE_TRIP } },
+        data: { status: 'unassigned' },
       });
       await audit(
         tx,
@@ -401,7 +412,7 @@ module.exports = function admin(c, services) {
   async function drivers(query) {
     const { cursor, limit } = c.pageQuery(query);
     const rows = await prisma.ridesDriver.findMany({
-      where: c.afterAsc('createdAt', cursor),
+      where: c.afterAsc('createdAt', cursor, 'userId'), // rides_drivers' key is user_id (P7-008)
       orderBy: [{ createdAt: 'asc' }, { userId: 'asc' }],
       take: limit + 1,
       include: { user: { select: { name: true, email: true } }, vehicle: true },

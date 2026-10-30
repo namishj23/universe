@@ -8,6 +8,7 @@ import type { PrepService } from './prep.js';
 import {
   ensureProfile,
   errors,
+  cardVisible,
   iso,
   isMentor,
   isoOrNull,
@@ -147,8 +148,11 @@ export function requestService(p: Platform, prep: PrepService, links: Integratio
     ]);
     return rows.map((r) => {
       const stopId = linked(r);
-      const student = cards.get(r.studentId);
-      if (!student) throw new Error(`student ${r.studentId} missing`);
+      const card = cards.get(r.studentId);
+      if (!card) throw new Error(`student ${r.studentId} missing`);
+      // The mentor's view of a closed request: the student's name only (P7-006).
+      const student =
+        user.id === r.mentorId && !cardVisible(r) ? { id: card.id, name: card.name } : card;
       return {
         id: r.id,
         status: r.status as hub.RequestStatus,
@@ -382,7 +386,10 @@ export function requestService(p: Platform, prep: PrepService, links: Integratio
       const slot = r.slotId ? await tx.hubMentorSlot.findUnique({ where: { id: r.slotId } }) : null;
       if (slot && slot.startsAt.getTime() > Date.now())
         throw E.conflict('SESSION_NOT_STARTED', 'Mark the session completed after it has started.');
-      await tx.hubMentorshipRequest.update({ where: { id }, data: { status: 'completed' } });
+      await tx.hubMentorshipRequest.update({
+        where: { id },
+        data: { status: 'completed', completedAt: new Date() },
+      });
     });
     return get(user, params);
   }

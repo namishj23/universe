@@ -158,6 +158,8 @@ module.exports = function riders(c, services) {
 
   // ── Views of groups ───────────────────────────────────────────────────────────────────
   const riderOf = (m) => ({ userId: m.userId, name: m.name, dropNodeId: m.dropNodeId });
+  // Someone outside the group sees members by first name only, as carpool offers do (P7-004).
+  const asStranger = (m) => ({ ...m, name: c.firstNameOf(m.name) });
   const farthestOf = (members) => members.reduce((a, b) => (b.distanceM > a.distanceM ? b : a));
 
   const memberRow = (m, f, i, graph, userId, extra = {}) => ({
@@ -182,9 +184,10 @@ module.exports = function riders(c, services) {
     { joinAs = false, joinBlockedReason = null } = {},
   ) {
     const far = farthestOf(members);
-    const riders = members.map(riderOf);
-    if (joinAs) riders.push({ userId, name: 'You', dropNodeId: far.dropNodeId });
     const mine = members.find((m) => m.userId === userId);
+    const shown = mine ? members : members.map(asStranger);
+    const riders = shown.map(riderOf);
+    if (joinAs) riders.push({ userId, name: 'You', dropNodeId: far.dropNodeId });
     const now = Date.now();
     return {
       id: g.id,
@@ -197,7 +200,7 @@ module.exports = function riders(c, services) {
       dropName: graph.stop(far.dropNodeId).name,
       pickupTime: g.pickupAt.toISOString(),
       seatsLeft: cfg.matching.maxGroupSize - members.length,
-      members: members.map((m) => ({
+      members: shown.map((m) => ({
         name: m.name,
         initials: c.initialsOf(m.name),
         dropName: graph.stop(m.dropNodeId).name,
@@ -376,7 +379,7 @@ module.exports = function riders(c, services) {
         continue;
       }
       const all = [
-        ...ms,
+        ...ms.map(asStranger),
         {
           userId,
           requestId: target.id,
@@ -401,7 +404,13 @@ module.exports = function riders(c, services) {
         pickupNode: graph.stop(g.pickupNodeId),
         memberRideRequestIds: all.map((m) => m.requestId),
         fare: f,
-        members: all.map((m, i) => memberRow(m, f, i, graph, userId)),
+        // No user or request ids of other riders; memberRideRequestIds stays (join needs it).
+        members: all.map((m, i) => {
+          const row = memberRow(m, f, i, graph, userId);
+          delete row.userId;
+          delete row.rideRequestId;
+          return row;
+        }),
       });
     }
     results.sort((a, b) => b.score - a.score || a.pickupTime.localeCompare(b.pickupTime));
@@ -822,9 +831,12 @@ module.exports = function riders(c, services) {
   // Repeated complaints flag the vehicle for inspection; enough of them take it off the road.
   async function addFeedback(userId, groupId, body) {
     const input = R.FeedbackRequest.parse(body);
-    await memberOrNotFound(groupId, userId);
+    const member = await memberOrNotFound(groupId, userId);
     const g = await prisma.ridesGroup.findUniqueOrThrow({ where: { id: groupId } });
     if (!g.vehicleId) throw c.badRequest('No driver has been assigned to this ride yet');
+    // Only a rider who was in the vehicle, once the ride has started, can rate it (P7-002).
+    if (!member.boardedAt || (g.status !== 'completed' && g.pickupAt.getTime() > Date.now()))
+      throw new p.http.ApiError(409, 'NOT_BOARDED', 'You can rate a ride once you have boarded it');
     const vehicle = await p.transaction(async (tx) => {
       await tx.$queryRaw`SELECT id FROM rides_vehicles WHERE id = ${g.vehicleId}::uuid FOR UPDATE`;
       const exists = await tx.ridesVehicleFeedback.findUnique({

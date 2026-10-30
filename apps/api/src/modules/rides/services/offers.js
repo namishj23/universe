@@ -365,7 +365,7 @@ module.exports = function offers(c, services) {
   async function update(userId, offerId, body) {
     const input = R.UpdateOfferRequest.parse(body);
     const g = await c.loadGraph();
-    await prisma.$transaction(async (tx) => {
+    await p.transaction(async (tx, emit) => {
       const o = await lockOffer(tx, offerId);
       if (!o || o.driverId !== userId) throw c.notFound('Offer not found');
       if (!['open', 'full'].includes(o.status)) throw c.conflict(`This ride is ${o.status}.`);
@@ -413,8 +413,50 @@ module.exports = function offers(c, services) {
         accepted.map((b) => b.id),
         g,
       );
+      // A new time or women-only rule: requested seats that no longer fit are cancelled now
+      // and the passenger told, so an accept can never confirm them (P7-005). Accepted
+      // passengers block both changes above (OFFER_HAS_PASSENGERS).
+      if (input.departAt !== undefined || input.womenOnly !== undefined)
+        await dropUnfitRequests(tx, emit, g, o.id);
     });
     return view(userId, offerId);
+  }
+
+  async function dropUnfitRequests(tx, emit, g, offerId) {
+    const o = await tx.ridesOffer.findUniqueOrThrow({ where: { id: offerId } });
+    const requested = await tx.ridesOfferBooking.findMany({
+      where: { offerId, status: 'requested' },
+    });
+    if (requested.length === 0) return;
+    const ids = (k) => requested.map((b) => b[k]);
+    const [accepted, requests, profiles] = await Promise.all([
+      acceptedOf(tx, offerId),
+      tx.ridesRequest.findMany({ where: { id: { in: ids('requestId') } } }),
+      tx.ridesProfile.findMany({ where: { userId: { in: ids('passengerId') } } }),
+    ]);
+    const requestBy = new Map(requests.map((r) => [r.id, r]));
+    const profileBy = new Map(profiles.map((r) => [r.userId, r]));
+    const unfit = requested.filter((b) => {
+      try {
+        checkSeat(g, o, accepted, b.id, requestBy.get(b.requestId), profileBy.get(b.passengerId));
+        return false;
+      } catch (err) {
+        if (err instanceof p.http.ApiError) return true;
+        throw err;
+      }
+    });
+    if (unfit.length === 0) return;
+    await tx.ridesOfferBooking.updateMany({
+      where: { id: { in: unfit.map((b) => b.id) } },
+      data: { status: 'cancelled', decidedAt: new Date() },
+    });
+    await emit({
+      recipients: unfit.map((b) => b.passengerId),
+      actorId: o.driverId,
+      module: 'rides',
+      type: 'rides.seat_declined',
+      payload: offerInfo(g, o),
+    });
   }
 
   // Cancels an offer inside the caller's transaction (offer row already locked): every live
@@ -581,17 +623,46 @@ module.exports = function offers(c, services) {
   // Accepts `booking` (status requested, or new) inside the transaction: re-plans with the
   // passenger inserted at the cheapest feasible position, marks their request matched and
   // withdraws their other seat requests. The offer and request rows are already locked.
-  async function acceptInTx(tx, emit, g, o, booking, request) {
-    const accepted = await acceptedOf(tx, o.id);
+  /**
+   * Whether this passenger (current profile) and request fit the offer as it is now: the
+   * women-only rule, a seat and detour insertion, and the pickup within the time buffer.
+   * One check for a seat request, a driver's accept and an offer edit (P7-005). Throws.
+   */
+  function checkSeat(g, o, accepted, bookingId, request, profile, noSeatPrefix = '') {
+    if (o.womenOnly && !isFemale(profile))
+      throw c.fail(403, 'GROUP_ACCESS', 'This is a women-only ride.');
     const fit = insertPassenger(
       g.sp,
       o,
       stopsOf(o),
       directMap(accepted),
-      passengerOf(booking.id, request, g),
+      passengerOf(bookingId, request, g),
       limits,
     );
-    if (!fit.ok) throw c.fail(409, 'NO_SEAT', `Can't fit this passenger: ${reasonText(fit, o)}.`);
+    if (!fit.ok) throw c.fail(409, 'NO_SEAT', `${noSeatPrefix}${reasonText(fit, o)}.`);
+    const planned = fit.ev.byBooking.get(bookingId);
+    const pickupAt = new Date(o.departAt.getTime() + planned.pickupS * 1000);
+    if (Math.abs(pickupAt.getTime() - request.pickupAt.getTime()) > c.bufferMs)
+      throw c.fail(
+        409,
+        'TIME_WINDOW_MISMATCH',
+        `This ride would pick you up more than ${cfg.matching.bufferMinutes} minutes from your time.`,
+      );
+    return { fit, planned, pickupAt };
+  }
+
+  async function acceptInTx(tx, emit, g, o, booking, request) {
+    const accepted = await acceptedOf(tx, o.id);
+    const passenger = await tx.ridesProfile.findUnique({ where: { userId: booking.passengerId } });
+    const { fit } = checkSeat(
+      g,
+      o,
+      accepted,
+      booking.id,
+      request,
+      passenger,
+      "Can't fit this passenger: ",
+    );
     await tx.ridesOfferBooking.update({
       where: { id: booking.id },
       data: { status: 'accepted', decidedAt: new Date(), addedDetourM: fit.addedDetourM },
@@ -627,8 +698,6 @@ module.exports = function offers(c, services) {
       if (o.driverId === userId) throw c.conflict("You can't book a seat on your own ride.");
       if (!['open', 'full'].includes(o.status) || o.departAt.getTime() < Date.now())
         throw c.conflict('This ride is no longer taking passengers.');
-      if (o.womenOnly && !isFemale(profile))
-        throw c.fail(403, 'GROUP_ACCESS', 'This is a women-only ride.');
       const request = await lockRequest(tx, requestId);
       if (!request || request.userId !== userId) throw c.notFound('Ride request not found');
       if (request.status !== 'open') throw c.conflict('This ride request is no longer open.');
@@ -645,21 +714,7 @@ module.exports = function offers(c, services) {
       }
       const id = existing?.id ?? randomUUID();
       const accepted = await acceptedOf(tx, o.id);
-      const fit = insertPassenger(
-        g.sp,
-        o,
-        stopsOf(o),
-        directMap(accepted),
-        passengerOf(id, request, g),
-        limits,
-      );
-      if (!fit.ok) throw c.fail(409, 'NO_SEAT', `${reasonText(fit, o)}.`);
-      const planned = fit.ev.byBooking.get(id);
-      const pickupAt = new Date(o.departAt.getTime() + planned.pickupS * 1000);
-      if (Math.abs(pickupAt.getTime() - request.pickupAt.getTime()) > c.bufferMs)
-        throw c.conflict(
-          `This ride would pick you up more than ${cfg.matching.bufferMinutes} minutes from your time.`,
-        );
+      const { fit, planned, pickupAt } = checkSeat(g, o, accepted, id, request, profile);
       const cost = splitCost(fit.ev, o.costPerKmPaise);
       const data = {
         requestId: request.id,
