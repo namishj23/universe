@@ -45,6 +45,7 @@ apps/api/src/modules/exam/   Module E (Person 2)
 apps/web/src/shell/          layout, navigation, dashboard, notification bell (Person 1)
 apps/web/src/modules/{hub,rides,wellbeing,observatory,exam}/
 packages/contracts/          shared Zod schemas and types
+packages/wellbeing-core/     Module D browser-side library (Person 1)
 prisma/schema/               one .prisma file per owner area
 services/vision/             Python vision service (Person 2)
 tools/loadsim/               Module C load simulator (Person 2)

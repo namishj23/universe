@@ -11,3 +11,5 @@ export * from './files.js';
 export * from './week.js';
 export * as rides from './rides/index.js';
 export * as hub from './hub/index.js';
+export * as wellbeing from './wellbeing/index.js';
+export { WEEKLY_SUMMARY_TEXT } from './activity/wellbeing.js';

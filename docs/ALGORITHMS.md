@@ -193,3 +193,58 @@ On the branching graph, riders whose paths share a stretch and then split (e.g. 
 3. Aggregate totals, a per-week series (IST weeks) and the five busiest pickup → drop pairs.
 
 Every figure is labelled an estimate, and the tariff, cost per km and speeds are returned with it.
+
+## Module D · Digital Wellbeing (Person 1)
+
+Code: `packages/wellbeing-core/src/` (dependency-free TypeScript; runs in the browser and in Node). It processes raw browsing events, rules and focus sessions on the user's device. The API (`apps/api/src/modules/wellbeing/`) only receives the output of step 6: one total in minutes per category per day.
+
+### 1. Event model and sanitiser (`events.ts`)
+
+An event is `{ at, kind, url?, domain? }` with `kind` one of `visit`, `focus`, `blur`, `idle`, `active`; any other field (titles, page text) is dropped. `sanitiseEvent(raw, now)` returns `{ ok: true, event: { at, kind, domain? } }` or `{ ok: false, reason }` and never throws:
+
+- `at` must parse (`bad_timestamp`) and be at most 24 h ahead of `now` (`future_timestamp`); it is normalised to UTC ISO.
+- A URL goes through the WHATWG `URL` parser, which lowercases the host, converts IDN to punycode (`उदाहरण.भारत` → `xn--p1b6ci4b4b3a.xn--h2brj9c`) and normalises IPv4 forms. Only `http:` and `https:` are accepted (`file:`, `chrome:`, `about:`, `data:`, `javascript:`… → `unsupported_scheme`). Only the host name is kept: credentials, port, path, query and fragment are gone. A trailing dot and one leading `www.` are removed.
+- IP literals (v4 and `[v6]`) and `localhost`/`*.localhost` become the domain `local`, so time is counted without storing an address.
+- A bare `domain` field is accepted if it contains none of `/ ? # @ : \ %` or whitespace, then normalised the same way.
+- `visit` needs a URL or domain (`missing_domain`); `blur` and `idle` never keep one.
+
+Property test: a sanitised domain never contains `/`, `?`, `#`, `@` or `:` (500 random URLs and strings).
+
+### 2. Rules (`rules.ts`)
+
+A rule is `{ pattern, category, distracting }`; categories are Study, Communication, Social, Entertainment, Other. A pattern is an exact domain (`youtube.com`) or a wildcard `*.google.com`, which matches `google.com` and every subdomain. Patterns are validated: lowercase LDH labels only (no paths, ports, regex or `*` elsewhere), IDN converted, duplicates refused after normalising.
+
+Matching (`compileRules` → `classify(domain)`): an exact-pattern map is tried first; then the domain's suffixes are walked from longest to shortest against a wildcard map, so the longest wildcard wins. Unmatched → Other, not distracting. O(labels) per lookup.
+
+`DEFAULT_RULES` cover common study, communication, social and entertainment sites, all with `distracting: false`: a site is distracting only when the user marks it.
+
+### 3. Focus sessions (`session.ts`)
+
+`startSession(now)`, `pauseSession`, `resumeSession`, `stopSession` return a new `{ startedAt, endedAt?, pauses: [{ from, to? }] }` or a typed error: `already_stopped`, `already_paused`, `not_paused`, `time_before_last_change`. Stopping while paused closes the pause at the same instant. Inputs are never mutated.
+
+### 4. Metrics (`metrics.ts`) — the key algorithm
+
+The session window is `[start, end)` where `end` = the stop time, or `now` for an open session; an open pause also ends at `now`. **Counted events** are events inside the window and outside every pause. Events are put in one total order (time, then kind, then domain), so the result never depends on input order.
+
+- **Attribution.** A counted `visit`, `focus` or `active` attributes time to the current domain, from its instant to the earliest of: the next event, the idle cap (default 300 s), the next pause start and the session end. `blur` and `idle` attribute nothing. The current domain is the event's own domain, or else the domain of the last counted event since the session start or the latest pause: a pause forgets it, so a `focus` after a resume with no domain attributes nothing.
+- **Active duration.** The start and every event except `idle` open an *activity window* up to the next event, at most the idle cap long. Active = the session minus pauses, covered by the union of the windows. Equivalently: session − paused − idle gaps beyond the cap − explicit `idle` stretches. Windows of events in a pause still count after the resume (the user was active).
+- **Context switches** = the number of times the domain changes between consecutive counted events that carry a domain (repeat visits don't count).
+- **Distracting time** = attributed time on distracting domains; **minutes per category** and the **per-domain breakdown** (for the local "see my data" view only) come from the same slices.
+
+Invariants (fast-check, hundreds of random sessions): category time ≤ active time ≤ session − paused; distracting ≤ category total; switches ≤ counted events − 1; adding a pause never increases active, distracting, any category, any domain or switches. Why it holds: attribution slices are subsets of the same event's activity window inside the counted window; activity windows don't depend on pauses; a pause only removes events and cuts slices, and the domain at any later event becomes either the same or none.
+
+Example (`samples/day-1.json`, cap 5 min, 09:00–10:30 with a 09:40–09:50 pause): docs.google.com 09:00 (5 min, capped), youtube.com 09:12 (3 min, next event), docs 09:15 (5), blur 09:30, focus 09:33 (docs again, 5), whatsapp 09:38 (2, cut by the pause), instagram 09:45 (in the pause: ignored), focus 09:52 (no domain after the pause: nothing), geeksforgeeks 09:53 (5), idle 10:10, active 10:20 (geeksforgeeks, 5), youtube 10:26 (4, cut by the stop). Study 25 min, Communication 2, Entertainment 7 (all distracting), 5 switches, active 38 min, idle 42.
+
+### 5. Daily totals and rounding (`daily.ts`)
+
+`dailyTotals(slices, { timeZone = 'Asia/Kolkata', categories })` splits each slice at local midnight (any IANA zone: the local wall clock and offset come from `Intl.DateTimeFormat`; the next midnight is found with one offset correction step), sums milliseconds per (date, category), and keeps only counted categories. Rounding is one rule per day: the day's total is rounded half up to whole minutes; each category gets its floor; the minutes still missing go to the categories with the largest remainders (ties in category order). So a day's rows always sum to its rounded total. Every counted category gets a row (zeros included) on each day with counted time, so a re-upload replaces stale values.
+
+Example (`samples/day-3.json`, across midnight): 29 Oct has study 520 s, communication 90 s, entertainment 90 s = 700 s → 12 min; floors 8 + 1 + 1 = 10; remainders 40 s, 30 s, 30 s → study and communication get +1 → 9, 2, 0, 1. 30 Oct: 165 s, 140 s, 135 s = 440 s → 7; floors 2 + 2 + 2; study (45 s) gets +1 → 3, 2, 0, 2.
+
+### 6. What the server does with the totals
+
+`PUT /api/wellbeing/totals` upserts rows inside one transaction that first locks the user's `wb_settings` row (`SELECT … FOR UPDATE`), so concurrent uploads queue: tracking must be `on` (else 409), each category must be counted (else 422), dates must be within retention and not after today in Asia/Kolkata, and each day's total — the incoming rows plus stored rows for categories not in the request — must stay ≤ 1440 (a test fires four 500-minute uploads at once: exactly two succeed).
+
+`GET /summary`: totals count only the categories currently counted; `average` = mean of the previous `days − 1` days that have counted rows; `percentVsAverage = round(|1 − today ÷ average| × 100)`, `direction` `under` or `over`; absent without history. Seed: today 212, previous six days 252, 300, 282, 234, 264, 252 → average 264, |1 − 212/264| = 19.7 % → **20 % under**.
+
+Hourly job (`runOnce(platform, now)`): delete rows with `date < today − retention_days` per user (one `DELETE … USING wb_settings`); from Sunday 09:00 IST, insert a `wb_weekly_summaries (user, previous Sunday)` marker for every active user whose tracking is `on` or `paused` and who has rows in the week that ended, `ON CONFLICT DO NOTHING RETURNING user_id`, and emit `wellbeing.weekly_summary` (fixed text, no numbers) to exactly those users in the same transaction. Once per user per week, even with two instances.

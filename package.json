@@ -4,6 +4,7 @@
   "type": "module",
   "workspaces": [
     "packages/contracts",
+    "packages/wellbeing-core",
     "apps/api",
     "apps/web"
   ],
@@ -13,7 +14,7 @@
   "scripts": {
     "postinstall": "prisma generate",
     "dev": "concurrently -k -n api,web -c blue,green \"npm run dev -w @universe/api\" \"npm run dev -w @universe/web\"",
-    "build": "npm run build -w @universe/contracts && npm run build -w @universe/api && npm run build -w @universe/web",
+    "build": "npm run build -w @universe/contracts && npm run build -w @universe/wellbeing-core && npm run build -w @universe/api && npm run build -w @universe/web",
     "start": "npm start -w @universe/api",
     "typecheck": "npm run typecheck --workspaces",
     "lint": "eslint . && prettier --check .",

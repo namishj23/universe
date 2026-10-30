@@ -3,6 +3,7 @@ import { Role } from '../role.js';
 import { hubActivity } from './hub.js';
 import { platformActivity } from './platform.js';
 import { ridesActivity } from './rides.js';
+import { wellbeingActivity } from './wellbeing.js';
 
 export const ActivityModule = z.enum([
   'platform',
@@ -23,6 +24,7 @@ export const activityRegistry = {
   ...platformActivity,
   ...ridesActivity,
   ...hubActivity,
+  ...wellbeingActivity,
 } as const;
 
 export type ActivityType = keyof typeof activityRegistry;

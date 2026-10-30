@@ -1,0 +1,53 @@
+// Module D · Digital Wellbeing (Person 1). Every table is prefixed wb_. The server keeps only
+// what the screen promises: one total in minutes per category per day, plus the user's
+// settings. No URLs, domains, titles or session timelines (those stay in the browser).
+// wb_settings is created on first use; the other tables reference it, so User carries one
+// back-relation and deleting a user deletes their wellbeing data. CHECK constraints for the
+// category list, tracking state and ranges are in the migration SQL.
+
+model WbSettings {
+  userId            String    @id @map("user_id") @db.Uuid
+  /// 'on' | 'paused' | 'off'
+  tracking          String    @default("off")
+  pausedSince       DateTime? @map("paused_since") @db.Timestamptz(3)
+  categories        String[]  @default(["study", "communication", "social", "entertainment"])
+  retentionDays     Int       @default(90) @map("retention_days") @db.SmallInt
+  shareStudyWithHub Boolean   @default(false) @map("share_study_with_hub")
+  updatedAt         DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  user      User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  totals    WbDailyTotal[]
+  summaries WbWeeklySummary[]
+
+  @@index([tracking])
+  @@map("wb_settings")
+}
+
+model WbDailyTotal {
+  userId    String   @map("user_id") @db.Uuid
+  date      DateTime @db.Date
+  /// 'study' | 'communication' | 'social' | 'entertainment' | 'other'
+  category  String
+  minutes   Int      @db.SmallInt
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  settings WbSettings @relation(fields: [userId], references: [userId], onDelete: Cascade)
+
+  // The primary key serves the user's date-range reads (user_id, date, ...).
+  @@id([userId, date, category])
+  // The retention job deletes by date across users.
+  @@index([date])
+  @@map("wb_daily_totals")
+}
+
+model WbWeeklySummary {
+  userId    String   @map("user_id") @db.Uuid
+  /// The Sunday (Asia/Kolkata) the summarised week began.
+  weekStart DateTime @map("week_start") @db.Date
+  sentAt    DateTime @default(now()) @map("sent_at") @db.Timestamptz(3)
+
+  settings WbSettings @relation(fields: [userId], references: [userId], onDelete: Cascade)
+
+  @@id([userId, weekStart])
+  @@map("wb_weekly_summaries")
+}

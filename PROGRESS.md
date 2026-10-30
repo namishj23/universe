@@ -11,7 +11,7 @@ Master plan (scope, architecture, rubric): the "UniVerse — Implementation Plan
 | Platform | Person 1 | P3a (module factories, `driver` role, login-lockout fix) | Done — PR open to `main` (needs Person 2 review: shared areas) |
 | A · Student Hub | Person 1 | P4 profiles, prep tracker, mentor ranking, mentorship requests, resource repository (backend) | Done — PR open (stacked on #4) |
 | B · Ride-Pooling | Person 1 | P3b carpool offers, campus graph, detour matching, savings | Done — PR #4 open (stacked on #3) |
-| D · Digital Wellbeing | Person 1 | — | Not started |
+| D · Digital Wellbeing | Person 1 | P5 browser-side library (`packages/wellbeing-core`) and backend: daily totals, consent, pause, see my data, export, delete | Done — PR open (stacked on P4) |
 | C · Observatory | Person 2 | — | Not started |
 | E · Exam Monitoring | Person 2 | — | Not started |
 
@@ -24,7 +24,7 @@ Master plan (scope, architecture, rubric): the "UniVerse — Implementation Plan
 | P3a | Module B onto the platform (Opus 5.5 / high) | Opus 5.5 / high | Done (report: `docs/sessions/P3a.md`) |
 | P3b | Rides: driver offers, campus graph, detour matching, savings (Opus 5.5 / high) | Opus 5.5 / high | Done (report: `docs/sessions/P3b.md`) |
 | P4 | Module A backend: profiles, prep tracker, mentor ranking, mentorship requests, resource repository with search | Opus 5.5 / high | Done (report: `docs/sessions/P4.md`) |
-| P5 | Module D: privacy logic library (sanitise, categorise, metrics) and API for opt-in daily totals, consent, export and delete | Sonnet 5.5 / high | Not started |
+| P5 | Module D: privacy logic library (sanitise, categorise, metrics) and API for opt-in daily totals, consent, export and delete | Opus 5.5 / high | Done (report: `docs/sessions/P5.md`) |
 | P6 | Cross-module links, seed data, test scenarios, demo storyline run through the API | Sonnet 5.5 / medium | Not started |
 | P7 | Independent read-only audit of Platform, A, B, D | Opus 5.5 / xhigh | Not started |
 | P8 | Fix audit findings | Sonnet 5.5 / high | Not started |
@@ -35,6 +35,18 @@ Master plan (scope, architecture, rubric): the "UniVerse — Implementation Plan
 Checkpoints with Person 2: merge to `main` at Hour 5 and Hour 7. Feature freeze at Hour 9.
 
 ## Decisions (newest first)
+
+- 2026-10-30 (P5) — **Privacy architecture (binding):** raw browsing events, domains, rules and focus-session detail never leave the browser. They are processed by `packages/wellbeing-core` (dependency-free TypeScript, `@universe/source` export condition, Vite alias in `apps/web`, Vitest alias in `apps/api`). The server stores only `wb_settings` (tracking, counted categories, retention, hub-share flag) and `wb_daily_totals` (minutes per user, day, category), plus `wb_weekly_summaries` markers. Only the owner (student or mentor) reaches any of it; admins, drivers and invigilators get 403 on every route, including through admin tools.
+- 2026-10-30 (P5) — **No wellbeing audit entries and no wellbeing values in logs.** The platform request logger (`apps/api/src/app.ts`) logs `/api/wellbeing/*` requests as `req: { id, method }`, `res: { statusCode }` and the matched `route` pattern (added when the response finishes, because pino-http serialises `req` before routing): no path parameters, query string or headers. The module's routes replace any unexpected error with a message-free one before the platform logs it (`scrub()` in `routes.ts`). Tests capture every log line and check.
+- 2026-10-30 (P5) — **Metrics model** (`docs/ALGORITHMS.md` Module D): attribution from a counted `visit`/`focus`/`active` to the earliest of next event, idle cap (300 s), next pause start and session end; a pause forgets the current domain; active time = session minus pauses covered by activity windows (start and every non-`idle` event, up to the next event, at most the cap). Chosen so the invariants hold: categories ≤ active, and pausing never increases any total (fast-check).
+- 2026-10-30 (P5) — **Rounding:** per day, total rounded half up to minutes, largest remainder across counted categories (ties in category order), so rows always sum to the rounded total. Every counted category gets a row (zeros included) so re-uploads replace stale values.
+- 2026-10-30 (P5) — **Wildcards:** `*.example.com` also matches `example.com` (we strip `www.`, so `www.example.com` arrives as `example.com`). IP literals and `localhost` map to the domain `local`.
+- 2026-10-30 (P5) — **Summary counts only the categories currently counted** (today, series, average); stored rows of a category turned off stay, appear in records and export, and are flagged `counted: false` in `summary.categories`. `average` = mean of the previous `days − 1` days with counted rows (rounded); `percentVsAverage`/`direction`/`average` are omitted when there is none.
+- 2026-10-30 (P5) — **Uploads** lock the user's `wb_settings` row (`FOR UPDATE`) before checking tracking, categories, dates (≤ today IST, ≥ today − retention) and the 1440-minute day cap (incoming + stored rows of other categories), then one `INSERT … SELECT unnest(…) ON CONFLICT DO UPDATE`. Error codes: 409 `TRACKING_PAUSED` (paused or off), 422 `CATEGORY_NOT_COUNTED`, `FUTURE_DATE`, `OUTSIDE_RETENTION`, `DAY_OVER_LIMIT`.
+- 2026-10-30 (P5) — **`platform.schedule(name, everyMs, fn)`** (`apps/api/src/platform/scheduler.ts`): registering never starts a timer; `server.ts` calls `startScheduledJobs()` after listen (each job runs once at start, then on its interval, never overlapping itself) and stops them on SIGTERM/SIGINT. Job names `<module>.<job>`, ≥ 1 s. Wellbeing registers `wellbeing.hourly` (retention + weekly summary); tests call `runOnce(platform, now)` from `jobs.ts` with a frozen clock.
+- 2026-10-30 (P5) — **Data model** (`prisma/schema/wellbeing.prisma`, migration `20261029211549_p5_wellbeing`): `wb_settings(user_id)` FK users ON DELETE CASCADE, created on first use; `wb_daily_totals (user_id, date, category)` PK (serves the user's date ranges) + `date` index (retention) FK → `wb_settings`; `wb_weekly_summaries (user_id, week_start)` PK. CHECKs: tracking list, `paused_since` set exactly when paused, categories ⊆ the five (≤ 5), retention 7–365, category list, minutes 0–1440. One back-relation line on `User` (`wbSettings`), as P4 did.
+- 2026-10-30 (P5) — **Delete everything** deletes every `wb_daily_totals` and `wb_weekly_summaries` row and sets tracking `off` (the design's empty state "Nothing stored · tracking off"); settings stay. The design's text says "tracking pauses" — U2 should show "off". Needs `{ "confirm": "DELETE" }`.
+- 2026-10-30 (P5) — `studyMinutesThisWeek({ actorId, userId }, now?)` is a method of the wellbeing service (`apps/api/src/modules/wellbeing/service.ts`), not exposed on the module definition yet: a number only when `actorId === userId`, sharing is on **and** study is counted; else null. P6 wires it through the platform.
 
 - 2026-10-30 (P4) — **Hub data model** (`prisma/schema/hub.prisma`, migrations `20261029202837_p4_hub` and `20261029210500_p4_hub_search_words`): every table `hub_`; `hub_profiles(user_id)` is created on first use and every other hub reference to a person points at it, so `User` gets **one** back-relation (`hubProfile`, the only line changed in `platform.prisma`; Prisma refuses one-sided relations). CHECKs on enum-like text, array sizes and item lengths (an IMMUTABLE `hub_items_ok()` helper), ranges and slot length. `hub_topic_progress` stores a copy of the topic's total with a composite FK `(topic_id, total_items) → hub_topics ON UPDATE CASCADE`, so a CHECK bounds `solved` and the copy can't go stale. Resource file ids have no FK to `files` (rides' reason: the sweep hard-deletes rows).
 - 2026-10-30 (P4) — **No-drift tricks:** Prisma compares partial-index predicates and generated-column expressions as text, so `hub.prisma` copies PostgreSQL's normalised forms (`status = ANY (ARRAY['pending'::text, 'accepted'::text])`, the `dbgenerated(...)` of the `search` column). The generated `tsvector` is declared `Unsupported("tsvector")? @default(dbgenerated(...))` with `@@index(type: Gin)`; `migrate diff` is empty on dev and test.
@@ -169,7 +181,18 @@ Ported from `routepool2-react-` @ `0c57429` into `apps/api/src/modules/rides/` (
 - **For P6:** `hub_mentor_slots.location_stop_id` (uuid, the type of `rides_nodes.id`) is stored but not validated against rides stops yet — validate it (and offer "ride to my mentor session") in P6. The reason line says "Covers two of your weakest topics: …" when the mentor covers two of three (the design's "your two weakest" would be wrong for Graphs, the third).
 - **Activity types:** `hub.request_received`, `hub.request_accepted`, `hub.request_declined`, `hub.request_cancelled`. **Audit:** `hub.resource_deleted` (admin deletes).
 
+## Module D (wellbeing) after P5 — what U2 and P6 must know
+
+- **Library API** (`import … from '@universe/wellbeing-core'`): `sanitiseEvent(raw, now)` / `sanitiseEvents(raws, now)` → clean `{ at, kind, domain? }` + rejected `{ index, reason }`; `validatePattern`, `validateRules`, `compileRules`, `DEFAULT_RULES`, `CATEGORIES`; `startSession`, `pauseSession`, `resumeSession`, `stopSession` (pure, typed errors), `isPaused`; `computeMetrics(session, events, rules, { idleCapSeconds?, now })` → `{ sessionMs, pausedMs, activeMs, idleMs, switches, countedEvents, distractingMs, categoryMs, domains[] }`; `attribute(...)` → slices; `dailyTotals(slices, { timeZone?, categories? })` → `{ date, category, minutes }[]` ready for `PUT /api/wellbeing/totals`. Sample days with expected answers: `packages/wellbeing-core/samples/day-{1,2,3}.json` (the import demo).
+- **Local only (IndexedDB in U2, never sent):** raw events (sanitised before storing), rules, focus sessions, metrics and the per-domain breakdown. Store sanitised events only. "Pause" in the privacy bar = `POST /tracking { state: 'paused' }` **and** stop recording events locally.
+- **Routes** (`/api/wellbeing`, students and mentors, own data only, `Cache-Control: no-store`): `GET/PUT /settings`, `POST /tracking`, `PUT /totals`, `GET /summary?days=7`, `GET /records?cursor=&limit=`, `DELETE /records/:date/:category`, `DELETE /records?from=&to=`, `GET /export` (attachment `wellbeing-export-YYYY-MM-DD.json`), `DELETE /data` with `{ confirm: 'DELETE' }`.
+- **Design screen → API:** TODAY card = `summary.todayMinutes`, `categories[]` (`counted: false` → "off"), comparison line from `percentVsAverage`, `direction`, `average`; LAST 7 DAYS = `summary.series` (oldest first, today last); CONSENT toggles = `PUT /settings { categories }`; privacy bar status = `summary.tracking` + `pausedSince` ("Paused since 20:00"), buttons = `/tracking`, `/records`, `/export` (toast uses `recordCount`), `/data` (confirm modal shows `recordCount`). Dashboard card = `GET /api/dashboard` wellbeing entry `{ todayMinutes, percentVsAverage?, direction?, tracking }`. Inbox: `wellbeing.weekly_summary` with `payload.message`.
+- **Seed numbers:** the API computes from the stored rows, so the screen shows today **3 h 32 m**, average **4 h 24 m** and **20 % under** (the design's chart says 3.7 h and "16 % under", which don't match its own 3 h 32 m). Series: 252, 300, 282, 234, 264, 252, 212 → 4.2 h, 5.0 h, 4.7 h, 3.9 h, 4.4 h, 4.2 h, 3.5 h.
+- **For P6:** wire `studyMinutesThisWeek` into the hub through the platform (e.g. a module capability), never by importing wellbeing from hub.
+
 ## Requests for the other owner
+
+- 2026-10-30 (P5, for Person 2): please review the P5 pull request (stacked on P4). Shared areas it changes, all authorised for this phase except the one-line `wbSettings` back-relation in `platform.prisma` (Prisma requires it, as in P4): `packages/contracts/` (`wellbeing/index.ts`, `activity/wellbeing.ts`, real `dashboard/wellbeing.ts`, registry lines); `apps/api/src/platform/scheduler.ts` + `platform.schedule` + `server.ts` start/stop (**use `platform.schedule` for your own periodic jobs**); the request logger in `apps/api/src/app.ts`; the new workspace `packages/wellbeing-core` (root `package.json` workspaces and build, web dependency and Vite alias).
 
 - 2026-10-30 (P4, for Person 2): please review the P4 pull request (stacked on #4, which is stacked on #3: merge those first). Shared areas it changes (all authorised for this phase except the one-line `platform.prisma` back-relation, which Prisma requires):
   - `packages/contracts/` — new `hub/index.ts`, `week.ts` (**use `weekOf()` for any "this week" in C and E**), `activity/hub.ts`, `audit/hub.ts`, real `dashboard/hub.ts`, registry lines;
@@ -252,6 +275,8 @@ Then run `npm run api:docs` and commit `docs/api/openapi.json`. `npm test` fails
 
 ## Audit findings for P8
 
+- HIGH (found in P5, platform, not fixed: outside P5's authorised scope) — **Timestamps are shifted by the database session time zone.** Both local databases have `TimeZone = Asia/Kolkata` (Homebrew default from the Mac). The Prisma 7 pg adapter writes a JS `Date` as its UTC wall-clock time without an offset (PostgreSQL then reads it as IST) and reads `timestamptz` back the same way. So values written and read through Prisma round-trip, but anything compared with SQL `now()`/`CURRENT_TIMESTAMP` or filled by a database default is off by 5 h 30 m: e.g. a probe stored `paused_since` intended as 19:00Z as 13:30Z, and `SELECT ${d.toISOString()}::timestamptz` came back 5 h 30 m late. Affects every `@default(now())` read back, and any SQL `now()` comparison against Prisma-written times (hub slots/requests, sessions, rides). Fix at the root: `ALTER DATABASE universe SET timezone TO 'UTC'` (and `universe_test`, `universe_shadow`, README setup step), or pass `options: '-c TimeZone=UTC'` to the pool in `apps/api/src/platform/db.ts`. Then re-check seeds and tests. Wellbeing avoids database-clock values it reads back (`ensure()` sets `updated_at` from JS; a test checks).
+
 From the independent P1–P2 verification in P3a (the one high finding, the login-lockout race, was fixed in P3a):
 
 - LOW — `apps/api/src/platform/activity/routes.ts:120-163`: an SSE stream whose client disconnects before the handler attaches `req.on('close')` stays registered (heartbeat keeps querying) until the session ends or it is evicted as the 6th stream. Fix: return early if `req.destroyed`/`res.writableEnded`, listen on `res.on('close')`, check `closed` in the heartbeat.
@@ -262,6 +287,15 @@ From the independent P1–P2 verification in P3a (the one high finding, the logi
 - LOW — `docs/sessions/P1.md` §9 still says a 429 lockout appears only for existing accounts (fixed in P2).
 
 ## Open questions
+
+- decided: wildcard `*.x.com` also matches `x.com`; IPs and localhost count as the domain `local` (P5, unattended).
+- decided: summary totals, series and average count only categories currently counted; `average` uses previous days that have counted rows; `days` accepts 7–31 (P5, unattended).
+- decided: delete-everything sets tracking `off` (the design's empty state) and also removes weekly-summary markers; settings stay (P5, unattended).
+- decided: `studyMinutesThisWeek` returns null when study is not counted, even if sharing is on (P5, unattended).
+- decided: the weekly summary skips deactivated accounts; "has data for the week" = any stored row dated in that Sunday–Saturday week (P5, unattended).
+- decided: `runOnce(platform, now)` takes the platform as its first argument (the module calls it bound); tests pass the shared platform (P5, unattended).
+- decided: the request logger keeps `req.id`, `req.method` and the matched `route` for wellbeing; unmatched wellbeing paths log `/api/wellbeing/*` (P5, unattended).
+- P5: the 300 s idle cap and the default rule list are judgement calls — confirm with the team.
 
 - decided: `platform.prisma` gets one line (`hubProfile HubProfile?` on `User`) although it was not on P4's authorised list — Prisma rejects a relation without its back-relation, and the prompt asks for `hub_profiles.user_id` FK users; every other hub table references `hub_profiles` instead (P4, unattended).
 - decided: `GET /api/hub/students/:id` added so the privacy rule ("a mentor sees a student only through a request; admins see all") has an endpoint and a test (P4, unattended).
@@ -283,6 +317,11 @@ From the independent P1–P2 verification in P3a (the one high finding, the logi
 
 ## Session log (newest first)
 
+- 2026-10-30 02:33–03:10 — P5 Module D: wellbeing core library and backend (Person 1, Opus 5.5 / high, unattended).
+  - `packages/wellbeing-core`: sanitiser, rules, focus sessions, metrics, daily totals; three hand-checked sample days; 86 tests incl. fast-check properties.
+  - 3 `wb_` tables (1 migration), contracts, 10 owner-only routes, hourly retention + weekly summary job via the new `platform.schedule`, wellbeing-safe request logging, dashboard summary, seed matching the design.
+  - 278 API tests (36 new) + 86 library + 1 web. Found a platform-wide time-zone shift (HIGH, for P8).
+  - Branch `p1/p5-wellbeing`, PR stacked on P4. Full report: `docs/sessions/P5.md`. Next: P6.
 - 2026-10-30 01:52–02:35 — P4 Module A: Student Hub backend (Person 1, Opus 5.5 / high, unattended).
   - 9 `hub_` tables (2 migrations), contracts (hub schemas, shared IST week, activity, audit, dashboard).
   - Profiles with privacy, prep tracker (row-locked increments with Idempotency-Key, weekly goal and pace, readiness, 30-day series), mentor ranking in one query, slots with an exclusion constraint, row-locked accept, resource repository with full-text + uploader-name search and file-in-use protection, admin views, dashboard summary, seed with the design's data and six padded real files.

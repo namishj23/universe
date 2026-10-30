@@ -2,8 +2,9 @@ import { existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import cookieParser from 'cookie-parser';
 import cors from 'cors';
-import express, { type Express, type Router } from 'express';
+import express, { type Express, type Request, type Router } from 'express';
 import helmet from 'helmet';
+import type { SerializedRequest, SerializedResponse } from 'pino';
 import { pinoHttp } from 'pino-http';
 import swaggerUi from 'swagger-ui-express';
 import { env } from './config/env.js';
@@ -29,6 +30,31 @@ import { buildOpenApiDocument } from './platform/openapi.js';
 // Same relative path from src/ (dev) and dist/ (built).
 const webDist = fileURLToPath(new URL('../../web/dist/', import.meta.url));
 
+// Wellbeing requests are logged as method + route pattern only: dates and categories in the
+// path, the query string, params and headers never reach a log (Express matches paths
+// case-insensitively, so the test is too). pino-http serialises `req` when the request
+// arrives, before routing, so the matched pattern is added when the response finishes.
+const WELLBEING = /^\/api\/wellbeing(?:[/?#]|$)/i;
+const isWellbeing = (req: Request) => WELLBEING.test(req.originalUrl);
+const routeOf = (req: Request) => {
+  const route = req.route as { path?: unknown } | undefined;
+  return `/api/wellbeing${typeof route?.path === 'string' ? route.path : '/*'}`;
+};
+const withRoute = (req: Request, val: object) =>
+  isWellbeing(req) ? { ...val, route: routeOf(req) } : val;
+const requestLogOptions = {
+  serializers: {
+    req: (req: SerializedRequest) =>
+      isWellbeing(req.raw as Request) ? { id: req.id, method: req.method } : req,
+    // Node keeps the request on the response; in Express it is the same object as `req`.
+    res: (res: SerializedResponse) =>
+      isWellbeing(res.raw.req as Request) ? { statusCode: res.statusCode } : res,
+  },
+  customSuccessObject: (req: Request, _res: unknown, val: object) => withRoute(req, val),
+  customErrorObject: (req: Request, _res: unknown, _err: unknown, val: object) =>
+    withRoute(req, val),
+};
+
 export interface AppOptions {
   /** From `loadModules()` at startup; tests pass fixtures. */
   modules?: readonly ModuleDefinition[];
@@ -46,7 +72,7 @@ export function createApp({ modules = [] }: AppOptions = {}): Express {
   app.set('trust proxy', env.TRUST_PROXY);
 
   app.use(requestId);
-  app.use(pinoHttp({ logger, genReqId: (req) => req.id }));
+  app.use(pinoHttp({ logger, genReqId: (req) => req.id, ...requestLogOptions }));
   app.use(
     helmet({
       // Upgrading to https would break the plain-http localhost demo; only on when served over HTTPS.
