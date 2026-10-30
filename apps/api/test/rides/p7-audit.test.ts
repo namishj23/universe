@@ -44,6 +44,7 @@ describe('P7 rides repros', () => {
         'rash lane changes',
       ],
     });
+    expect(res.status).toBe(409); // NOT_BOARDED (P7-002)
     const v = await prisma.ridesVehicle.findFirstOrThrow({
       where: { plateNumber: card.plateNumber },
     });
@@ -112,8 +113,9 @@ describe('P7 rides repros', () => {
     expect(body).not.toContain(owner.user.id);
     // The matches for a stranger's own request: first names, no user or request ids.
     const req = await request(stranger, 'Azad Nagar', 'Ghatkopar', 121);
-    const matches = (await stranger.http.get(`/api/rides/matches?rideRequestId=${req.id}`).expect(200))
-      .body as R.RidesMatches;
+    const matches = R.RidesMatches.parse(
+      (await stranger.http.get(`/api/rides/matches?rideRequestId=${req.id}`).expect(200)).body,
+    );
     const g = matches.groups.find((m) => m.members.some((x) => x.name === 'Meera'));
     expect(g).toBeDefined();
     const text = JSON.stringify(matches);

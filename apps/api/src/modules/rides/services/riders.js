@@ -406,11 +406,9 @@ module.exports = function riders(c, services) {
         fare: f,
         // No user or request ids of other riders; memberRideRequestIds stays (join needs it).
         members: all.map((m, i) => {
-          const {
-            userId: _user,
-            rideRequestId: _request,
-            ...row
-          } = memberRow(m, f, i, graph, userId);
+          const row = memberRow(m, f, i, graph, userId);
+          delete row.userId;
+          delete row.rideRequestId;
           return row;
         }),
       });
