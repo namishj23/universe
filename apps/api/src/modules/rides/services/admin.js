@@ -412,7 +412,7 @@ module.exports = function admin(c, services) {
   async function drivers(query) {
     const { cursor, limit } = c.pageQuery(query);
     const rows = await prisma.ridesDriver.findMany({
-      where: c.afterAsc('createdAt', cursor),
+      where: c.afterAsc('createdAt', cursor, 'userId'), // rides_drivers' key is user_id (P7-008)
       orderBy: [{ createdAt: 'asc' }, { userId: 'asc' }],
       take: limit + 1,
       include: { user: { select: { name: true, email: true } }, vehicle: true },
